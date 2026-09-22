@@ -69,9 +69,27 @@ const MainApp: React.FC = () => {
       setIsAdminMode(adminService.isSuperAdmin());
     });
 
+    // Hidden trigger for Super Admin: URL param (?admin=1 or #admin)
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('admin') || window.location.hash === '#admin') {
+        setIsAdminLoginOpen(true);
+      }
+    }
+
+    // Secret shortcut trigger for Super Admin: Ctrl+Shift+A or Alt+Shift+A
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey || e.altKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        setIsAdminLoginOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       unsub();
       unsubAdmin();
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -115,7 +133,6 @@ const MainApp: React.FC = () => {
               sessionStorage.removeItem('gk_exploring_demo');
             }
           }}
-          onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
         />
         <AdminLoginModal
           isOpen={isAdminLoginOpen}
@@ -192,9 +209,7 @@ const MainApp: React.FC = () => {
             <p className="text-xs mt-1">यह सुविधा मुनीम लॉगिन में बंद है।</p>
           </div>
         )}
-        {activeTab === 'settings' && userRole === 'owner' && (
-          <BackupRestore onOpenAdminLogin={() => setIsAdminLoginOpen(true)} />
-        )}
+        {activeTab === 'settings' && userRole === 'owner' && <BackupRestore />}
       </main>
 
       {/* Voice Assistant Modal */}

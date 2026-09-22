@@ -13,11 +13,7 @@ import {
   getConnectedPrinterName
 } from '../../utils/thermalPrint';
 
-interface BackupRestoreProps {
-  onOpenAdminLogin?: () => void;
-}
-
-export const BackupRestore: React.FC<BackupRestoreProps> = ({ onOpenAdminLogin }) => {
+export const BackupRestore: React.FC = () => {
   const { language, t } = useLanguage();
   const isCashier = syncService.getUserInfo()?.role === 'CASHIER';
   const [statusMessage, setStatusMessage] = useState<string>('');
@@ -536,19 +532,6 @@ export const BackupRestore: React.FC<BackupRestoreProps> = ({ onOpenAdminLogin }
           >
             <LogOut className="w-4 h-4" />
             <span>लॉगआउट करें (Logout)</span>
-          </button>
-        </div>
-      )}
-
-      {/* Platform Super Admin Access */}
-      {onOpenAdminLogin && (
-        <div className="pt-4 pb-2 text-center border-t border-amber-200/60">
-          <button
-            type="button"
-            onClick={onOpenAdminLogin}
-            className="text-xs text-stone-500 hover:text-amber-800 font-bold inline-flex items-center gap-1.5 cursor-pointer underline decoration-dotted transition-colors"
-          >
-            <span>👑 प्लेटफ़ॉर्म सुपर एडमिन पोर्टल (Super Admin Portal)</span>
           </button>
         </div>
       )}

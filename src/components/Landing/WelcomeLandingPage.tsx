@@ -23,13 +23,11 @@ import { syncService } from '../../services/syncService';
 interface WelcomeLandingPageProps {
   onExploreDemo: () => void;
   onLoginSuccess: () => void;
-  onOpenAdminLogin?: () => void;
 }
 
 export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
   onExploreDemo,
   onLoginSuccess,
-  onOpenAdminLogin,
 }) => {
   const { language, toggleLanguage, t } = useLanguage();
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -639,17 +637,6 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
         <p className="text-[11px] text-stone-500 mt-1 m-0">
           100% ऑफ़लाइन डेटा गारंटी • सुरक्षित मल्टी-टेनेंट क्लाउड आर्किटेक्चर
         </p>
-        {onOpenAdminLogin && (
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={onOpenAdminLogin}
-              className="text-[11px] text-stone-500 hover:text-amber-400 font-bold transition-colors cursor-pointer inline-flex items-center gap-1.5"
-            >
-              <span>👑 सुपर एडमिन पोर्टल (Super Admin Portal)</span>
-            </button>
-          </div>
-        )}
       </footer>
     </div>
   );
