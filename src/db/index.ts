@@ -97,89 +97,41 @@ export const INITIAL_PRODUCTS: Omit<Product, 'id'>[] = [
   { name: 'Saridon / Paracetamol Strip', hindiName: 'दर्द की गोली (सैरिडॉन)', category: 'rural_special', purchasePrice: 38, sellingPrice: 48, stockQty: 12, unit: 'packet', minStockThreshold: 4, isLoose: false, expiryDate: '2026-12-31' }
 ];
 
-// Initial Village Customers with Mohalla/Para & Harvest-linked Udhaar
-export const INITIAL_CUSTOMERS: Omit<Customer, 'id'>[] = [
-  {
-    name: 'Ramesh Patel',
-    phone: '98261XXXXX',
-    para: 'Patel Para (पटेल पारा)',
-    balanceDue: 2850,
-    dueDate: '2026-11-20',
-    dueReason: 'KHARIF_DHAN',
-    notes: 'धान बेचने के बाद 3 बोरी का भुगतान करेंगे (Paddy procurement season)',
-    createdAt: new Date(Date.now() - 86400000 * 45).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 2).toISOString()
-  },
-  {
-    name: 'Sushila Bai Sahu',
-    phone: '97542XXXXX',
-    para: 'School Para (स्कूल पारा)',
-    balanceDue: 920,
-    dueDate: '2026-10-10',
-    dueReason: 'MONTHLY_DBT',
-    notes: 'महतारी वंदन योजना का पैसा आने पर देंगे (Mahtari Vandan DBT ₹1000)',
-    createdAt: new Date(Date.now() - 86400000 * 20).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 5).toISOString()
-  },
-  {
-    name: 'Santosh Yadav',
-    phone: '94255XXXXX',
-    para: 'Bazar Mohalla (बाजार मोहल्ला)',
-    balanceDue: 1450,
-    dueDate: '2026-10-05',
-    dueReason: 'WEEKLY_HAAT',
-    notes: 'साप्ताहिक हाट के दिन दूध का हिसाब करेंगे',
-    createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 1).toISOString()
-  },
-  {
-    name: 'Dilip Kumar Netam',
-    phone: '91310XXXXX',
-    para: 'Talab Paar (तालाब पार)',
-    balanceDue: 3400,
-    dueDate: '2026-12-05',
-    dueReason: 'KHARIF_DHAN',
-    notes: 'सोसायटी में धान तौलने के बाद पूरा चुकता करेंगे',
-    createdAt: new Date(Date.now() - 86400000 * 60).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 10).toISOString()
-  },
-  {
-    name: 'Kanhaiya Verma',
-    phone: '96918XXXXX',
-    para: 'Purani Basti (पुरानी बस्ती)',
-    balanceDue: 450,
-    dueDate: '2026-10-01',
-    dueReason: 'OTHER',
-    notes: 'दुकान का पुराना बाकी',
-    createdAt: new Date(Date.now() - 86400000 * 15).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 3).toISOString()
-  }
-];
+// Empty arrays for initial customers and spoilage in production
+export const INITIAL_CUSTOMERS: Omit<Customer, 'id'>[] = [];
+export const INITIAL_SPOILAGE: Omit<SpoilageLog, 'id'>[] = [];
 
-// Initial Spoilage Log (Power Cuts / Load-Shedding)
-export const INITIAL_SPOILAGE: Omit<SpoilageLog, 'id'>[] = [
-  {
-    productName: 'Amul Taaza Milk (500ml)',
-    quantity: 4,
-    unit: 'pouch',
-    reason: 'POWER_CUT',
-    estimatedLoss: 104,
-    timestamp: new Date(Date.now() - 86400000 * 3).toISOString(),
-    note: 'रात में 7 घंटे ट्रांसफार्मर खराब रहा (Transformer outage)'
-  },
-  {
-    productName: 'Dahi Pouch (200g)',
-    quantity: 3,
-    unit: 'pouch',
-    reason: 'POWER_CUT',
-    estimatedLoss: 48,
-    timestamp: new Date(Date.now() - 86400000 * 3).toISOString(),
-    note: 'दूध के साथ दही भी खट्टा होकर फट गया'
+/**
+ * Actively purges any residual dummy/seed customers and transactions from local Dexie database
+ */
+export async function purgeDummySeedData() {
+  try {
+    const allCustomers = await db.customers.toArray();
+    const dummyCusts = allCustomers.filter(
+      (c) =>
+        c.phone.includes('XXXX') ||
+        c.name === 'Ramesh Patel' ||
+        c.name === 'Sushila Bai Sahu' ||
+        c.name === 'Santosh Yadav' ||
+        c.name === 'Dilip Kumar Netam' ||
+        c.name === 'Kanhaiya Verma'
+    );
+    for (const c of dummyCusts) {
+      if (c.id) {
+        await db.customers.delete(c.id);
+        await db.transactions.where('customerId').equals(c.id).delete();
+      }
+    }
+  } catch (err) {
+    console.warn('Purge error:', err);
   }
-];
+}
 
 export async function initializeDatabaseIfEmpty() {
-  // Always initialize product catalog if completely empty (real Chhattisgarh starter inventory)
+  // Always purge any lingering dummy/seed customer records from previous test runs
+  await purgeDummySeedData();
+
+  // Initialize real retail starter products if product table is completely empty
   const productCount = await db.products.count();
   if (productCount === 0) {
     for (const p of INITIAL_PRODUCTS) {
@@ -189,44 +141,10 @@ export async function initializeDatabaseIfEmpty() {
       });
     }
   }
-
-  // Production stores start with CLEAN customers, transactions, and spoilage tables.
-  // Real store owners add their own genuine customers and ledger entries.
 }
 
-/**
- * Explicit Demo Sandbox Seeder — Only triggered when user explicitly explores the Demo sandbox.
- */
 export async function seedDemoSandboxData() {
-  const customerCount = await db.customers.count();
-  if (customerCount === 0) {
-    for (const c of INITIAL_CUSTOMERS) {
-      const customerId = 'cust_' + Math.random().toString(36).substring(2, 9);
-      await db.customers.add({
-        ...c,
-        id: customerId
-      });
-
-      await db.transactions.add({
-        id: 'txn_' + Math.random().toString(36).substring(2, 9),
-        customerId,
-        type: 'UDHAAR',
-        amount: c.balanceDue,
-        timestamp: c.updatedAt,
-        note: c.notes || 'डेमो बाकी (Sample ledger entry)'
-      });
-    }
-  }
-
-  const spoilageCount = await db.spoilageLogs.count();
-  if (spoilageCount === 0) {
-    for (const s of INITIAL_SPOILAGE) {
-      await db.spoilageLogs.add({
-        ...s,
-        id: 'spoil_' + Math.random().toString(36).substring(2, 9)
-      });
-    }
-  }
+  // No dummy data in production
 }
 
 // Backup and Restore

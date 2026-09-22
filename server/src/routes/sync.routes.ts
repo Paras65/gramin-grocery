@@ -16,10 +16,26 @@ router.post('/sync', requireAuth, async (req: Request, res: Response) => {
     const { lastSyncTimestamp, mutations } = req.body;
     const now = new Date();
 
+    // Auto-clean any residual dummy customers from previous test runs on this tenant
+    await Customer.deleteMany({
+      tenantId,
+      $or: [
+        { phone: { $regex: /XXXX/i } },
+        { name: { $in: ['Ramesh Patel', 'Sushila Bai Sahu', 'Santosh Yadav', 'Dilip Kumar Netam', 'Kanhaiya Verma'] } },
+      ],
+    });
+
     // 1. Process Incoming Customer Mutations (Idempotent Upsert)
     if (mutations?.customers && Array.isArray(mutations.customers)) {
       for (const cust of mutations.customers) {
         if (!cust.clientUUID || !cust.name || !cust.phone) continue;
+        // Ignore dummy seed customers
+        if (
+          cust.phone.includes('XXXX') ||
+          ['Ramesh Patel', 'Sushila Bai Sahu', 'Santosh Yadav', 'Dilip Kumar Netam', 'Kanhaiya Verma'].includes(cust.name)
+        ) {
+          continue;
+        }
 
         await Customer.findOneAndUpdate(
           { tenantId, clientUUID: cust.clientUUID },

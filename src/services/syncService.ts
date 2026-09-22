@@ -178,12 +178,9 @@ class SyncService {
       throw new Error(data.error || 'Login failed');
     }
 
-    // Tenant Isolation Safeguard: If switching to a different store, purge previous store data!
-    const oldStore = this.getStoreInfo();
-    if (oldStore && oldStore._id !== data.tenant._id) {
-      console.warn('Switching store accounts: purges previous tenant records to prevent data bleeding.');
-      await clearDatabase(false);
-    }
+    // Always purge previous unauthenticated/demo store records so user's real store is loaded
+    await clearDatabase(false);
+    localStorage.removeItem('gk_last_sync');
 
     localStorage.setItem('gk_auth_token', data.token);
     localStorage.setItem('gk_store_info', JSON.stringify(data.tenant));
@@ -191,7 +188,7 @@ class SyncService {
 
     this.notifyAuth();
 
-    // Initial sync upon login
+    // Initial sync upon login (pulls real records from cloud)
     await this.triggerSync();
     return data;
   }
@@ -217,13 +214,17 @@ class SyncService {
       throw new Error(data.error || 'Registration failed');
     }
 
+    // Critical: Clean out any previous demo/unauthenticated records so newly registered store is 100% clean
+    await clearDatabase(false);
+    localStorage.removeItem('gk_last_sync');
+
     localStorage.setItem('gk_auth_token', data.token);
     localStorage.setItem('gk_store_info', JSON.stringify(data.tenant));
     localStorage.setItem('gk_user_info', JSON.stringify(data.user));
 
     this.notifyAuth();
 
-    // Upload local offline records to initialize cloud state
+    // Initial sync with cloud for newly registered store
     await this.triggerSync();
     return data;
   }
