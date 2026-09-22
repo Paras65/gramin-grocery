@@ -88,6 +88,7 @@ app.get('/health', (_req, res) => {
   res.json({
     status: 'HEALTHY',
     service: 'Gramin Kirana Multi-Tenant Cloud Engine',
+    version: '1.2.0-superadmin-fix',
     timestamp: new Date().toISOString(),
   });
 });

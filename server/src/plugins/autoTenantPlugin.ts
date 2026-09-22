@@ -31,7 +31,7 @@ export function autoTenantPlugin(schema: Schema) {
       const context = getTenantContext();
 
       // 1. Explicit bypass flag on query options
-      if (options.bypassTenantCheck || this.bypassTenantCheck) {
+      if (options.bypassTenantCheck || this.bypassTenantCheck || this.options?.bypassTenantCheck || this._mongooseOptions?.bypassTenantCheck) {
         return;
       }
 
