@@ -23,6 +23,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Auto-Generated Low Stock List](#auto-generated-low-stock-list)
    - [Calculating Cash Needed for Mandi Trip](#calculating-cash-needed-for-mandi-trip)
    - [Sending Purchase Order to Town Wholesaler](#sending-purchase-order-to-town-wholesaler)
+   - [Wholesaler Directory & Bulk Stock Receiving (थोक व्यापारी व माल आया स्टॉक अपडेट)](#wholesaler-directory--bulk-stock-receiving-थोक-व्यापारी-व-माल-आया-स्टॉक-अपडेट)
 5. [Spoilage & Expiry Guard (खराबी व एक्सपायरी गार्ड)](#5-spoilage--expiry-guard-खराबी-व-एक्सपायरी-गार्ड)
    - [Logging Power-Cut & Heat Losses (दूध/दही/कोल्ड ड्रिंक)](#logging-power-cut--heat-losses-दूधदहीकोल्ड-ड्रिंक)
    - [Tracking Upcoming Expiry Items](#tracking-upcoming-expiry-items)
@@ -30,23 +31,28 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Updating Rates & Profit Margins](#updating-rates--profit-margins)
    - [Adding New Items](#adding-new-items)
 7. [Voice Assistant (बोलकर दर्ज करें)](#7-voice-assistant-बोलकर-दर्ज-करें)
-8. [Data Backup & Privacy (डेटा बैकअप व सुरक्षा)](#8-data-backup--privacy-डेटा-बैकअप-व-सुरक्षा)
+8. [Data Backup, Privacy & App Installation (डेटा बैकअप, सुरक्षा व ऐप इंस्टॉलेशन)](#8-data-backup-privacy--app-installation-डेटा-बैकअप-सुरक्षा-व-ऐप-इंस्टॉलेशन)
+   - [Offline Data Export & Restore](#offline-data-export--restore)
+   - [Installing App on Phone or PC (PWA होमस्क्रीन ऐप)](#installing-app-on-phone-or-pc-pwa-होमस्क्रीन-ऐप)
 9. [Store Login & Multi-Staff Access (दुकानदार लॉगिन व मुनीम खाता)](#9-store-login--multi-staff-access-दुकानदार-लॉगिन-व-मुनीम-खाता)
    - [Registering Your Store & PIN Recovery Helpline](#registering-your-store--pin-recovery-helpline)
    - [Roles & Sensitive Data Privacy Guardrails](#roles--sensitive-data-privacy-guardrails)
 10. [Automatic Cloud Sync & Multi-Store Isolation (क्लाउड ऑटो-सिंक व सुरक्षा)](#10-automatic-cloud-sync--multi-store-isolation-क्लाउड-ऑटो-सिंक-व-सुरक्षा)
-   - [100% Offline with Live Cloud Sync & 1-Click Backup](#100-offline-with-live-cloud-sync--1-click-backup)
-   - [Multi-Store Local Switching Isolation Guarantee](#multi-store-local-switching-isolation-guarantee-सुरक्षित-दुकान-बदलाव)
+    - [100% Offline with Live Cloud Sync & 1-Click Backup](#100-offline-with-live-cloud-sync--1-click-backup)
+    - [Multi-Store Local Switching Isolation Guarantee](#multi-store-local-switching-isolation-guarantee-सुरक्षित-दुकान-बदलाव)
 11. [Village Premium Look & Multi-Device Usability (ग्रामीण प्रीमियम लुक व मोबाइल/टैबलेट उपयोग)](#11-village-premium-look--multi-device-usability-ग्रामीण-प्रीमियम-लुक-व-मोबाइलटैबलेट-उपयोग)
 12. [Daily Cash Drawer Closing (दैनिक गल्ला व रोकड़ हिसाब)](#12-daily-cash-drawer-closing-दैनिक-गल्ला-व-रोकड़-हिसाब)
-   - [Evening Cash Count (शाम का गल्ला मिलान)](#evening-cash-count-शाम-का-गल्ला-मिलान)
-   - [Daily Shop Expenses (दुकान के दैनिक खर्चे)](#daily-shop-expenses-दुकान-के-दैनिक-खर्चे)
-   - [Cash Reconciliation & Difference (गल्ला अंतर व मिलान)](#cash-reconciliation--difference-गल्ला-अंतर-व-मिलान)
-   - [1-Click WhatsApp Day Summary (व्हाट्सएप पर दिन सारांश)](#1-click-whatsapp-day-summary-व्हाट्सएप-पर-दिन-सारांश)
+    - [Evening Cash Count (शाम का गल्ला मिलान)](#evening-cash-count-शाम-का-गल्ला-मिलान)
+    - [Daily Shop Expenses (दुकान के दैनिक खर्चे)](#daily-shop-expenses-दुकान-के-दैनिक-खर्चे)
+    - [Cash Reconciliation & Difference (गल्ला अंतर व मिलान)](#cash-reconciliation--difference-गल्ला-अंतर-व-मिलान)
+    - [1-Click WhatsApp Day Summary (व्हाट्सएप पर दिन सारांश)](#1-click-whatsapp-day-summary-व्हाट्सएप-पर-दिन-सारांश)
+    - [Past Cash Drawer Archive & Historical Slips (पिछला गल्ला इतिहास व पुरानी पर्ची)](#past-cash-drawer-archive--historical-slips-पिछला-गल्ला-इतिहास-व-पुरानी-पर्ची)
 13. [Bluetooth Thermal Printing (ब्लूटूथ व 58mm थर्मल प्रिंटर)](#13-bluetooth-thermal-printing-ब्लूटूथ-व-58mm-थर्मल-प्रिंटर)
-   - [Connecting Inexpensive Bluetooth Printers](#connecting-inexpensive-bluetooth-printers)
-   - [1-Click POS Bill Receipt Print](#1-click-pos-bill-receipt-print)
-   - [Daily Cash Close Summary Slip](#daily-cash-close-summary-slip)
+    - [Connecting Inexpensive Bluetooth Printers](#connecting-inexpensive-bluetooth-printers)
+    - [Top Bar Quick Connection Indicator (शीर्ष प्रिंटर स्थिति)](#top-bar-quick-connection-indicator-शीर्ष-प्रिंटर-स्थिति)
+    - [Custom Receipt Slogan & Footer (दुकान स्लोगन व आभार संदेश)](#custom-receipt-slogan--footer-दुकान-स्लोगन-व-आभार-संदेश)
+    - [1-Click POS Bill Receipt Print](#1-click-pos-bill-receipt-print)
+    - [Daily Cash Close Summary Slip](#daily-cash-close-summary-slip)
 14. [Camera Barcode Scanner (कैमरा बारकोड स्कैनर)](#14-camera-barcode-scanner-कैमरा-बारकोड-स्कैनर)
    - [1-Second Camera Item Scan (कैमरा से तुरंत बिलिंग)](#1-second-camera-item-scan-कैमरा-से-तुरंत-बिलिंग)
    - [Torch Light & Night Counter Usability (टॉर्च लाइट)](#torch-light--night-counter-usability-टॉर्च-लाइट)
@@ -163,6 +169,13 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 - Enter the town wholesaler's mobile number and click **"व्हाट्सएप पर लिस्ट भेजें"**.
 - Your complete shopping list is formatted cleanly and sent in advance so the wholesaler can pack the bags before you arrive.
 
+### Wholesaler Directory & Bulk Stock Receiving (थोक व्यापारी व माल आया स्टॉक अपडेट)
+- **Wholesaler Contact Memory:** Enter your primary wholesaler's name and mobile number (*e.g., साहू ट्रेडर्स, 98271XXXXX*). The app remembers these details on your device so you do not have to type the wholesaler's phone number repeatedly every week.
+- **मंडी से माल आया (One-Tap Restock Checklist):** When you return from town with purchased bags, click **"मंडी से माल आया"**.
+  - A clean checklist displays all items ordered from the mandi with their incoming quantities and purchase rates.
+  - You can adjust the exact quantities that arrived and update purchase rates if wholesale prices changed.
+  - Tap **"पुष्टि करें व स्टॉक में जोड़ें"** to instantly increment your shop's inventory stock in a single batch, eliminating the need to manually edit dozens of items individually.
+
 ---
 
 ## 5. Spoilage & Expiry Guard (खराबी व एक्सपायरी गार्ड)
@@ -199,11 +212,22 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 
 ---
 
-## 8. Data Backup & Privacy (डेटा बैकअप व सुरक्षा)
+## 8. Data Backup, Privacy & App Installation (डेटा बैकअप, सुरक्षा व ऐप इंस्टॉलेशन)
 
+### Offline Data Export & Restore
 - All financial and customer records are stored securely on your local device.
 - **Download Backup:** Click **"पूरा बैकअप डाउनलोड करें"** under Settings to save a backup file to your device, WhatsApp, or Google Drive.
 - **Restore Data:** If you switch devices, choose your backup file to instantly restore all ledgers, products, and sales.
+
+### Installing App on Phone or PC (PWA होमस्क्रीन ऐप)
+- Gramin Kirana can be installed as a full standalone application on your Android smartphone, iPhone, tablet, or Windows computer without downloading from app stores.
+- **How to Install:**
+  - When opening the system in your browser, tap **"ऐप इंस्टॉल करें"** in the top bar or inside the **डेटा बैकअप व सेटिंग्स** section.
+  - A friendly prompt will ask you to add Gramin Kirana to your Home Screen.
+  - Once added, a native green grain icon (*धान/गेहूं की बाली*) appears on your phone screen.
+- **Benefits:**
+  - Opens in full-screen mode like a native app with zero browser address bar clutter.
+  - Starts up instantly and functions **100% offline** even during deep rural network blackouts.
 
 ---
 
@@ -303,6 +327,16 @@ Village store owners and counter staff often finish long days without knowing th
 - Tap **📲 व्हाट्सएप** to instantly generate a clean, formatted daily report sent directly to the store owner or accountant’s WhatsApp number.
 - Includes total sales, collections, itemized expenses, cash counted, and surplus/deficit status.
 
+### Past Cash Drawer Archive & Historical Slips (पिछला गल्ला इतिहास व पुरानी पर्ची)
+- **Archive Tab:** At the top of the **गल्ला हिसाब** module, tap the **"पिछला इतिहास (Archive)"** tab.
+- Displays a complete historical record of all past daily drawer reconciliations sorted with the most recent first.
+- **Card Breakdown:** For each past day, you see:
+  - Exact date and evening closing timestamp.
+  - Cash sales, Udhaar Jama recoveries, total expenses, and physical cash counted.
+  - Color-coded reconciliation badge (Green for matched, Blue for surplus, Red for shortage).
+  - Any notes recorded during closing.
+- **1-Tap Past Actions:** Every past card has dedicated **📲 WhatsApp** and **🖨️ पर्ची प्रिंट** buttons so you can reprint previous day slips or resend summaries at any time.
+
 ---
 
 ## 13. Bluetooth Thermal Printing (ब्लूटूथ व 58mm थर्मल प्रिंटर)
@@ -315,15 +349,24 @@ Gramin Kirana connects with affordable Bluetooth and USB thermal receipt printer
 3. Select your printer name from the nearby device list to pair.
 4. Once connected, a green **प्रिंटर जुड़ा ✅** indicator confirms the printer is ready for instant printing.
 
+### Top Bar Quick Connection Indicator (शीर्ष प्रिंटर स्थिति)
+- The main top header bar includes a persistent **"प्रिंटर जोड़ें / प्रिंटर कनेक्टेड"** button.
+- You can check whether your thermal printer is actively connected or reconnect with 1 tap directly from the billing counter without leaving your current sale.
+
+### Custom Receipt Slogan & Footer (दुकान स्लोगन व आभार संदेश)
+- In the **डेटा बैकअप व सेटिंग्स** section under **प्रिंटर व पर्ची सेटिंग्स**, you can customize your receipts:
+  - **शीर्ष संदेश (Header):** Add your shop slogan, proprietor name, GST, or mobile number (उदा. *"प्रो. रामप्रसाद साहू | मो. 98260XXXXX | शुद्ध व ताज़ा सामान"*). This appears directly beneath your store name on every printed bill.
+  - **निचला संदेश (Footer):** Add your customized thank-you note or return policy (उदा. *"धन्यवाद! फिर पधारें 🙏 बिका माल वापस नहीं होगा"*).
+
 ### 1-Click POS Bill Receipt Print
 - Immediately upon completing any sale in the **तुरंत बिलिंग (POS)** counter, a **🖨️ पर्ची प्रिंट करें (58mm / BT)** button is displayed.
 - Tapping it sends an authentic ESC/POS thermal slip to your paired printer.
 - **Printed Receipt Includes:**
-  - Store Name & Date/Time
+  - Store Name & Custom Header Slogan & Date/Time
   - Itemized product names with loose quantities (e.g., 250g, 500g) and rates
   - Grand total and payment mode (Cash, Udhaar, or UPI)
   - For Udhaar sales: Customer name, previous balance, and updated total balance due
-  - Auspicious village greeting (*"धन्यवाद! फिर आइए 🙏"*)
+  - Auspicious village greeting or custom footer message
 - **Non-Bluetooth Fallback:** If no Bluetooth printer is paired, the app automatically opens the standard browser print window formatted for 58mm thermal receipt paper.
 
 ### Daily Cash Close Summary Slip

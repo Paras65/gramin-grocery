@@ -133,6 +133,9 @@ function buildReceiptBytes(data: PrintReceiptData): Uint8Array {
   parts.push(line(data.storeName));
   parts.push(CMD.NORMAL_SIZE);
   parts.push(CMD.BOLD_OFF);
+  const customHeader = typeof window !== 'undefined' ? localStorage.getItem('gk_receipt_header') : '';
+  const customFooter = typeof window !== 'undefined' ? localStorage.getItem('gk_receipt_footer') : '';
+  if (customHeader) parts.push(line(customHeader));
   if (data.storeAddress) parts.push(line(data.storeAddress));
   parts.push(line(`${data.date}  ${data.time}`));
   parts.push(CMD.ALIGN_LEFT);
@@ -181,7 +184,7 @@ function buildReceiptBytes(data: PrintReceiptData): Uint8Array {
 
   // Footer
   parts.push(CMD.ALIGN_CENTER);
-  parts.push(line(data.thankYouMsg || 'धन्यवाद! फिर आइए 🙏'));
+  parts.push(line(data.thankYouMsg || customFooter || 'धन्यवाद! फिर आइए 🙏'));
 
   if (isDemo) {
     parts.push(dashes(W));
@@ -316,11 +319,13 @@ function buildCustomerStatementBytes(data: PrintCustomerStatementData): Uint8Arr
 
 // Web Bluetooth interface shims for TypeScript DOM lib compatibility
 interface BluetoothDeviceShim {
+  name?: string;
   gatt?: {
     connected: boolean;
     connect(): Promise<BluetoothRemoteGATTServerShim>;
     disconnect(): void;
   };
+  addEventListener?(type: string, listener: () => void): void;
 }
 
 interface BluetoothRemoteGATTServerShim {
@@ -347,6 +352,38 @@ interface NavigatorWithBluetooth extends Navigator {
 // ─── Bluetooth ESC/POS Sender ─────────────────────────────────────────────────
 let _btDevice: BluetoothDeviceShim | null = null;
 let _btCharacteristic: BluetoothRemoteGATTCharacteristicShim | null = null;
+let _printerListeners: ((connected: boolean, name?: string) => void)[] = [];
+
+export function subscribePrinterStatus(listener: (connected: boolean, name?: string) => void): () => void {
+  _printerListeners.push(listener);
+  listener(isBluetoothPrinterConnected(), _btDevice?.name);
+  return () => {
+    _printerListeners = _printerListeners.filter(l => l !== listener);
+  };
+}
+
+function notifyPrinterListeners(connected: boolean, name?: string) {
+  _printerListeners.forEach(l => l(connected, name));
+}
+
+export function isBluetoothPrinterConnected(): boolean {
+  return !!(_btDevice && _btDevice.gatt?.connected);
+}
+
+export function getConnectedPrinterName(): string | undefined {
+  return _btDevice?.name;
+}
+
+export function disconnectBluetoothPrinter(): void {
+  if (_btDevice?.gatt) {
+    try {
+      _btDevice.gatt.disconnect();
+    } catch (_) {}
+  }
+  _btDevice = null;
+  _btCharacteristic = null;
+  notifyPrinterListeners(false);
+}
 
 /**
  * Connect to a Bluetooth ESC/POS printer.
@@ -370,6 +407,15 @@ export async function connectBluetoothPrinter(): Promise<boolean> {
     const server = await _btDevice.gatt!.connect();
     const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
     _btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+
+    if (_btDevice.addEventListener) {
+      _btDevice.addEventListener('gattserverdisconnected', () => {
+        _btCharacteristic = null;
+        notifyPrinterListeners(false);
+      });
+    }
+
+    notifyPrinterListeners(true, _btDevice.name);
     return true;
   } catch {
     return false;
@@ -580,17 +626,4 @@ export async function printCustomerStatement(data: PrintCustomerStatementData): 
   return 'browser';
 }
 
-/** Returns true if a Bluetooth printer is currently connected. */
-export function isBluetoothPrinterConnected(): boolean {
-  return _btCharacteristic !== null && (_btDevice?.gatt?.connected ?? false);
-}
-
-/** Disconnect the current Bluetooth printer. */
-export function disconnectBluetoothPrinter(): void {
-  if (_btDevice?.gatt?.connected) {
-    _btDevice.gatt.disconnect();
-  }
-  _btDevice = null;
-  _btCharacteristic = null;
-}
 

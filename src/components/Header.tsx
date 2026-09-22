@@ -1,8 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Wifi, WifiOff, Globe, Mic, Store, Cloud, RefreshCw, ArrowRight, Sparkles, LogOut } from 'lucide-react';
+import { Wifi, WifiOff, Globe, Mic, Store, Cloud, RefreshCw, ArrowRight, Sparkles, LogOut, Download, Printer } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { syncService } from '../services/syncService';
 import { SubscriptionModal } from './Subscription/SubscriptionModal';
+import { pwaService } from '../services/pwaService';
+import { 
+  subscribePrinterStatus, connectBluetoothPrinter, disconnectBluetoothPrinter, 
+  isBluetoothPrinterConnected, getConnectedPrinterName 
+} from '../utils/thermalPrint';
 
 interface HeaderProps {
   activeTab: string;
@@ -26,6 +31,9 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
     const ls = localStorage.getItem('gk_last_sync');
     return ls ? new Date(ls).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }) : null;
   });
+  const [canInstallPWA, setCanInstallPWA] = useState<boolean>(pwaService.canInstall());
+  const [isPrinterConnected, setIsPrinterConnected] = useState<boolean>(isBluetoothPrinterConnected());
+  const [connectedPrinterName, setConnectedPrinterName] = useState<string | undefined>(getConnectedPrinterName());
   const [isSubModalOpen, setIsSubModalOpen] = useState<boolean>(false);
 
   const refreshAuthState = useCallback(async () => {
@@ -68,6 +76,15 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
       refreshAuthState();
     });
 
+    const unsubInstall = pwaService.subscribeInstall((canInstall) => {
+      setCanInstallPWA(canInstall);
+    });
+
+    const unsubPrinter = subscribePrinterStatus((connected, name) => {
+      setIsPrinterConnected(connected);
+      setConnectedPrinterName(name);
+    });
+
     refreshAuthState();
 
     return () => {
@@ -75,6 +92,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
       window.removeEventListener('offline', handleOffline);
       unsubAuth();
       unsubSync();
+      unsubInstall();
+      unsubPrinter();
     };
   }, [refreshAuthState]);
 
@@ -241,8 +260,43 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
             </div>
           )}
 
-          {/* Right side of strip: Live Sync status OR Exit Demo button */}
-          <div className="flex items-center gap-2 shrink-0 ml-auto">
+          {/* Right side of strip: Live Sync status, Printer, PWA install OR Exit Demo */}
+          <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap">
+            {/* PWA In-App Install Prompt Button */}
+            {canInstallPWA && (
+              <button
+                onClick={() => pwaService.triggerInstall()}
+                className="flex items-center gap-1 text-[11px] font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 border border-amber-300 px-2 py-0.5 rounded-lg shadow-xs transition active:scale-95 cursor-pointer"
+                title="ग्रामीण किराना ऐप फोन या कंप्यूटर में इंस्टॉल करें"
+              >
+                <Download className="w-3 h-3 text-amber-950" />
+                <span className="hidden sm:inline">ऐप इंस्टॉल करें</span>
+                <span className="sm:hidden">इंस्टॉल</span>
+              </button>
+            )}
+
+            {/* Bluetooth Thermal Printer Quick Status Badge */}
+            <button
+              onClick={async () => {
+                if (!isPrinterConnected) {
+                  await connectBluetoothPrinter();
+                } else {
+                  disconnectBluetoothPrinter();
+                }
+              }}
+              className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg border transition cursor-pointer ${
+                isPrinterConnected
+                  ? 'bg-emerald-900/70 text-emerald-200 border-emerald-500 hover:bg-emerald-800'
+                  : 'bg-stone-800/80 text-stone-300 border-stone-600 hover:bg-stone-700'
+              }`}
+              title={isPrinterConnected ? `${connectedPrinterName || 'प्रिंटर'} कनेक्टेड (क्लिक कर डिस्कनेक्ट करें)` : 'ब्लूटूथ 58mm प्रिंटर जोड़ें'}
+            >
+              <Printer className={`w-3 h-3 ${isPrinterConnected ? 'text-emerald-400' : 'text-stone-400'}`} />
+              <span className="hidden sm:inline">
+                {isPrinterConnected ? 'प्रिंटर कनेक्टेड' : 'प्रिंटर जोड़ें'}
+              </span>
+            </button>
+
             {!isLoggedIn && onBackToLanding && (
               <button
                 onClick={onBackToLanding}

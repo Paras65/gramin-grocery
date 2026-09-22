@@ -45,10 +45,32 @@ export const DailyCashClose: React.FC = () => {
   const [savedRecord, setSavedRecord] = useState<DailyCashCloseType | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'today' | 'history'>('today');
+  const [pastRecords, setPastRecords] = useState<DailyCashCloseType[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+
   // Bluetooth
   const [btConnected, setBtConnected] = useState<boolean>(false);
   const [btConnecting, setBtConnecting] = useState<boolean>(false);
   const [btSupported] = useState<boolean>('bluetooth' in navigator);
+
+  // ─── Load Past Records ───────────────────────────────────────────────────
+  const loadHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const records = await db.dailyCashClose.orderBy('date').reverse().toArray();
+      setPastRecords(records);
+    } catch {
+      // Fallback
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   // ─── Load Today's Totals ─────────────────────────────────────────────────
   const loadTotals = useCallback(async () => {
@@ -144,7 +166,57 @@ export const DailyCashClose: React.FC = () => {
     await db.dailyCashClose.put(record);
     setSavedRecord(record);
     setSaveSuccess(true);
+    loadHistory();
     setTimeout(() => setSaveSuccess(false), 3000);
+  };
+
+  // ─── Past Record WhatsApp & Print ──────────────────────────────────────────
+  const sendPastRecordWhatsApp = (rec: DailyCashCloseType) => {
+    const displayDate = new Date(rec.date).toLocaleDateString('hi-IN', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    const diffLine =
+      rec.cashDifference === 0 ? '✅ गल्ला बिल्कुल मिला'
+      : rec.cashDifference > 0 ? `📈 ${fmtINR(rec.cashDifference)} अतिरिक्त`
+      : `⚠️ ${fmtINR(Math.abs(rec.cashDifference))} कम`;
+
+    const expLines = (rec.expenses || []).map(e => `   • ${e.description}: ${fmtINR(e.amount)}`).join('\n');
+    const closedTime = rec.closedAt ? new Date(rec.closedAt).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+
+    const msg = [
+      `🏪 *ग्रामीण किराना — दैनिक गल्ला हिसाब (इतिहास)*`,
+      `📅 ${displayDate}`,
+      ``,
+      `💰 नकद बिक्री: *${fmtINR(rec.totalCashSalesDay)}*`,
+      `📥 जमा उधार: *${fmtINR(rec.totalJamaCollectedDay)}*`,
+      rec.totalExpenses > 0 ? `\n📤 खर्चे:\n${expLines}\n   कुल खर्च: *${fmtINR(rec.totalExpenses)}*` : '',
+      ``,
+      `🧾 अपेक्षित नकद: *${fmtINR(rec.calculatedExpectedCash)}*`,
+      `💵 गल्ले में नकद: *${fmtINR(rec.physicalCashInDrawer)}*`,
+      `${diffLine}`,
+      rec.note ? `\n📝 ${rec.note}` : '',
+      ``,
+      closedTime ? `⏰ बंद: ${closedTime}` : '',
+      `_ग्रामीण किराना ऐप द्वारा_`,
+    ].filter(Boolean).join('\n');
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  const printPastRecord = async (rec: DailyCashCloseType) => {
+    await printDaySummary({
+      storeName: 'ग्रामीण किराना',
+      date: new Date(rec.date).toLocaleDateString('hi-IN'),
+      cashSales: rec.totalCashSalesDay,
+      jamaCollected: rec.totalJamaCollectedDay,
+      totalExpenses: rec.totalExpenses,
+      expenses: (rec.expenses || []).map(e => ({ description: e.description, amount: e.amount })),
+      physicalCash: rec.physicalCashInDrawer,
+      expectedCash: rec.calculatedExpectedCash,
+      difference: rec.cashDifference,
+      note: rec.note || undefined,
+      closedAt: rec.closedAt ? new Date(rec.closedAt).toLocaleTimeString('hi-IN') : '',
+    });
   };
 
   // ─── WhatsApp Day Summary ─────────────────────────────────────────────────
@@ -256,8 +328,145 @@ export const DailyCashClose: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Tab switch pills */}
+        <div className="mt-4 flex items-center gap-2 border-t border-stone-200 pt-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab('today')}
+            className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'today'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+            }`}
+          >
+            <span>आज का गल्ला</span>
+            {savedRecord && <span className="w-2 h-2 rounded-full bg-emerald-400"></span>}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'history'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+            }`}
+          >
+            <span>पिछला इतिहास (Archive)</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+              activeTab === 'history' ? 'bg-amber-700 text-amber-100' : 'bg-stone-200 text-stone-700'
+            }`}>
+              {pastRecords.length}
+            </span>
+          </button>
+        </div>
       </div>
 
+      {activeTab === 'history' ? (
+        /* Past Cash Close Archive */
+        <div className="space-y-3">
+          {loadingHistory ? (
+            <div className="village-card p-8 text-center text-stone-500 text-sm font-medium">
+              इतिहास लोड हो रहा है...
+            </div>
+          ) : pastRecords.length === 0 ? (
+            <div className="village-card p-8 text-center space-y-2">
+              <div className="text-3xl">📂</div>
+              <h3 className="font-black text-stone-800 text-base m-0">कोई पिछला गल्ला रिकॉर्ड नहीं मिला</h3>
+              <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                जब आप दिन के अंत में गल्ला सुरक्षित करेंगे, तो हर दिन का हिसाब-किताब तारीख अनुसार यहाँ सुरक्षित रहेगा।
+              </p>
+            </div>
+          ) : (
+            pastRecords.map((rec) => {
+              const diff = rec.cashDifference;
+              const isMatch = diff === 0;
+              const isExcess = diff > 0;
+              const dObj = new Date(rec.date);
+              const dateStr = dObj.toLocaleDateString('hi-IN', {
+                weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+              });
+              const closedTime = rec.closedAt ? new Date(rec.closedAt).toLocaleTimeString('hi-IN', {
+                hour: '2-digit', minute: '2-digit'
+              }) : '';
+
+              return (
+                <div key={rec.id || rec.date} className="village-card p-4 sm:p-5 bg-white border border-amber-300/80 shadow-2xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-2xl">📅</span>
+                      <div>
+                        <h4 className="font-black text-stone-900 text-sm sm:text-base m-0">
+                          {dateStr}
+                        </h4>
+                        {closedTime && (
+                          <span className="text-[11px] text-stone-500 font-medium">
+                            बंद समय: {closedTime}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-black self-start sm:self-auto border ${
+                      isMatch
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : isExcess
+                        ? 'bg-blue-100 text-blue-800 border-blue-300'
+                        : 'bg-rose-100 text-rose-800 border-rose-300'
+                    }`}>
+                      {isMatch ? '✅ मिलान सही' : isExcess ? `📈 +${fmtINR(diff)} अतिरिक्त` : `⚠️ -${fmtINR(Math.abs(diff))} कम`}
+                    </span>
+                  </div>
+
+                  {/* Summary Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="bg-[#faf8f3] p-2.5 rounded-xl border border-stone-200">
+                      <span className="text-stone-500 block text-[10px]">नकद बिक्री</span>
+                      <span className="font-black text-stone-900 text-xs sm:text-sm">{fmtINR(rec.totalCashSalesDay)}</span>
+                    </div>
+                    <div className="bg-[#faf8f3] p-2.5 rounded-xl border border-stone-200">
+                      <span className="text-stone-500 block text-[10px]">जमा वसूली</span>
+                      <span className="font-black text-stone-900 text-xs sm:text-sm">{fmtINR(rec.totalJamaCollectedDay)}</span>
+                    </div>
+                    <div className="bg-[#faf8f3] p-2.5 rounded-xl border border-stone-200">
+                      <span className="text-stone-500 block text-[10px]">कुल खर्चे</span>
+                      <span className="font-black text-rose-700 text-xs sm:text-sm">{fmtINR(rec.totalExpenses)}</span>
+                    </div>
+                    <div className="bg-[#faf8f3] p-2.5 rounded-xl border border-stone-200">
+                      <span className="text-stone-500 block text-[10px]">गल्ले में नकद</span>
+                      <span className="font-black text-stone-900 text-xs sm:text-sm">{fmtINR(rec.physicalCashInDrawer)}</span>
+                    </div>
+                  </div>
+
+                  {rec.note && (
+                    <p className="text-xs text-stone-600 bg-amber-50/70 p-2 rounded-xl border border-amber-200 m-0">
+                      📝 {rec.note}
+                    </p>
+                  )}
+
+                  {/* WhatsApp & Print Actions */}
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-stone-100">
+                    <button
+                      type="button"
+                      onClick={() => sendPastRecordWhatsApp(rec)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition active:scale-95 shadow-2xs"
+                    >
+                      <span>📲 WhatsApp</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => printPastRecord(rec)}
+                      className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition active:scale-95 shadow-2xs"
+                    >
+                      <span>🖨️ पर्ची प्रिंट</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+      <>
       {/* Already closed today — show summary card */}
       {savedRecord && (
         <div className="village-card bahi-khata-edge-green p-4 bg-emerald-50/50">
@@ -487,6 +696,8 @@ export const DailyCashClose: React.FC = () => {
           </button>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };

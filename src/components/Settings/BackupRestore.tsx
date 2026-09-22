@@ -1,9 +1,17 @@
-import React, { useState } from 'react';
-import { Download, Upload, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Download, Upload, ShieldCheck, RefreshCw, Sparkles, Printer, Smartphone, CheckCircle2, Bluetooth } from 'lucide-react';
 import { exportDatabaseToJSON, importDatabaseFromJSON, initializeDatabaseIfEmpty, db } from '../../db';
 import { useLanguage } from '../../context/LanguageContext';
 import { syncService } from '../../services/syncService';
 import { SubscriptionModal } from '../Subscription/SubscriptionModal';
+import { pwaService } from '../../services/pwaService';
+import {
+  connectBluetoothPrinter,
+  disconnectBluetoothPrinter,
+  subscribePrinterStatus,
+  isBluetoothPrinterConnected,
+  getConnectedPrinterName
+} from '../../utils/thermalPrint';
 
 export const BackupRestore: React.FC = () => {
   const { language, t } = useLanguage();
@@ -11,6 +19,76 @@ export const BackupRestore: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+
+  // Printer slip customization
+  const [receiptHeader, setReceiptHeader] = useState(() => localStorage.getItem('gk_receipt_header') || '');
+  const [receiptFooter, setReceiptFooter] = useState(() => localStorage.getItem('gk_receipt_footer') || '');
+  const [printerConnected, setPrinterConnected] = useState(isBluetoothPrinterConnected());
+  const [printerName, setPrinterName] = useState(getConnectedPrinterName());
+  const [isConnectingPrinter, setIsConnectingPrinter] = useState(false);
+
+  // PWA install state
+  const [canInstallPwa, setCanInstallPwa] = useState(pwaService.canInstall());
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    const unsubPrinter = subscribePrinterStatus((connected, name) => {
+      setPrinterConnected(connected);
+      setPrinterName(name);
+    });
+
+    const unsubPwa = pwaService.subscribeInstall((can) => {
+      setCanInstallPwa(can);
+    });
+
+    if (typeof window !== 'undefined') {
+      setIsStandalone(
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as unknown as { standalone?: boolean }).standalone === true
+      );
+    }
+
+    return () => {
+      unsubPrinter();
+      unsubPwa();
+    };
+  }, []);
+
+  const handleSaveReceiptSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('gk_receipt_header', receiptHeader.trim());
+    localStorage.setItem('gk_receipt_footer', receiptFooter.trim());
+    setStatusMessage('✅ प्रिंटर पर्ची सेटिंग्स सफलतापूर्वक सुरक्षित हो गईं!');
+    setTimeout(() => setStatusMessage(''), 3500);
+  };
+
+  const handleConnectPrinter = async () => {
+    setIsConnectingPrinter(true);
+    try {
+      const ok = await connectBluetoothPrinter();
+      if (ok) {
+        setStatusMessage('✅ ब्लूटूथ प्रिंटर सफलतापूर्वक कनेक्ट हो गया!');
+      } else {
+        setStatusMessage('ℹ️ प्रिंटर कनेक्ट नहीं हुआ या ब्लूटूथ विंडो रद्द कर दी गई।');
+      }
+    } finally {
+      setIsConnectingPrinter(false);
+      setTimeout(() => setStatusMessage(''), 4000);
+    }
+  };
+
+  const handleDisconnectPrinter = () => {
+    disconnectBluetoothPrinter();
+    setStatusMessage('प्रिंटर डिस्कनेक्ट कर दिया गया।');
+    setTimeout(() => setStatusMessage(''), 3000);
+  };
+
+  const handleInstallApp = async () => {
+    const ok = await pwaService.triggerInstall();
+    if (ok) {
+      setStatusMessage('✅ ग्रामीण किराना ऐप सफलतापूर्वक इंस्टॉल हो रहा है!');
+    }
+  };
 
   const handleExport = async () => {
     try {
@@ -233,6 +311,132 @@ export const BackupRestore: React.FC = () => {
         </div>
       </div>
     )}
+
+    {/* Thermal Printer Settings Card */}
+    <div className="village-card rounded-3xl p-5 sm:p-6 bg-white shadow-2xs space-y-4 border border-amber-300/70">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2.5 rounded-2xl bg-amber-100 text-amber-900">
+            <Printer className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-black text-stone-950 text-base sm:text-lg m-0">
+              प्रिंटर व पर्ची सेटिंग्स (Thermal Printer)
+            </h3>
+            <p className="text-xs text-stone-600 m-0 mt-0.5 font-medium">
+              58mm/80mm ब्लूटूथ प्रिंटर कनेक्शन व बिल पर्ची का संदेश बदलें
+            </p>
+          </div>
+        </div>
+
+        {/* Bluetooth Connect status badge & button */}
+        <div className="flex items-center gap-2">
+          {printerConnected ? (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{printerName || 'ब्लूटूथ प्रिंटर चालू'}</span>
+              </span>
+              <button
+                type="button"
+                onClick={handleDisconnectPrinter}
+                className="text-xs text-rose-600 hover:text-rose-800 font-bold underline cursor-pointer"
+              >
+                डिस्कनेक्ट
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleConnectPrinter}
+              disabled={isConnectingPrinter}
+              className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition active:scale-95"
+            >
+              <Bluetooth className="w-3.5 h-3.5" />
+              <span>{isConnectingPrinter ? 'खोज रहे हैं...' : 'प्रिंटर जोड़ें'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <form onSubmit={handleSaveReceiptSettings} className="space-y-3 pt-2">
+        <div>
+          <label className="block text-xs font-bold text-stone-700 mb-1">
+            दुकान का स्लोगन / जीएसटी / पता (पर्ची के ऊपर छपेगा):
+          </label>
+          <input
+            type="text"
+            value={receiptHeader}
+            onChange={(e) => setReceiptHeader(e.target.value)}
+            placeholder="उदा. प्रो. रामप्रसाद साहू | मो. 98260XXXXX | शुद्ध व ताज़ा सामान"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-xs font-medium text-stone-900 bg-[#faf8f3]"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-stone-700 mb-1">
+            आभार संदेश / उधारी नियम (पर्ची के नीचे छपेगा):
+          </label>
+          <input
+            type="text"
+            value={receiptFooter}
+            onChange={(e) => setReceiptFooter(e.target.value)}
+            placeholder="उदा. धन्यवाद! फिर पधारें 🙏 बिका माल वापस नहीं होगा"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-xs font-medium text-stone-900 bg-[#faf8f3]"
+          />
+        </div>
+
+        <div className="flex justify-end pt-1">
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-amber-300 text-xs font-bold cursor-pointer transition shadow-xs active:scale-95"
+          >
+            पर्ची संदेश सेव करें
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {/* PWA App Installation Card */}
+    <div className="village-card rounded-3xl p-5 sm:p-6 bg-white shadow-2xs border border-amber-300/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <div className="p-2.5 rounded-2xl bg-emerald-100 text-emerald-800 shrink-0">
+          <Smartphone className="w-5 h-5" />
+        </div>
+        <div>
+          <h3 className="font-black text-stone-950 text-base m-0 flex items-center gap-2">
+            <span>फोन / कंप्यूटर पर ऐप इंस्टॉल करें (PWA)</span>
+            {isStandalone && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-300">
+                इंस्टॉल है ✅
+              </span>
+            )}
+          </h3>
+          <p className="text-xs text-stone-600 m-0 mt-0.5 font-medium">
+            होमस्क्रीन पर आइकॉन बनाकर बिना ब्राउज़र खोले बिजली की तेज़ी से 100% ऑफ़लाइन चलाएं
+          </p>
+        </div>
+      </div>
+
+      {isStandalone ? (
+        <div className="text-xs font-bold text-emerald-700 flex items-center gap-1.5 shrink-0 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <span>ऐप सक्रिय है</span>
+        </div>
+      ) : canInstallPwa ? (
+        <button
+          onClick={handleInstallApp}
+          className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition active:scale-95 shrink-0"
+        >
+          <Smartphone className="w-4 h-4" />
+          <span>ऐप इंस्टॉल करें</span>
+        </button>
+      ) : (
+        <span className="text-xs text-stone-500 font-medium shrink-0">
+          (ब्राउज़र मेनू से 'Add to Home screen' चुनें)
+        </span>
+      )}
+    </div>
 
     {/* Subscription Modal */}
     <SubscriptionModal

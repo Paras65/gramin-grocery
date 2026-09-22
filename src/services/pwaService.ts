@@ -1,8 +1,60 @@
+export interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 type UpdateCallback = (hasUpdate: boolean) => void;
+type InstallCallback = (canInstall: boolean) => void;
 
 class PWAService {
   private waitingWorker: ServiceWorker | null = null;
   private updateListeners: UpdateCallback[] = [];
+  private installPrompt: BeforeInstallPromptEvent | null = null;
+  private installListeners: InstallCallback[] = [];
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        this.installPrompt = e as BeforeInstallPromptEvent;
+        this.notifyInstallListeners(true);
+      });
+
+      window.addEventListener('appinstalled', () => {
+        this.installPrompt = null;
+        this.notifyInstallListeners(false);
+      });
+    }
+  }
+
+  public subscribeInstall(callback: InstallCallback): () => void {
+    this.installListeners.push(callback);
+    callback(!!this.installPrompt);
+    return () => {
+      this.installListeners = this.installListeners.filter((l) => l !== callback);
+    };
+  }
+
+  private notifyInstallListeners(canInstall: boolean): void {
+    this.installListeners.forEach((l) => l(canInstall));
+  }
+
+  public canInstall(): boolean {
+    return !!this.installPrompt;
+  }
+
+  public async triggerInstall(): Promise<boolean> {
+    if (!this.installPrompt) return false;
+    try {
+      await this.installPrompt.prompt();
+      const choice = await this.installPrompt.userChoice;
+      this.installPrompt = null;
+      this.notifyInstallListeners(false);
+      return choice.outcome === 'accepted';
+    } catch {
+      return false;
+    }
+  }
 
   public register(): void {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {

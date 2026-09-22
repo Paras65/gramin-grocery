@@ -117,8 +117,8 @@
 2. **Bulk Stock Replenishment (Mark as Received):** After returning from Mandi, the storekeeper must edit each item individually in Inventory instead of having a 1-click "माल प्राप्त हुआ (Stock Received)" update flow.
 
 ### Mandatory Enhancements
-- [ ] Save wholesaler name and phone number in Mandi settings for 1-click direct WhatsApp dispatch.
-- [ ] Add "मंडी से माल आया (Receive All Items)" checklist to increment stock quantities in bulk with single confirmation.
+- [x] Save wholesaler name and phone number in Mandi settings for 1-click direct WhatsApp dispatch.
+- [x] Add "मंडी से माल आया (Receive All Items)" checklist to increment stock quantities in bulk with single confirmation.
 
 ---
 
@@ -172,7 +172,7 @@
 2. **Expense Receipt Tracking:** Ad-hoc daily expenses are saved, but cannot be categorized by type (e.g. Transport, Personal, Utility).
 
 ### Mandatory Enhancements
-- [ ] Calendar archive to review past cash closes and historical shortages/surpluses.
+- [x] Multi-day drawer history archive to review past cash closes and historical shortages/surpluses.
 - [ ] Expense categories (सवारी/भाड़ा, मजदूरी, चाय/नाश्ता, बिजली/दुकान खर्च).
 
 ---
@@ -190,8 +190,8 @@
 2. **Custom Header/Footer Text:** Shopkeepers cannot customize the printed receipt header (e.g. shop slogan or GST/Registration number).
 
 ### Mandatory Enhancements
-- [ ] Printer status icon in the top header (Connected / Disconnected).
-- [ ] Configurable receipt header/footer in Settings (e.g. "पधारने के लिए धन्यवाद", Phone number).
+- [x] Printer status icon in the top header (Connected / Disconnected).
+- [x] Configurable receipt header/footer in Settings (e.g. "पधारने के लिए धन्यवाद", Phone number).
 
 ---
 
