@@ -27,12 +27,13 @@ export function autoTenantPlugin(schema: Schema) {
 
   queryMethods.forEach((method) => {
     schema.pre(method, function (this: any) {
-      // Allow bypassing only if explicitly specified by system admin operations (e.g. initial setup)
-      if (this.getOptions().bypassTenantCheck) {
+      const context = getTenantContext();
+
+      // Allow bypassing only if explicitly specified by system operations or if session is SUPER_ADMIN
+      if (this.getOptions().bypassTenantCheck || context?.role === 'SUPER_ADMIN') {
         return;
       }
 
-      const context = getTenantContext();
       if (!context?.tenantId) {
         throw new Error(`CRITICAL SECURITY FAILURE: Attempted ${method} without active tenant context`);
       }

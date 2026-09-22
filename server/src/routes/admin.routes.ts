@@ -91,8 +91,8 @@ router.get('/overview', requireAuth, requireRole('SUPER_ADMIN'), async (_req: Re
       Tenant.countDocuments(),
       Tenant.countDocuments({ 'subscription.plan': 'PRO', 'subscription.status': 'ACTIVE' }),
       Tenant.countDocuments({ 'subscription.plan': 'FREE' }),
-      Customer.countDocuments({ isDeleted: false }),
-      Product.countDocuments({ isDeleted: false }),
+      Customer.countDocuments({ isDeleted: false }).setOptions({ bypassTenantCheck: true }),
+      Product.countDocuments({ isDeleted: false }).setOptions({ bypassTenantCheck: true }),
       Sale.aggregate([
         { $group: { _id: null, totalSalesAmount: { $sum: '$totalAmount' }, count: { $sum: 1 } } }
       ]),
@@ -171,7 +171,7 @@ router.get('/stores', requireAuth, requireRole('SUPER_ADMIN'), async (req: Reque
     const enrichedStores = await Promise.all(
       tenants.map(async (t) => {
         const [customerCount, debtAgg, ownerUser] = await Promise.all([
-          Customer.countDocuments({ tenantId: t._id, isDeleted: false }),
+          Customer.countDocuments({ tenantId: t._id, isDeleted: false }).setOptions({ bypassTenantCheck: true }),
           Customer.aggregate([
             { $match: { tenantId: t._id, isDeleted: false } },
             { $group: { _id: null, totalDebt: { $sum: '$balanceDue' } } }
