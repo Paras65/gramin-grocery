@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, ShieldCheck, RefreshCw, Sparkles, Printer, Smartphone, CheckCircle2, Bluetooth } from 'lucide-react';
+import { Download, Upload, ShieldCheck, RefreshCw, Sparkles, Printer, Smartphone, CheckCircle2, Bluetooth, LogOut } from 'lucide-react';
 import { exportDatabaseToJSON, importDatabaseFromJSON, initializeDatabaseIfEmpty, db } from '../../db';
 import { useLanguage } from '../../context/LanguageContext';
 import { syncService } from '../../services/syncService';
@@ -88,6 +88,20 @@ export const BackupRestore: React.FC = () => {
     if (ok) {
       setStatusMessage('✅ ग्रामीण किराना ऐप सफलतापूर्वक इंस्टॉल हो रहा है!');
     }
+  };
+
+  const handleStoreLogout = async () => {
+    const pending = await syncService.getPendingSyncCount();
+    if (pending > 0) {
+      const ok = window.confirm(
+        `⚠️ चेतावनी: आपके ${pending} बिल/खाता रिकॉर्ड्स अभी क्लाउड पर सुरक्षित नहीं हुए हैं!\n\nयदि आप अभी लॉगआउट करेंगे तो ऑफ़लाइन डेटा नष्ट हो सकता है।\n\nक्या आप सच में लॉगआउट करना चाहते हैं?`
+      );
+      if (!ok) return;
+    } else {
+      const ok = window.confirm('क्या आप सच में अपनी दुकान से लॉगआउट करना चाहते हैं?');
+      if (!ok) return;
+    }
+    await syncService.logout(true);
   };
 
   const handleExport = async () => {
@@ -438,7 +452,34 @@ export const BackupRestore: React.FC = () => {
       )}
     </div>
 
-    {/* Subscription Modal */}
+      {/* Store Account & Safe Logout Card */}
+      {syncService.isLoggedIn() && (
+        <div className="village-card rounded-3xl p-5 sm:p-6 bg-white shadow-2xs border border-rose-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-rose-100 text-rose-800 shrink-0">
+              <LogOut className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-black text-stone-950 text-base m-0 flex items-center gap-2">
+                <span>दुकान खाते से लॉगआउट करें</span>
+              </h3>
+              <p className="text-xs text-stone-600 m-0 mt-0.5 font-medium">
+                वर्तमान दुकान ({syncService.getStoreInfo()?.storeName || 'गाँव किराना'}) से सुरक्षित बाहर निकलें
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleStoreLogout}
+            className="px-4 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition active:scale-95 shrink-0"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>लॉगआउट करें (Logout)</span>
+          </button>
+        </div>
+      )}
+
+      {/* Subscription Modal */}
     <SubscriptionModal
       isOpen={isSubModalOpen}
       onClose={() => setIsSubModalOpen(false)}

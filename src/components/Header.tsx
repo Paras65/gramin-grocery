@@ -99,6 +99,24 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
     };
   }, [refreshAuthState]);
 
+  const handleStoreLogout = async () => {
+    const pending = await syncService.getPendingSyncCount();
+    if (pending > 0) {
+      const ok = window.confirm(
+        `⚠️ चेतावनी: आपके ${pending} बिल/खाता रिकॉर्ड्स अभी क्लाउड पर सुरक्षित नहीं हुए हैं!\n\nयदि आप अभी लॉगआउट करेंगे तो ऑफ़लाइन डेटा नष्ट हो सकता है।\n\nक्या आप सच में लॉगआउट करना चाहते हैं?`
+      );
+      if (!ok) return;
+    } else {
+      const ok = window.confirm('क्या आप सच में अपनी दुकान से लॉगआउट करना चाहते हैं?');
+      if (!ok) return;
+    }
+    await syncService.logout(true);
+    refreshAuthState();
+    if (onBackToLanding) {
+      onBackToLanding();
+    }
+  };
+
   const tabs = [
     { id: 'pos', label: t.tabs.pos, icon: '⚡' },
     { id: 'haat', label: t.tabs.haat, icon: '🎪' },
@@ -165,8 +183,20 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
             </span>
           </button>
 
-          {/* Munim / Counter Staff Login (shown when logged in + munimPin configured) */}
-          {syncService.isLoggedIn() && syncService.getStoreInfo()?.munimPin && onOpenMunimLogin && (
+          {/* Munim / Counter Staff Login or Quick Exit */}
+          {syncService.isLoggedIn() && syncService.getRole() === 'munim' ? (
+            <button
+              onClick={() => {
+                syncService.clearMunimSession();
+                refreshAuthState();
+              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-950/90 text-amber-300 border border-amber-500/70 hover:bg-amber-900 transition cursor-pointer"
+              title="मुनीम काउंटर बंद करें और मुख्य दुकानदार मोड में लौटें"
+            >
+              <LogOut className="w-3.5 h-3.5 text-amber-400" />
+              <span>मुनीम बंद</span>
+            </button>
+          ) : syncService.isLoggedIn() && syncService.getStoreInfo()?.munimPin && onOpenMunimLogin ? (
             <button
               onClick={onOpenMunimLogin}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-stone-800/90 text-amber-300 border border-stone-700 hover:bg-stone-700 transition cursor-pointer"
@@ -175,7 +205,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
               <Store className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden md:inline">मुनीम</span>
             </button>
-          )}
+          ) : null}
 
           {/* Voice Search / Mic Button */}
           <button
@@ -340,6 +370,16 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
                       ? `${pendingCount} बाकी • अभी सिंक करें`
                       : '🟢 बैकअप सुरक्षित • सिंक करें'}
                   </span>
+                </button>
+
+                {/* Direct 1-Tap Store Logout Button */}
+                <button
+                  onClick={handleStoreLogout}
+                  className="flex items-center gap-1 text-[11px] font-bold text-rose-200 hover:text-white bg-rose-950/80 hover:bg-rose-900 border border-rose-600/70 px-2.5 py-1 rounded-lg shadow-xs transition active:scale-95 cursor-pointer"
+                  title="दुकान खाते से सुरक्षित लॉगआउट करें"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                  <span>लॉगआउट</span>
                 </button>
               </div>
             )}

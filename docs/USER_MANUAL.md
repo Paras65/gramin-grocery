@@ -41,6 +41,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
 9. [Store Login & Multi-Staff Access (दुकानदार लॉगिन व मुनीम खाता)](#9-store-login--multi-staff-access-दुकानदार-लॉगिन-व-मुनीम-खाता)
    - [Registering Your Store & PIN Recovery Helpline](#registering-your-store--pin-recovery-helpline)
    - [Roles & Sensitive Data Privacy Guardrails](#roles--sensitive-data-privacy-guardrails)
+   - [1-Click Logout & Safe Munim Shift Exit (1-क्लिक लॉगआउट व मुनीम सत्र समाप्ति)](#1-click-logout--safe-munim-shift-exit-1-क्लिक-लॉगआउट-व-मुनीम-सत्र-समाप्ति)
 10. [Automatic Cloud Sync & Multi-Store Isolation (क्लाउड ऑटो-सिंक व सुरक्षा)](#10-automatic-cloud-sync--multi-store-isolation-क्लाउड-ऑटो-सिंक-व-सुरक्षा)
     - [100% Offline with Live Cloud Sync & 1-Click Backup](#100-offline-with-live-cloud-sync--1-click-backup)
     - [Multi-Store Local Switching Isolation Guarantee](#multi-store-local-switching-isolation-guarantee-सुरक्षित-दुकान-बदलाव)
@@ -286,6 +287,12 @@ Gramin Kirana supports distinct operational roles and multi-store privacy to ens
   - **थोक भाव व मुनाफ़ा गोपनीयता (Wholesale Price & Margin Hidden):** In the inventory list, wholesale purchase prices (`खरीद भाव`) and profit percentages (`मुनाफ़ा`) are completely masked so counter staff cannot view your supplier costs or margin secrets.
   - **स्टॉक व मंडी सुरक्षा (Stock & Mandi Lock):** Adding new products, modifying item rates, and accessing Mandi procurement budgeting are reserved exclusively for the shop owner.
   - **वित्तीय रिपोर्ट व बैकअप सुरक्षा (Financial Report & Backup Lock):** Monthly profit/loss reports, evening cash till reconciliations, full shop database downloads, and data resets are strictly locked to prevent unauthorized access.
+
+### 1-Click Logout & Safe Munim Shift Exit (1-क्लिक लॉगआउट व मुनीम सत्र समाप्ति)
+- **शीर्ष हेडर में सीधा लॉगआउट (Direct Header Logout):** हेडर की स्टेटस पट्टी में बैकअप सिंक बटन के ठीक बगल में लाल रंग का **"लॉगआउट"** बटन दिया गया है ताकि दुकानदार किसी भी समय एक टैप में सुरक्षित रूप से बाहर निकल सकें।
+- **मुनीम शिफ्ट समाप्ति (Exit Munim Shift):** जब मुनीम काउंटर पर काम कर रहे हों, तो हेडर में **"मुनीम बंद"** का त्वरित बटन दिखाई देता है। इस पर टैप करते ही मुनीम सत्र समाप्त हो जाता है और मुख्य दुकानदार तुरंत काउंटर का पूर्ण नियंत्रण वापस ले सकते हैं।
+- **डेटा सुरक्षा चेतावनी (Unsynced Records Warning):** यदि कोई ऑफ़लाइन बिल अभी क्लाउड पर सुरक्षित नहीं हुए हैं, तो लॉगआउट दबाने पर सिस्टम पहले चेतावनी देता है ताकि दुकान का कोई भी हिसाब न छूटे।
+- **सेटिंग्स टैब में लॉगआउट कार्ड:** **सेटिंग्स व बैकअप** टैब के अंत में भी दुकान की जानकारी के साथ एक समर्पित लॉगआउट विकल्प उपलब्ध है।
 
 ---
 

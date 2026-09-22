@@ -41,6 +41,7 @@
 - [x] Add "पिन भूल गए? (Forgot PIN?)" action generating a pre-filled WhatsApp reset verification text to admin support.
 - [x] Enforce strict numeric-only 10-digit input mask on phone number inputs with live validation feedback.
 - [x] Add an unsynced records warning modal with a "क्लाउड सिंक का इंतज़ार करें (Wait for Sync)" safe option before logout.
+- [x] Direct 1-tap Logout button in Header sync strip, Munim shift exit button in top bar, and Settings logout card.
 
 ---
 
