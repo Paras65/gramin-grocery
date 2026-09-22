@@ -36,12 +36,14 @@ export const apiLimiter = rateLimit({
   max: parseInt(process.env.RATE_LIMIT_MAX || '200', 10),
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: { error: 'Too many requests, please try again later.' },
 });
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20, // 20 login attempts per 15 minutes
+  validate: { xForwardedForHeader: false },
   message: { error: 'Too many authentication attempts, please try again after 15 minutes.' },
 });
 
@@ -50,6 +52,7 @@ export const adminAuthLimiter = rateLimit({
   max: 5, // Strict: 5 attempts per 15 minutes for Super Admin
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: { error: 'सुरक्षा अलर्ट: बहुत सारे गलत प्रयास। कृपया 15 मिनट बाद पुनः प्रयास करें (Too many admin attempts. Locked for 15 minutes).' },
 });
 
