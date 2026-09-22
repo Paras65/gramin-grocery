@@ -1180,10 +1180,12 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                       total: it.calculatedPrice,
                     })),
                     total: lastCompletedBill.total,
+                    discount: lastCompletedBill.discount,
+                    originalTotal: lastCompletedBill.originalTotal,
                     paymentMode: lastCompletedBill.paymentMode === 'CASH' ? 'नकद (Cash)' : lastCompletedBill.paymentMode === 'UDHAAR' ? 'उधार (Credit)' : 'ऑनलाइन (UPI)',
                     customerName: lastCompletedBill.customer?.name,
                     oldBalance: lastCompletedBill.customer?.balanceDue,
-                    newBalance: lastCompletedBill.customer ? lastCompletedBill.customer.balanceDue + lastCompletedBill.total : undefined,
+                    newBalance: lastCompletedBill.customer ? (lastCompletedBill.paymentMode === 'UDHAAR' ? lastCompletedBill.customer.balanceDue + lastCompletedBill.total : lastCompletedBill.customer.balanceDue) : undefined,
                   });
                 }}
                 className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.99]"

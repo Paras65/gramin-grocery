@@ -263,7 +263,7 @@ export function generateQRCodeSVG(text: string, moduleSize = 4): string {
 export function buildUpiPayUrl(upiId: string, storeName: string, amount: number): string {
   const cleanId = upiId.trim();
   const cleanName = encodeURIComponent(storeName.trim() || 'Kirana Store');
-  const cleanAmount = amount.toFixed(2);
+  const cleanAmount = Math.max(0, isNaN(amount) ? 0 : amount).toFixed(2);
   return `upi://pay?pa=${cleanId}&pn=${cleanName}&am=${cleanAmount}&cu=INR`;
 }
 

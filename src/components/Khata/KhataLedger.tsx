@@ -164,7 +164,7 @@ export const KhataLedger: React.FC = () => {
       phone: newCustPhone.trim(),
       para: newCustPara,
       balanceDue: initialBal,
-      creditLimit: parseFloat(newCustCreditLimit) || 2000,
+      creditLimit: isNaN(parseFloat(newCustCreditLimit)) ? 2000 : Math.max(0, parseFloat(newCustCreditLimit)),
       dueDate: newCustDueDate,
       dueReason: newCustDueReason,
       notes: newCustNotes,

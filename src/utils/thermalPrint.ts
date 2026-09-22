@@ -72,6 +72,8 @@ export interface PrintReceiptData {
   time: string;
   items: PrintReceiptItem[];
   total: number;
+  discount?: number;
+  originalTotal?: number;
   paymentMode: string;
   customerName?: string;
   oldBalance?: number;
@@ -159,7 +161,12 @@ function buildReceiptBytes(data: PrintReceiptData): Uint8Array {
 
   parts.push(dashes(W));
 
-  // Total
+  // Discount and Total
+  if (data.discount && data.discount > 0) {
+    const gross = data.originalTotal || (data.total + data.discount);
+    parts.push(col2('सकल सामान:', `₹${gross}`, W));
+    parts.push(col2('छूट / बट्टा:', `-₹${data.discount}`, W));
+  }
   parts.push(CMD.BOLD_ON);
   parts.push(col2('कुल देय:', `₹${data.total}`, W));
   parts.push(CMD.BOLD_OFF);
@@ -506,6 +513,10 @@ function receiptToHTML(data: PrintReceiptData): string {
     <div class="dashes"></div>
     ${items}
     <div class="dashes"></div>
+    ${data.discount && data.discount > 0 ? `
+      <div class="row"><span>सकल सामान:</span><span>₹${data.originalTotal || (data.total + data.discount)}</span></div>
+      <div class="row" style="color:red"><span>छूट / बट्टा:</span><span>-₹${data.discount}</span></div>
+    ` : ''}
     <div class="row bold"><span>कुल देय:</span><span>₹${data.total}</span></div>
     <div class="row"><span>भुगतान:</span><span>${data.paymentMode}</span></div>
     ${customerHTML}
