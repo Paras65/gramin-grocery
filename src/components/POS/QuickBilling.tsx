@@ -15,6 +15,8 @@ import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { DemoLimitModal } from '../Demo/DemoLimitModal';
 import { StoreAuthModal } from '../Auth/StoreAuthModal';
 import { syncService } from '../../services/syncService';
+import { formatDate } from '../../utils/formatters';
+import { openWhatsApp } from '../../utils/whatsapp';
 
 interface QuickBillingProps {
   initialSearchQuery?: string;
@@ -344,7 +346,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
     if (!lastCompletedBill) return;
     const { items, total, originalTotal, discount: billDiscount, paymentMode, customer, timestamp } = lastCompletedBill;
 
-    const dateStr = new Date(timestamp).toLocaleDateString('hi-IN', {
+    const dateStr = formatDate(timestamp, {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -378,12 +380,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
       text += `\n---------------------------\n⚠️ *[नमूना बिल / DEMO]* अपनी दुकान जोड़ने हेतु ऐप में मुफ़्त रजिस्टर करें।`;
     }
 
-    const encoded = encodeURIComponent(text);
-    const url = customer?.phone && customer.phone.length >= 10
-      ? `https://wa.me/91${customer.phone}?text=${encoded}`
-      : `https://wa.me/?text=${encoded}`;
-    
-    window.open(url, '_blank');
+    openWhatsApp(customer?.phone, text);
   };
 
   // Reusable Cart Content Component (Used in desktop column and mobile bottom sheet)

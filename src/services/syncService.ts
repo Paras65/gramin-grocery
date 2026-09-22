@@ -1,11 +1,6 @@
 import { db, clearDatabase, initializeDatabaseIfEmpty } from '../db';
 import type { Customer, Product, Sale, SpoilageLog, Transaction, TenantInfo, UserRole } from '../types';
-
-const API_BASE = 
-  import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-    ? 'http://localhost:5000/api/v1' 
-    : '/api/v1');
+import { API_BASE } from '../utils/apiConfig';
 
 export interface SyncStatus {
   isSyncing: boolean;

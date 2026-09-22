@@ -8,19 +8,13 @@ import {
   isBluetoothPrinterConnected,
   printDaySummary,
 } from '../../utils/thermalPrint';
+import { formatINR, getTodayISODate, formatTime } from '../../utils/formatters';
+import { openWhatsApp } from '../../utils/whatsapp';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
-}
-
-function nowTimeStr(): string {
-  return new Date().toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' });
-}
-
-function fmtINR(n: number): string {
-  return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-}
+const todayStr = getTodayISODate;
+const nowTimeStr = () => formatTime(new Date());
+const fmtINR = (n: number) => formatINR(n);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const DailyCashClose: React.FC = () => {
@@ -200,7 +194,7 @@ export const DailyCashClose: React.FC = () => {
       `_ग्रामीण किराना ऐप द्वारा_`,
     ].filter(Boolean).join('\n');
 
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    openWhatsApp(undefined, msg);
   };
 
   const printPastRecord = async (rec: DailyCashCloseType) => {
@@ -248,7 +242,7 @@ export const DailyCashClose: React.FC = () => {
       `_ग्रामीण किराना ऐप द्वारा_`,
     ].filter(Boolean).join('\n');
 
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    openWhatsApp(undefined, msg);
   };
 
   // ─── Thermal Print ────────────────────────────────────────────────────────

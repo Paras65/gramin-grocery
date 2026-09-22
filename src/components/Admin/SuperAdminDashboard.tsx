@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { adminService, type PlatformOverviewResponse } from '../../services/adminService';
 import type { AdminStoreSummary } from '../../types';
+import { formatINR } from '../../utils/formatters';
+import { buildWhatsAppUrl } from '../../utils/whatsapp';
 
 interface SuperAdminDashboardProps {
   onExit: () => void;
@@ -204,7 +206,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                 </div>
               </div>
               <div className="text-2xl sm:text-3xl font-black text-emerald-800">
-                ₹{overview.metrics.totalGMV.toLocaleString('en-IN')}
+                {formatINR(overview.metrics.totalGMV, { round: true })}
               </div>
               <div className="mt-2 text-[11px] text-stone-500 font-medium">
                 कुल बिलिंग संख्या: <b className="text-stone-800">{overview.metrics.totalSalesCount}</b> बिल
@@ -220,7 +222,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                 </div>
               </div>
               <div className="text-2xl sm:text-3xl font-black text-rose-700">
-                ₹{overview.metrics.totalVillageDebt.toLocaleString('en-IN')}
+                {formatINR(overview.metrics.totalVillageDebt, { round: true })}
               </div>
               <div className="mt-2 text-[11px] text-stone-500 font-medium">
                 पंजीकृत ग्राहक: <b className="text-stone-800">{overview.metrics.totalCustomers}</b> परिवार
@@ -399,7 +401,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                         <div className="mt-1 text-[11px] text-stone-500 flex items-center gap-3 flex-wrap">
                           <span>पंजीकरण: {new Date(store.createdAt).toLocaleDateString('hi-IN')}</span>
                           <span>खातेदार: <b className="text-stone-800">{store.customerCount}</b></span>
-                          <span>कुल उधारी: <b className="text-rose-700">₹{store.totalDebt}</b></span>
+                          <span>कुल उधारी: <b className="text-rose-700">{formatINR(store.totalDebt)}</b></span>
                         </div>
                       </div>
 
@@ -419,7 +421,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                         {/* Direct WhatsApp */}
                         {store.phone && (
                           <a
-                            href={`https://wa.me/91${store.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`नमस्ते ${store.ownerName} जी, ग्रामीण किराना सहायता केंद्र से संपर्क किया जा रहा है।`)}`}
+                            href={buildWhatsAppUrl(store.phone, `नमस्ते ${store.ownerName} जी, ग्रामीण किराना सहायता केंद्र से संपर्क किया जा रहा है।`)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 rounded-xl bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50 cursor-pointer active:scale-95 transition-all"

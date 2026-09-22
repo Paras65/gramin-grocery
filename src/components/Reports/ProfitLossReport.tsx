@@ -4,6 +4,8 @@ import { TrendingUp, TrendingDown, Minus, Download, Share2, Lock, Sparkles } fro
 import { db } from '../../db';
 import type { Sale, SpoilageLog, Product } from '../../types';
 import { syncService } from '../../services/syncService';
+import { formatINR } from '../../utils/formatters';
+import { openWhatsApp } from '../../utils/whatsapp';
 
 const MONTHS_HI = [
   'जनवरी','फरवरी','मार्च','अप्रैल','मई','जून',
@@ -69,13 +71,13 @@ export const ProfitLossReport: React.FC = () => {
   const upiSales = monthlySales.filter(s => s.paymentMode === 'UPI').reduce((sum, s) => sum + s.totalAmount, 0);
   const udhaarSales = monthlySales.filter(s => s.paymentMode === 'UDHAAR').reduce((sum, s) => sum + s.totalAmount, 0);
 
-  const fmt = (n: number) => `₹${Math.round(n).toLocaleString('hi-IN')}`;
+  const fmt = (n: number) => formatINR(n, { round: true });
 
   const handleWhatsAppShare = () => {
     const store = syncService.getStoreInfo();
     const shopName = store?.storeName || 'दुकान';
     const monthLabel = `${MONTHS_HI[selectedMonth]} ${selectedYear}`;
-    const msg = encodeURIComponent(
+    const msg = 
       `📊 *${shopName}* — ${monthLabel} लाभ-हानि रिपोर्ट\n\n` +
       `💰 कुल बिक्री: ${fmt(totalRevenue)}\n` +
       `📦 माल की लागत: ${fmt(totalCOGS)}\n` +
@@ -83,9 +85,8 @@ export const ProfitLossReport: React.FC = () => {
       `🍂 खराबी हानि: ${fmt(totalSpoilageLoss)}\n` +
       `─────────────────\n` +
       `🏆 *शुद्ध लाभ: ${fmt(netProfit)}* (${margin}%)\n\n` +
-      `📋 कुल बिल: ${billCount} | नकद: ${fmt(cashSales)} | UPI: ${fmt(upiSales)} | उधार: ${fmt(udhaarSales)}`
-    );
-    window.open(`https://wa.me/?text=${msg}`, '_blank');
+      `📋 कुल बिल: ${billCount} | नकद: ${fmt(cashSales)} | UPI: ${fmt(upiSales)} | उधार: ${fmt(udhaarSales)}`;
+    openWhatsApp(undefined, msg);
   };
 
   const handlePrint = () => {

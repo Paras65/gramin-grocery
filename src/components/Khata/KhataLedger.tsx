@@ -10,6 +10,8 @@ import type { Customer, DueReason, Transaction } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { printCustomerStatement } from '../../utils/thermalPrint';
 import { syncService } from '../../services/syncService';
+import { openWhatsApp } from '../../utils/whatsapp';
+import { formatINR } from '../../utils/formatters';
 
 export const KhataLedger: React.FC = () => {
   const { t } = useLanguage();
@@ -113,17 +115,16 @@ export const KhataLedger: React.FC = () => {
       // 1-Tap Jama payment receipt via WhatsApp
       if (type === 'JAMA' && customer.phone && customer.phone.length === 10) {
         const storeName = syncService.getStoreInfo()?.storeName || 'गाँव किराना स्टोर';
-        const msg = encodeURIComponent(
+        const msg = 
           `✅ *जमा पावती (Payment Received)*\n` +
           `दुकान: ${storeName}\n` +
           `ग्राहक: ${customer.name}\n` +
           `--------------------\n` +
-          `जमा की गई राशि: ₹${amount.toFixed(2)}\n` +
-          `नया बकाया शेष: ₹${newBalance.toFixed(2)}\n` +
+          `जमा की गई राशि: ${formatINR(amount)}\n` +
+          `नया बकाया शेष: ${formatINR(newBalance)}\n` +
           `दिनांक: ${new Date().toLocaleDateString('hi-IN')}\n\n` +
-          `धन्यवाद! आपका हिसाब सुरक्षित दर्ज कर लिया गया है।`
-        );
-        window.open(`https://wa.me/91${customer.phone}?text=${msg}`, '_blank');
+          `धन्यवाद! आपका हिसाब सुरक्षित दर्ज कर लिया गया है।`;
+        openWhatsApp(customer.phone, msg);
       }
     }
 
@@ -207,13 +208,7 @@ export const KhataLedger: React.FC = () => {
     text += `कृपया समय पर भुगतान कर दुकान संचालन में सहयोग दें।\n`;
     text += `🙏 धन्यवाद! - ग्रामीण किराना स्टोर`;
 
-    const encoded = encodeURIComponent(text);
-    const phone = customer.phone.replace(/[^0-9]/g, '');
-    const url = phone.length >= 10 
-      ? `https://wa.me/91${phone}?text=${encoded}`
-      : `https://wa.me/?text=${encoded}`;
-
-    window.open(url, '_blank');
+    openWhatsApp(customer.phone, text);
   };
 
   // PRO: Blast WhatsApp reminder to ALL overdue customers
