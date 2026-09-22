@@ -68,7 +68,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <span>🏪 {storeInfo.storeName} ({storeInfo.village})</span>
               <span className="text-stone-500">•</span>
               <span className="font-bold text-amber-400">
-                {subStatus.isPro ? sub.currentPlanPro : sub.currentPlanFree}
+                {subStatus.isPro ? sub.currentPlanPro : subStatus.isExpired ? 'योजना समाप्त (मुफ़्त मोड)' : sub.currentPlanFree}
               </span>
             </div>
           )}
@@ -76,6 +76,30 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
         {/* Scrollable Body */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-6 text-stone-800">
+          {/* Graceful Expiry Notice Banner */}
+          {subStatus.isExpired && isLoggedIn && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900 shadow-xs">
+              <div className="flex items-start gap-2.5">
+                <Sparkles className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-black text-amber-950 text-sm">
+                    प्रो योजना की अवधि समाप्त हो चुकी है
+                  </div>
+                  <div className="text-amber-800 font-medium mt-0.5 leading-relaxed">
+                    घबराएं नहीं! आपकी दुकान की ऑफ़लाइन बिलिंग, बही-खाता, पर्ची प्रिंटिंग और सभी दैनिक कार्य 100% मुफ़्त और सुरक्षित चल रहे हैं। प्रो सुविधाएं (क्लाउड बैकअप, WhatsApp तगादा) पुनः सक्रिय करने के लिए नवीनीकरण करें।
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleUpgradeWhatsApp}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold shrink-0 transition flex items-center gap-1.5 shadow-xs self-end sm:self-auto cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>नवीनीकरण WhatsApp</span>
+              </button>
+            </div>
+          )}
+
           {/* Pricing Tier Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Free Plan Card */}

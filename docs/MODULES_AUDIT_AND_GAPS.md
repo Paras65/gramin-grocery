@@ -243,7 +243,7 @@
 2. **Munim Permission Granularity:** Munim staff is restricted from Settings and Cash Close, but store owners might want to permit Munim to view stock levels while hiding purchase wholesale prices.
 
 ### Mandatory Enhancements
-- [ ] Graceful downgrade banner: Never block offline sales if subscription lapses; simply toggle PRO-gated cards.
+- [x] Graceful downgrade banner: Never block offline sales if subscription lapses; simply toggle PRO-gated cards.
 - [x] Hide purchase prices (खरीद भाव) and profit margins when active role is Munim.
 
 ---

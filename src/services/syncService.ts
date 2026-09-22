@@ -74,13 +74,17 @@ class SyncService {
     return data ? JSON.parse(data) : null;
   }
 
-  public getSubscriptionStatus(): { plan: 'FREE' | 'PRO'; planExpiryDate?: string; isPro: boolean } {
+  public getSubscriptionStatus(): { plan: 'FREE' | 'PRO'; planExpiryDate?: string; isPro: boolean; isExpired: boolean } {
     const store = this.getStoreInfo();
-    const plan = store?.plan || 'FREE';
+    const rawPlan = store?.plan || 'FREE';
+    const hasExpiry = !!store?.planExpiryDate;
+    const isExpired = hasExpiry ? new Date(store!.planExpiryDate!) < new Date() : false;
+    const isPro = rawPlan === 'PRO' && !isExpired;
     return {
-      plan,
+      plan: isPro ? 'PRO' : 'FREE',
       planExpiryDate: store?.planExpiryDate,
-      isPro: plan === 'PRO',
+      isPro,
+      isExpired: isExpired && (rawPlan === 'PRO' || hasExpiry),
     };
   }
 

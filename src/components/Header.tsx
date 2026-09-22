@@ -35,10 +35,12 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
   const [isPrinterConnected, setIsPrinterConnected] = useState<boolean>(isBluetoothPrinterConnected());
   const [connectedPrinterName, setConnectedPrinterName] = useState<string | undefined>(getConnectedPrinterName());
   const [isSubModalOpen, setIsSubModalOpen] = useState<boolean>(false);
+  const [subStatus, setSubStatus] = useState(() => syncService.getSubscriptionStatus());
 
   const refreshAuthState = useCallback(async () => {
     setStoreInfo(syncService.getStoreInfo());
     setUserInfo(syncService.getUserInfo());
+    setSubStatus(syncService.getSubscriptionStatus());
     const loggedIn = syncService.isLoggedIn();
     setIsLoggedIn(loggedIn);
     if (loggedIn) {
@@ -227,14 +229,16 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
               <button
                 onClick={() => setIsSubModalOpen(true)}
                 className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition cursor-pointer flex items-center gap-1 ${
-                  syncService.getSubscriptionStatus().isPro
+                  subStatus.isPro
                     ? 'bg-amber-400/20 text-amber-300 border-amber-400/50 hover:bg-amber-400/30'
+                    : subStatus.isExpired
+                    ? 'bg-amber-500/25 text-amber-300 border-amber-400/60 hover:bg-amber-500/35'
                     : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25'
                 }`}
                 title="प्लान व सुविधाएं देखें"
               >
                 <Sparkles className="w-2.5 h-2.5" />
-                <span>{syncService.getSubscriptionStatus().isPro ? 'प्रो' : 'मुफ़्त प्लान'}</span>
+                <span>{subStatus.isPro ? 'प्रो' : subStatus.isExpired ? 'योजना समाप्त' : 'मुफ़्त प्लान'}</span>
               </button>
             </div>
           ) : (
@@ -342,6 +346,26 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
           </div>
         </div>
       </div>
+
+      {/* Non-intrusive Graceful Downgrade Reminder Banner */}
+      {isLoggedIn && subStatus.isExpired && (
+        <div className="bg-amber-950/90 border-t border-b border-amber-500/40 px-3 sm:px-6 py-1.5 text-xs text-amber-200">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate">
+                <strong>सूचना:</strong> प्रो योजना समाप्त हो गई है। दुकान की ऑफ़लाइन बिलिंग, बही-खाता व प्रिंटिंग सामान्य रूप से चालू है।
+              </span>
+            </div>
+            <button
+              onClick={() => setIsSubModalOpen(true)}
+              className="text-[11px] font-bold text-amber-300 hover:text-white underline shrink-0 cursor-pointer"
+            >
+              नवीनीकरण करें &rarr;
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Navigation Bar for Desktop & Tablet */}
       <div className="max-w-7xl mx-auto px-2 sm:px-6 border-t border-stone-800/80">

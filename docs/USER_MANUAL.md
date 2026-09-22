@@ -71,13 +71,14 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [1-Tap Cash Checkout & Zero-Wait Queue (1-टैप नकद बिल)](#1-tap-cash-checkout--zero-wait-queue-1-टैप-नकद-बिल)
    - [Live Haat Cash & Customer Meter (हाट रोकड़ मीटर)](#live-haat-cash--customer-meter-हाट-रोकड़-मीटर)
 17. [Village Subscription Plans & Transparent Pricing (दुकान प्लान व सुविधाएं)](#17-village-subscription-plans--transparent-pricing-दुकान-प्लान-व-सुविधाएं)
+    - [Village Starter Free Plan (🌾 गाँव स्टार्टर - आजीवन मुफ़्त)](#village-starter-free-plan-गाँव-स्टार्टर---आजीवन-मुफ़्त)
+    - [Gramin Pro Plan (🚀 ग्रामिन प्रो - ₹99/माह)](#gramin-pro-plan-ग्रामिन-प्रो---99माह)
+    - [Zero Counter Distraction Policy (काउंटर पर कोई रुकावट नहीं)](#zero-counter-distraction-policy-काउंटर-पर-कोई-रुकावट-नहीं)
+    - [Graceful Downgrade Protection (योजना समाप्ति पर भी अटूट काउंटर सुरक्षा)](#graceful-downgrade-protection-योजना-समाप्ति-पर-भी-अटूट-काउंटर-सुरक्षा)
 18. [Progressive Web App (PWA) & Seamless Updates (ऐप इंस्टॉलेशन व ऑटो-अपडेट)](#18-progressive-web-app-pwa--seamless-updates-ऐप-इंस्टॉलेशन-व-ऑटो-अपडेट)
     - [Installing Gramin Kirana on Mobile & PC (होम स्क्रीन पर ऐप जोड़ें)](#installing-gramin-kirana-on-mobile--pc-होम-स्क्रीन-पर-ऐप-जोड़ें)
     - [1-Tap Update Notification Banner (1-टैप में नया वर्शन लागू करें)](#1-tap-update-notification-banner-1-टैप-में-नया-वर्शन-लागू-करें)
     - [Uninterrupted Offline Counter Reliability (बिना नेटवर्क के अटूट काम)](#uninterrupted-offline-counter-reliability-बिना-नेटवर्क-के-अटूट-काम)
-   - [Village Starter Free Plan (🌾 गाँव स्टार्टर - आजीवन मुफ़्त)](#village-starter-free-plan-गाँव-स्टार्टर---आजीवन-मुफ़्त)
-   - [Gramin Pro Plan (🚀 ग्रामिन प्रो - ₹49/माह)](#gramin-pro-plan-ग्रामिन-प्रो---49माह)
-   - [Zero Counter Distraction Policy (काउंटर पर कोई रुकावट नहीं)](#zero-counter-distraction-policy-काउंटर-पर-कोई-रुकावट-नहीं)
 
 ---
 
@@ -501,6 +502,11 @@ Gramin Kirana is built with 100% pricing transparency and a village-first approa
 - **प्लान देखना व अपग्रेड करना:**
   - **डेमो मोड में:** ऊपर हेडर में **"सुविधाएं व प्लान"** बटन दबाकर सभी फीचर्स व प्लान देखे जा सकते हैं।
   - **लॉगिन होने पर:** हेडर में लगा छोटा बैज (`🌾 मुफ़्त प्लान` या `👑 प्रो`) या **सेटिंग्स टैब** में जाकर प्लान का विवरण देखा जा सकता है और व्हाट्सएप के ज़रिये अपग्रेड का अनुरोध किया जा सकता है।
+
+### Graceful Downgrade Protection (योजना समाप्ति पर भी अटूट काउंटर सुरक्षा)
+- **दुकान की बिक्री कभी बंद नहीं होती:** यदि किसी दुकानदार का प्रो प्लान समाप्त हो जाता है, तो दुकान का काम या ऑफ़लाइन बिलिंग कभी लॉक नहीं होती।
+- **मुफ़्त मोड में निर्बाध चालू:** आपका काउंटर तुरंत मुफ़्त (Free) प्लान में सुरक्षित रूप से चलता रहता है—दैनिक नकद बिक्री, उधारी खाता, बारकोड स्कैनिंग, पर्ची प्रिंटिंग और सभी स्थानीय डेटा 100% सुरक्षित और सक्रिय रहते हैं।
+- **शालीन सूचना (Gentle Reminder Banner):** हेडर में एक सहज सूचना दिखाई देती है जिससे दुकानदार चाहें तो सीधे व्हाट्सएप के माध्यम से प्रो प्लान का नवीनीकरण कर सकते हैं।
 
 ---
 
