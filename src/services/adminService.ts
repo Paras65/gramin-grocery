@@ -48,6 +48,36 @@ class AdminService {
     return Boolean(this.getToken() && this.getAdminInfo()?.role === 'SUPER_ADMIN');
   }
 
+  private async parseResponse(res: Response, fallbackError: string): Promise<any> {
+    const contentType = res.headers.get('content-type') || '';
+    let data: any = null;
+
+    if (contentType.includes('application/json')) {
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+    }
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error('सर्वर पर एडमिन सर्विस अभी उपलब्ध नहीं है (404 Not Found)। Render बैकएंड डिप्लॉय हो रहा हो सकता है, कृपया 1-2 मिनट बाद पुनः प्रयास करें।');
+      }
+      if (res.status === 502 || res.status === 503 || res.status === 504) {
+        throw new Error('क्लाउड सर्वर अभी शुरू (Wake up) हो रहा है। कृपया कुछ सेकंड प्रतीक्षा कर पुनः प्रयास करें।');
+      }
+      const errMsg = data?.error || data?.message || (typeof data === 'string' ? data : fallbackError);
+      throw new Error(errMsg);
+    }
+
+    if (!data) {
+      throw new Error('अमान्य सर्वर प्रतिक्रिया (Invalid JSON response)');
+    }
+
+    return data;
+  }
+
   public async login(password: string): Promise<AdminUser> {
     const res = await fetch(`${API_BASE}/admin/login`, {
       method: 'POST',
@@ -55,10 +85,7 @@ class AdminService {
       body: JSON.stringify({ password: password.trim() }),
     });
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'सुपर एडमिन प्रमाणीकरण विफल');
-    }
+    const data = await this.parseResponse(res, 'सुपर एडमिन प्रमाणीकरण विफल');
 
     localStorage.setItem('gk_admin_token', data.token);
     localStorage.setItem('gk_admin_info', JSON.stringify(data.user));
@@ -86,14 +113,15 @@ class AdminService {
       headers: this.getAuthHeaders(),
     });
 
-    const data = await res.json();
-    if (!res.ok) {
+    try {
+      const data = await this.parseResponse(res, 'Failed to load platform metrics');
+      return data;
+    } catch (err: any) {
       if (res.status === 401 || res.status === 403) {
         this.logout();
       }
-      throw new Error(data.error || 'Failed to load platform metrics');
+      throw err;
     }
-    return data;
   }
 
   public async getStores(search = '', plan = 'ALL', district = 'ALL'): Promise<AdminStoreSummary[]> {
@@ -106,14 +134,15 @@ class AdminService {
       headers: this.getAuthHeaders(),
     });
 
-    const data = await res.json();
-    if (!res.ok) {
+    try {
+      const data = await this.parseResponse(res, 'Failed to fetch stores');
+      return data.stores || [];
+    } catch (err: any) {
       if (res.status === 401 || res.status === 403) {
         this.logout();
       }
-      throw new Error(data.error || 'Failed to fetch stores');
+      throw err;
     }
-    return data.stores || [];
   }
 
   public async updateStoreSubscription(
@@ -127,10 +156,7 @@ class AdminService {
       body: JSON.stringify({ plan, status }),
     });
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to update store subscription');
-    }
+    await this.parseResponse(res, 'Failed to update store subscription');
   }
 
   public async toggleStoreStatus(storeId: string, isActive: boolean): Promise<void> {
@@ -140,10 +166,7 @@ class AdminService {
       body: JSON.stringify({ isActive }),
     });
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to toggle store status');
-    }
+    await this.parseResponse(res, 'Failed to toggle store status');
   }
 }
 

@@ -95,6 +95,13 @@ app.use('/api/v1/sync', syncRoutes);
 app.use('/api/v1/tenant', tenantRoutes);
 app.use('/api/v1/admin', adminRoutes);
 
+// Bounded API 404 handler - Prevents HTML fallthrough on missing API endpoints
+app.all('/api/*', (req, res) => {
+  res.status(404).json({
+    error: `API route not found: ${req.method} ${req.originalUrl}`,
+  });
+});
+
 // Production Static Frontend Serving (Unified Deployment on Render)
 app.use(express.static(clientDistPath));
 
