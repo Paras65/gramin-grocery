@@ -19,6 +19,7 @@ export const AllStock: React.FC = () => {
   // New product form
   const [newProdName, setNewProdName] = useState('');
   const [newProdHindi, setNewProdHindi] = useState('');
+  const [newProdBarcode, setNewProdBarcode] = useState('');
   const [newProdCat, setNewProdCat] = useState<Product['category']>('staples');
   const [newProdBuy, setNewProdBuy] = useState('');
   const [newProdSell, setNewProdSell] = useState('');
@@ -28,6 +29,15 @@ export const AllStock: React.FC = () => {
   const [newProdIsLoose, setNewProdIsLoose] = useState(false);
   const [newProdExp, setNewProdExp] = useState('');
 
+  // Duplicate barcode checks
+  const duplicateAddMatch = newProdBarcode.trim()
+    ? products.find(p => p.barcode && p.barcode.trim() === newProdBarcode.trim())
+    : null;
+
+  const duplicateEditMatch = editingProduct && editingProduct.barcode && editingProduct.barcode.trim()
+    ? products.find(p => p.id !== editingProduct.id && p.barcode && p.barcode.trim() === editingProduct.barcode!.trim())
+    : null;
+
   const filtered = products.filter((p: Product) => {
     const matchesCat = selectedCat === 'all' || p.category === selectedCat;
     const matchesSearch = 
@@ -36,6 +46,13 @@ export const AllStock: React.FC = () => {
     return matchesCat && matchesSearch;
   });
 
+  const handleQuickPriceAdjust = async (productId: string, delta: number) => {
+    const p = products.find(item => item.id === productId);
+    if (!p || !p.id) return;
+    const newPrice = Math.max(1, Math.round((p.sellingPrice + delta) * 10) / 10);
+    await db.products.update(p.id, { sellingPrice: newPrice });
+  };
+
   const handleUpdateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct || !editingProduct.id) return;
@@ -43,6 +60,7 @@ export const AllStock: React.FC = () => {
     await db.products.update(editingProduct.id, {
       name: editingProduct.name,
       hindiName: editingProduct.hindiName,
+      barcode: editingProduct.barcode?.trim() || undefined,
       purchasePrice: editingProduct.purchasePrice,
       sellingPrice: editingProduct.sellingPrice,
       stockQty: editingProduct.stockQty,
@@ -63,6 +81,7 @@ export const AllStock: React.FC = () => {
       id: 'prod_' + Math.random().toString(36).substring(2, 9),
       name: newProdName.trim(),
       hindiName: newProdHindi.trim() || newProdName.trim(),
+      barcode: newProdBarcode.trim() || undefined,
       category: newProdCat,
       purchasePrice: parseFloat(newProdBuy) || 0,
       sellingPrice: parseFloat(newProdSell) || 0,
@@ -76,6 +95,7 @@ export const AllStock: React.FC = () => {
     setIsAddProductOpen(false);
     setNewProdName('');
     setNewProdHindi('');
+    setNewProdBarcode('');
     setNewProdBuy('');
     setNewProdSell('');
     setNewProdStock('');
@@ -208,6 +228,22 @@ export const AllStock: React.FC = () => {
                     <div>
                       <span className="text-[10px] text-stone-500 block">बिक्री दर</span>
                       <span className="font-black text-stone-900">₹{prod.sellingPrice}/{prod.unit}</span>
+                      {!isCashier && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => prod.id && handleQuickPriceAdjust(prod.id, -1)}
+                            className="px-1 py-0.2 rounded bg-stone-200 hover:bg-stone-300 text-stone-700 text-[10px] font-bold"
+                            title="₹1 घटाएं"
+                          >-1</button>
+                          <button
+                            type="button"
+                            onClick={() => prod.id && handleQuickPriceAdjust(prod.id, 1)}
+                            className="px-1 py-0.2 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold"
+                            title="₹1 बढ़ाएं"
+                          >+1</button>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] text-stone-500 block">मुनाफ़ा</span>
@@ -277,7 +313,29 @@ export const AllStock: React.FC = () => {
                     )}
 
                     <td className="p-3.5 text-right text-stone-950 font-black">
-                      ₹{prod.sellingPrice} /{prod.unit}
+                      <div>₹{prod.sellingPrice} /{prod.unit}</div>
+                      {!isCashier && (
+                        <div className="flex items-center justify-end gap-1 mt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => prod.id && handleQuickPriceAdjust(prod.id, -1)}
+                            className="px-1.5 py-0.2 rounded bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10px] font-bold cursor-pointer"
+                            title="₹1 घटाएं"
+                          >-1</button>
+                          <button
+                            type="button"
+                            onClick={() => prod.id && handleQuickPriceAdjust(prod.id, 1)}
+                            className="px-1.5 py-0.2 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold cursor-pointer"
+                            title="₹1 बढ़ाएं"
+                          >+1</button>
+                          <button
+                            type="button"
+                            onClick={() => prod.id && handleQuickPriceAdjust(prod.id, 2)}
+                            className="px-1.5 py-0.2 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold cursor-pointer"
+                            title="₹2 बढ़ाएं"
+                          >+2</button>
+                        </div>
+                      )}
                     </td>
 
                     {!isCashier && (
@@ -343,6 +401,24 @@ export const AllStock: React.FC = () => {
                   onChange={e => setEditingProduct({ ...editingProduct, hindiName: e.target.value })}
                   className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-semibold text-stone-900 outline-hidden focus:border-amber-500"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">बारकोड (वैकल्पिक):</label>
+                <input
+                  type="text"
+                  value={editingProduct.barcode || ''}
+                  onChange={e => setEditingProduct({ ...editingProduct, barcode: e.target.value })}
+                  placeholder="उदा. 8901030382748"
+                  className={`w-full p-2.5 bg-[#faf8f3] border rounded-xl text-xs sm:text-sm font-semibold text-stone-900 outline-hidden ${
+                    duplicateEditMatch ? 'border-amber-500 bg-amber-50' : 'border-amber-200/80 focus:border-amber-500'
+                  }`}
+                />
+                {duplicateEditMatch && (
+                  <p className="text-[11px] text-amber-800 font-bold mt-1 m-0">
+                    ⚠️ यह बारकोड पहले से "{duplicateEditMatch.name}" में दर्ज है।
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -450,6 +526,24 @@ export const AllStock: React.FC = () => {
                     className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs font-semibold text-stone-900 outline-hidden focus:border-amber-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">बारकोड (वैकल्पिक):</label>
+                <input
+                  type="text"
+                  value={newProdBarcode}
+                  onChange={e => setNewProdBarcode(e.target.value)}
+                  placeholder="उदा. 8901030382748"
+                  className={`w-full p-2.5 bg-[#faf8f3] border rounded-xl text-xs sm:text-sm font-semibold text-stone-900 outline-hidden ${
+                    duplicateAddMatch ? 'border-amber-500 bg-amber-50' : 'border-amber-200/80 focus:border-amber-500'
+                  }`}
+                />
+                {duplicateAddMatch && (
+                  <p className="text-[11px] text-amber-800 font-bold mt-1 m-0">
+                    ⚠️ यह बारकोड पहले से "{duplicateAddMatch.name}" में दर्ज है।
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">

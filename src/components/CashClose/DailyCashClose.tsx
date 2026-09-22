@@ -558,6 +558,21 @@ export const DailyCashClose: React.FC = () => {
       <div className="village-card p-4 sm:p-5">
         <h3 className="font-black text-stone-800 mb-3">📤 {tc.expensesLabel}</h3>
 
+        {/* Quick expense category chips */}
+        <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
+          <span className="text-[11px] font-bold text-stone-500">अक्सर होने वाले खर्च:</span>
+          {['सवारी / भाड़ा', 'मजदूरी / हमाली', 'चाय / नाश्ता', 'दुकान खर्च / बिजली', 'पॉलिथीन / पैकिंग'].map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setExpDesc(cat)}
+              className="text-[11px] font-semibold bg-stone-100 hover:bg-amber-100 text-stone-700 hover:text-amber-900 border border-stone-200 hover:border-amber-300 rounded-lg px-2 py-0.5 transition cursor-pointer"
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
         {/* Expense add row */}
         <div className="flex gap-2 mb-3">
           <input

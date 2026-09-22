@@ -136,7 +136,7 @@
 
 ### Mandatory Enhancements
 - [x] Automatically deduct spoiled quantity from active product stock upon logging spoilage.
-- [ ] Add monthly breakdown chart showing most frequent spoilage causes (e.g. Power Cut vs Rodent).
+- [x] Add monthly breakdown chart showing most frequent spoilage causes (e.g. Power Cut vs Rodent).
 
 ---
 
@@ -153,8 +153,8 @@
 2. **Duplicate Barcode Prevention:** Adding a new item with a barcode that already exists in the catalog does not trigger an instant inline warning before saving.
 
 ### Mandatory Enhancements
-- [ ] Duplicate barcode validation warning in the Product Modal.
-- [ ] Quick price-adjustment shortcut on item cards for fast price revisions.
+- [x] Duplicate barcode validation warning in the Product Modal.
+- [x] Quick price-adjustment shortcut on item cards for fast price revisions.
 
 ---
 
@@ -173,7 +173,7 @@
 
 ### Mandatory Enhancements
 - [x] Multi-day drawer history archive to review past cash closes and historical shortages/surpluses.
-- [ ] Expense categories (सवारी/भाड़ा, मजदूरी, चाय/नाश्ता, बिजली/दुकान खर्च).
+- [x] Expense categories (सवारी/भाड़ा, मजदूरी, चाय/नाश्ता, बिजली/दुकान खर्च).
 
 ---
 
@@ -207,8 +207,8 @@
 2. **Spoken Quantity Parsing:** Phrases like "पाव भर जीरा" (250g cumin) or "अधिया तेल" (half liter oil) are understood by humans but occasionally fail in generic speech engines without dialect regex mapping.
 
 ### Mandatory Enhancements
-- [ ] Add rural quantity mapping dictionary for Chhattisgarhi/Hindi terms (पाव, अधिया, पसेरी, बोरी).
-- [ ] Clear browser compatibility badge when running on unsupported platforms.
+- [x] Add rural quantity mapping dictionary for Chhattisgarhi/Hindi terms (पाव, अधिया, पसेरी, बोरी).
+- [x] Clear browser compatibility badge when running on unsupported platforms.
 
 ---
 
@@ -262,8 +262,8 @@
 2. **Asset Precache List:** Service worker precaches basic app shell (`/`, `/index.html`, `/manifest.json`, `/favicon.svg`), but could include core SVG icons to guarantee complete visual fidelity during absolute cold-start offline boots.
 
 ### Mandatory Enhancements
-- [ ] Add an in-app "ऐप इंस्टॉल करें (Install App)" quick-action button in Header/Settings using `beforeinstallprompt` event.
-- [ ] Precache all critical SVG assets in `public/sw.js` for seamless offline visuals.
+- [x] Add an in-app "ऐप इंस्टॉल करें (Install App)" quick-action button in Header/Settings using `beforeinstallprompt` event.
+- [x] Precache all critical SVG assets in `public/sw.js` for seamless offline visuals.
 
 ---
 

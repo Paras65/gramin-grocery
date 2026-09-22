@@ -26,11 +26,15 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Wholesaler Directory & Bulk Stock Receiving (थोक व्यापारी व माल आया स्टॉक अपडेट)](#wholesaler-directory--bulk-stock-receiving-थोक-व्यापारी-व-माल-आया-स्टॉक-अपडेट)
 5. [Spoilage & Expiry Guard (खराबी व एक्सपायरी गार्ड)](#5-spoilage--expiry-guard-खराबी-व-एक्सपायरी-गार्ड)
    - [Logging Power-Cut & Heat Losses (दूध/दही/कोल्ड ड्रिंक)](#logging-power-cut--heat-losses-दूधदहीकोल्ड-ड्रिंक)
+   - [Cause-Wise Loss Breakdown (कारण अनुसार नुकसान वर्गीकरण)](#cause-wise-loss-breakdown-कारण-अनुसार-नुकसान-वर्गीकरण)
    - [Tracking Upcoming Expiry Items](#tracking-upcoming-expiry-items)
 6. [Inventory Management (दुकान का पूरा स्टॉक)](#6-inventory-management-दुकान-का-पूरा-स्टॉक)
    - [Updating Rates & Profit Margins](#updating-rates--profit-margins)
+   - [Barcode Management & Duplicate Warning (बारकोड व डुप्लीकेट रोक)](#barcode-management--duplicate-warning-बारकोड-व-डुप्लीकेट-रोक)
+   - [Quick Price Revisions (+1, +2, -1) (तुरंत दर बदलाव)](#quick-price-revisions-1-2--1-तुरंत-दर-बदलाव)
    - [Adding New Items](#adding-new-items)
 7. [Voice Assistant (बोलकर दर्ज करें)](#7-voice-assistant-बोलकर-दर्ज-करें)
+   - [Rural Dialect & Quantity Recognition (गाँव की तौल व बोलचाल)](#rural-dialect--quantity-recognition-गाँव-की-तौल-व-बोलचाल)
 8. [Data Backup, Privacy & App Installation (डेटा बैकअप, सुरक्षा व ऐप इंस्टॉलेशन)](#8-data-backup-privacy--app-installation-डेटा-बैकअप-सुरक्षा-व-ऐप-इंस्टॉलेशन)
    - [Offline Data Export & Restore](#offline-data-export--restore)
    - [Installing App on Phone or PC (PWA होमस्क्रीन ऐप)](#installing-app-on-phone-or-pc-pwa-होमस्क्रीन-ऐप)
@@ -43,7 +47,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
 11. [Village Premium Look & Multi-Device Usability (ग्रामीण प्रीमियम लुक व मोबाइल/टैबलेट उपयोग)](#11-village-premium-look--multi-device-usability-ग्रामीण-प्रीमियम-लुक-व-मोबाइलटैबलेट-उपयोग)
 12. [Daily Cash Drawer Closing (दैनिक गल्ला व रोकड़ हिसाब)](#12-daily-cash-drawer-closing-दैनिक-गल्ला-व-रोकड़-हिसाब)
     - [Evening Cash Count (शाम का गल्ला मिलान)](#evening-cash-count-शाम-का-गल्ला-मिलान)
-    - [Daily Shop Expenses (दुकान के दैनिक खर्चे)](#daily-shop-expenses-दुकान-के-दैनिक-खर्चे)
+    - [Daily Shop Expenses & Quick Category Chips (दुकान के खर्चे व त्वरित बटन)](#daily-shop-expenses--quick-category-chips-दुकान-के-खर्चे-व-त्वरित-बटन)
     - [Cash Reconciliation & Difference (गल्ला अंतर व मिलान)](#cash-reconciliation--difference-गल्ला-अंतर-व-मिलान)
     - [1-Click WhatsApp Day Summary (व्हाट्सएप पर दिन सारांश)](#1-click-whatsapp-day-summary-व्हाट्सएप-पर-दिन-सारांश)
     - [Past Cash Drawer Archive & Historical Slips (पिछला गल्ला इतिहास व पुरानी पर्ची)](#past-cash-drawer-archive--historical-slips-पिछला-गल्ला-इतिहास-व-पुरानी-पर्ची)
@@ -186,6 +190,14 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 - **ऑटो-स्टॉक कटौती (Automatic Stock Deduction):** When you select an item from your inventory, the system automatically suggests the purchase rate and calculates the loss. With the **"दुकान स्टॉक में से भी घटाएं"** option enabled, the spoiled count is automatically subtracted from your store inventory so your stock counts remain accurate without manual adjustment.
 - Keeps an accurate tally of total financial losses.
 
+### Cause-Wise Loss Breakdown (कारण अनुसार नुकसान वर्गीकरण)
+- Displays four clear loss breakdown cards:
+  - ⚡ **बिजली कटौती (Power Cut):** Cold chain losses (milk, curd, ice-cream, cold drinks).
+  - ☀️ **गर्मी व धूप (Heat):** Melted sweets, confectionery, or sun-damaged packaging.
+  - 🐀 **चूहा व कीट (Rodent/Pest):** Damaged bags, spillage, and vermin losses.
+  - ⏳ **तारीख समाप्त (Expired):** Stock unsold before distributor return deadlines.
+- Helps village store owners monitor exact electricity load-shedding costs and store insulation needs.
+
 ### Tracking Upcoming Expiry Items
 - Shows an alert radar of packaged FMCG items expiring in the next 7 to 30 days so you can discount or return them before distributor deadlines.
 
@@ -196,6 +208,14 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 ### Updating Rates & Profit Margins
 - Review purchase rates, selling rates, and real-time profit margin percentages for every item.
 - Click the edit pencil to update rates when wholesale prices change.
+
+### Barcode Management & Duplicate Warning (बारकोड व डुप्लीकेट रोक)
+- When adding or editing any item in your catalog, you can assign an authentic barcode.
+- **डुप्लीकेट चेतावनी (Duplicate Alert):** If the barcode you entered or scanned is already assigned to another product in your store, an immediate amber warning appears identifying the existing product. This prevents overlapping barcodes from corrupting your POS billing.
+
+### Quick Price Revisions (+1, +2, -1) (तुरंत दर बदलाव)
+- When commodity wholesale prices fluctuate in the mandi, use the quick **-1**, **+1**, or **+2** adjustment buttons directly on each item card/table row.
+- Instantly revises your selling price without needing to open the full edit dialog.
 
 ### Adding New Items
 - Click **"+ नया सामान जोड़ें"** to add any packaged or loose product with local names in Hindi and English.
@@ -209,6 +229,16 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
   - *"सरसों तेल"* (searches product in POS)
   - *"रमेश 200 उधार"* (records ₹200 credit to Ramesh)
   - *"सुरेश 500 जमा"* (records ₹500 payment from Suresh)
+
+### Rural Dialect & Quantity Recognition (गाँव की तौल व बोलचाल)
+- The voice assistant recognizes authentic village weights and measures in everyday Hindi/Chhattisgarhi:
+  - *"पाव भर जीरा"* or *"एक पाव जीरा"* (automatically searches for 0.25 kg)
+  - *"अधिया सरसों तेल"* or *"आधा किलो"* (searches for 0.5 kg/liter)
+  - *"तीन पाव"* (searches for 0.75 kg)
+  - *"एक पसेरी आलू"* (searches for 5 kg)
+  - *"एक बोरी / कट्टा चावल"* (searches for 50 kg)
+  - *"दो किलो शक्कर"* or *"5 पैकेट बिस्किट"* (extracts quantity and unit)
+- Tap **"यह लागू करें"** to instantly apply the search query in your active billing screen.
 
 ---
 
@@ -310,8 +340,9 @@ Village store owners and counter staff often finish long days without knowing th
   - **जमा मिला उधार (Jama Received):** Repayments collected from credit customers today.
 - In the large **💵 गल्ले में गिना हुआ नकद** field, enter the actual cash counted in your till/drawer.
 
-### Daily Shop Expenses (दुकान के दैनिक खर्चे)
+### Daily Shop Expenses & Quick Category Chips (दुकान के खर्चे व त्वरित बटन)
 - Enter any daily out-of-pocket expenses paid directly from the cash till (e.g., auto/tempo fare for stock delivery, helper wages, tea/snacks for guests, electricity bulb replacement).
+- **त्वरित खर्च बटन (Quick Category Chips):** Tap common village expense chips (*सवारी/भाड़ा, मजदूरी/हमाली, चाय/नाश्ता, बिजली/दुकान खर्च, पॉलिथीन/पैकिंग*) to instantly autofill the description without manual typing.
 - Tap **+** to add each expense item. The total expenses are automatically subtracted from your expected cash balance.
 
 ### Cash Reconciliation & Difference (गल्ला अंतर व मिलान)

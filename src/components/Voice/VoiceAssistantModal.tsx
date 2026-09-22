@@ -77,6 +77,10 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
       onApplySearch(parsedIntent.productQuery);
       onNavigateTab('pos');
       onClose();
+    } else if (parsedIntent.intentType === 'BILL_ITEM' && parsedIntent.productQuery) {
+      onApplySearch(parsedIntent.productQuery);
+      onNavigateTab('pos');
+      onClose();
     } else if ((parsedIntent.intentType === 'UDHAAR' || parsedIntent.intentType === 'JAMA') && parsedIntent.customerName && parsedIntent.amount) {
       // Find matching customer
       const customers = await db.customers.toArray();
@@ -191,6 +195,11 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
                   बिलिंग में <b className="text-emerald-800">"{parsedIntent.productQuery}"</b> खोजना।
                 </div>
               )}
+              {parsedIntent.intentType === 'BILL_ITEM' && (
+                <div className="text-stone-800">
+                  बिलिंग में <b className="text-emerald-800">"{parsedIntent.productQuery}"</b> — <b className="text-amber-900">{parsedIntent.quantity} {parsedIntent.unit}</b> खोजना।
+                </div>
+              )}
 
               <button
                 onClick={handleExecuteIntent}
@@ -205,7 +214,12 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
           {/* Help Tips */}
           <div className="bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-left text-[11px] text-amber-900 flex items-start gap-2">
             <HelpCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div>{t.voice.help}</div>
+            <div>
+              {t.voice.help}
+              <div className="text-[10px] text-amber-700 mt-1 font-semibold">
+                गाँव की बोलचाल: "पाव भर जीरा", "अधिया सरसों तेल", "एक पसेरी आलू", "रमेश 200 उधार"
+              </div>
+            </div>
           </div>
         </div>
       </div>

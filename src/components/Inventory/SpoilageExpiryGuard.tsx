@@ -34,6 +34,15 @@ export const SpoilageExpiryGuard: React.FC = () => {
   const powerCutLoss = spoilageLogs
     .filter((s: SpoilageLog) => s.reason === 'POWER_CUT')
     .reduce((sum: number, s: SpoilageLog) => sum + (s.estimatedLoss || 0), 0);
+  const heatLoss = spoilageLogs
+    .filter((s: SpoilageLog) => s.reason === 'HEAT_DAMAGE')
+    .reduce((sum: number, s: SpoilageLog) => sum + (s.estimatedLoss || 0), 0);
+  const pestLoss = spoilageLogs
+    .filter((s: SpoilageLog) => s.reason === 'RODENT_PEST')
+    .reduce((sum: number, s: SpoilageLog) => sum + (s.estimatedLoss || 0), 0);
+  const expiredLoss = spoilageLogs
+    .filter((s: SpoilageLog) => s.reason === 'EXPIRED')
+    .reduce((sum: number, s: SpoilageLog) => sum + (s.estimatedLoss || 0), 0);
 
   const handleProductSelect = (nameVal: string) => {
     setLogProdName(nameVal);
@@ -146,6 +155,38 @@ export const SpoilageExpiryGuard: React.FC = () => {
             <Plus className="w-4 h-4" />
             <span>{t.spoilage.logLossBtn}</span>
           </button>
+        </div>
+      </div>
+
+      {/* Cause-wise Breakdown Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+        <div className="village-card p-3 rounded-2xl bg-white border border-stone-200">
+          <span className="text-stone-500 flex items-center gap-1 text-[11px] font-bold">
+            <span>⚡</span>
+            <span>बिजली कटौती</span>
+          </span>
+          <span className="text-base font-black text-amber-900 block mt-1">₹{powerCutLoss.toLocaleString('en-IN')}</span>
+        </div>
+        <div className="village-card p-3 rounded-2xl bg-white border border-stone-200">
+          <span className="text-stone-500 flex items-center gap-1 text-[11px] font-bold">
+            <span>☀️</span>
+            <span>गर्मी व धूप</span>
+          </span>
+          <span className="text-base font-black text-amber-900 block mt-1">₹{heatLoss.toLocaleString('en-IN')}</span>
+        </div>
+        <div className="village-card p-3 rounded-2xl bg-white border border-stone-200">
+          <span className="text-stone-500 flex items-center gap-1 text-[11px] font-bold">
+            <span>🐀</span>
+            <span>चूहे व कीट</span>
+          </span>
+          <span className="text-base font-black text-rose-700 block mt-1">₹{pestLoss.toLocaleString('en-IN')}</span>
+        </div>
+        <div className="village-card p-3 rounded-2xl bg-white border border-stone-200">
+          <span className="text-stone-500 flex items-center gap-1 text-[11px] font-bold">
+            <span>⏳</span>
+            <span>तारीख समाप्त</span>
+          </span>
+          <span className="text-base font-black text-rose-700 block mt-1">₹{expiredLoss.toLocaleString('en-IN')}</span>
         </div>
       </div>
 
