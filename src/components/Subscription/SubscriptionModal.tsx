@@ -27,9 +27,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     const shopName = storeInfo?.storeName || 'गाँव किराना स्टोर';
     const village = storeInfo?.village || 'गाँव';
     const message = encodeURIComponent(
-      `नमस्ते Gramin Kirana टीम, मैं अपनी दुकान "${shopName}" (${village}) के लिए ग्रामिन प्रो (₹49/माह) प्लान लेना चाहता हूँ। कृपया जानकारी दें।`
+      `नमस्ते Gramin Kirana टीम, मैं अपनी दुकान "${shopName}" (${village}) के लिए ग्रामिन प्रो (₹99/माह) प्लान लेना चाहता हूँ। कृपया जानकारी दें।`
     );
-    window.open(`https://wa.me/919876543210?text=${message}`, '_blank');
+    window.open(`https://wa.me/?text=${message}`, '_blank');
   };
 
   const handleRegisterClick = () => {

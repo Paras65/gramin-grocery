@@ -179,6 +179,7 @@ export const INITIAL_SPOILAGE: Omit<SpoilageLog, 'id'>[] = [
 ];
 
 export async function initializeDatabaseIfEmpty() {
+  // Always initialize product catalog if completely empty (real Chhattisgarh starter inventory)
   const productCount = await db.products.count();
   if (productCount === 0) {
     for (const p of INITIAL_PRODUCTS) {
@@ -189,6 +190,14 @@ export async function initializeDatabaseIfEmpty() {
     }
   }
 
+  // Production stores start with CLEAN customers, transactions, and spoilage tables.
+  // Real store owners add their own genuine customers and ledger entries.
+}
+
+/**
+ * Explicit Demo Sandbox Seeder — Only triggered when user explicitly explores the Demo sandbox.
+ */
+export async function seedDemoSandboxData() {
   const customerCount = await db.customers.count();
   if (customerCount === 0) {
     for (const c of INITIAL_CUSTOMERS) {
@@ -198,14 +207,13 @@ export async function initializeDatabaseIfEmpty() {
         id: customerId
       });
 
-      // Add a realistic initial transaction for the balance
       await db.transactions.add({
         id: 'txn_' + Math.random().toString(36).substring(2, 9),
         customerId,
         type: 'UDHAAR',
         amount: c.balanceDue,
         timestamp: c.updatedAt,
-        note: c.notes || 'शुरुआती बाकी (Initial balance)'
+        note: c.notes || 'डेमो बाकी (Sample ledger entry)'
       });
     }
   }

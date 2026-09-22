@@ -5,6 +5,7 @@ import { Customer } from '../models/Customer.js';
 import { Transaction } from '../models/Transaction.js';
 import { Sale } from '../models/Sale.js';
 import { SpoilageLog } from '../models/SpoilageLog.js';
+import { Product } from '../models/Product.js';
 
 const router = Router();
 
@@ -123,8 +124,40 @@ router.post('/sync', requireAuth, async (req: Request, res: Response) => {
       }
     }
 
-    // 5. Query Server Deltas (Fetch records created/updated after client's lastSyncTimestamp)
+    // 5. Process Incoming Product Mutations
+    if (mutations?.products && Array.isArray(mutations.products)) {
+      for (const prod of mutations.products) {
+        if (!prod.clientUUID || !prod.name) continue;
+
+        await Product.findOneAndUpdate(
+          { tenantId, clientUUID: prod.clientUUID },
+          {
+            $set: {
+              name: prod.name,
+              hindiName: prod.hindiName || prod.name,
+              category: prod.category || 'staples',
+              purchasePrice: prod.purchasePrice || 0,
+              sellingPrice: prod.sellingPrice || 0,
+              stockQty: prod.stockQty || 0,
+              unit: prod.unit || 'kg',
+              minStockThreshold: prod.minStockThreshold || 5,
+              isLoose: prod.isLoose || false,
+              barcode: prod.barcode,
+              expiryDate: prod.expiryDate ? new Date(prod.expiryDate) : undefined,
+            },
+          },
+          { upsert: true }
+        );
+      }
+    }
+
+    // 6. Query Server Deltas (Fetch records created/updated after client's lastSyncTimestamp)
     const sinceDate = lastSyncTimestamp ? new Date(lastSyncTimestamp) : new Date(0);
+
+    const updatedProducts = await Product.find({
+      tenantId,
+      updatedAt: { $gt: sinceDate },
+    }).lean();
 
     const updatedCustomers = await Customer.find({
       tenantId,
@@ -140,6 +173,7 @@ router.post('/sync', requireAuth, async (req: Request, res: Response) => {
       status: 'SUCCESS',
       serverTimestamp: now.toISOString(),
       deltas: {
+        products: updatedProducts,
         customers: updatedCustomers,
         transactions: updatedTransactions,
       },

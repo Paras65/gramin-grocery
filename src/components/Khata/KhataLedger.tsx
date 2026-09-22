@@ -36,7 +36,9 @@ export const KhataLedger: React.FC = () => {
   const [newCustPara, setNewCustPara] = useState('Patel Para (पटेल पारा)');
   const [newCustBalance, setNewCustBalance] = useState('');
   const [newCustDueReason, setNewCustDueReason] = useState<DueReason>('KHARIF_DHAN');
-  const [newCustDueDate, setNewCustDueDate] = useState('2026-11-25');
+  const [newCustDueDate, setNewCustDueDate] = useState(() => {
+    return new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+  });
   const [newCustNotes, setNewCustNotes] = useState('');
 
   // Get distinct Paras
@@ -104,7 +106,7 @@ export const KhataLedger: React.FC = () => {
     await db.customers.add({
       id: customerId,
       name: newCustName.trim(),
-      phone: newCustPhone.trim() || '98XXXXXXXX',
+      phone: newCustPhone.trim(),
       para: newCustPara,
       balanceDue: initialBal,
       dueDate: newCustDueDate,

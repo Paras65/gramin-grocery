@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
-import { initializeDatabaseIfEmpty } from './db';
+import { initializeDatabaseIfEmpty, seedDemoSandboxData } from './db';
 import { Header } from './components/Header';
 import { QuickBilling } from './components/POS/QuickBilling';
 import { KhataLedger } from './components/Khata/KhataLedger';
@@ -76,10 +76,11 @@ const MainApp: React.FC = () => {
   if (!isLoggedIn && !isDemoExploring) {
     return (
       <WelcomeLandingPage
-        onExploreDemo={() => {
+        onExploreDemo={async () => {
           if (typeof window !== 'undefined') {
             sessionStorage.setItem('gk_exploring_demo', 'true');
           }
+          await seedDemoSandboxData();
           setIsDemoExploring(true);
         }}
         onLoginSuccess={() => {

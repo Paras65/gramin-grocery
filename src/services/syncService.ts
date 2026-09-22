@@ -1,5 +1,5 @@
 import { db, clearDatabase, initializeDatabaseIfEmpty } from '../db';
-import type { Customer, Sale, SpoilageLog, Transaction, TenantInfo, UserRole } from '../types';
+import type { Customer, Product, Sale, SpoilageLog, Transaction, TenantInfo, UserRole } from '../types';
 
 const API_BASE = 
   import.meta.env.VITE_API_URL || 
@@ -267,6 +267,7 @@ class SyncService {
       const lastSyncTimestamp = localStorage.getItem('gk_last_sync') || undefined;
 
       // 1. Gather all local records
+      const products = await db.products.toArray();
       const customers = await db.customers.toArray();
       const transactions = await db.transactions.toArray();
       const sales = await db.sales.toArray();
@@ -275,6 +276,20 @@ class SyncService {
       const payload = {
         lastSyncTimestamp,
         mutations: {
+          products: products.map((p: Product) => ({
+            clientUUID: p.id,
+            name: p.name,
+            hindiName: p.hindiName,
+            category: p.category,
+            purchasePrice: p.purchasePrice,
+            sellingPrice: p.sellingPrice,
+            stockQty: p.stockQty,
+            unit: p.unit,
+            minStockThreshold: p.minStockThreshold,
+            isLoose: p.isLoose,
+            barcode: p.barcode,
+            expiryDate: p.expiryDate,
+          })),
           customers: customers.map((c: Customer) => ({
             clientUUID: c.id,
             name: c.name,
@@ -332,7 +347,63 @@ class SyncService {
 
       const syncResult = await res.json();
 
-      // 2. Save new sync timestamp
+      // 2. Apply incoming cloud deltas to local Dexie IndexedDB (Full 2-Way Sync)
+      if (syncResult.deltas) {
+        // Delta A: Products
+        if (syncResult.deltas.products?.length) {
+          for (const p of syncResult.deltas.products) {
+            await db.products.put({
+              id: p.clientUUID,
+              name: p.name,
+              hindiName: p.hindiName || p.name,
+              category: p.category,
+              purchasePrice: p.purchasePrice,
+              sellingPrice: p.sellingPrice,
+              stockQty: p.stockQty,
+              unit: p.unit,
+              minStockThreshold: p.minStockThreshold,
+              isLoose: p.isLoose,
+              barcode: p.barcode,
+              expiryDate: p.expiryDate ? new Date(p.expiryDate).toISOString().split('T')[0] : undefined,
+            });
+          }
+        }
+
+        // Delta B: Customers
+        if (syncResult.deltas.customers?.length) {
+          for (const c of syncResult.deltas.customers) {
+            await db.customers.put({
+              id: c.clientUUID,
+              name: c.name,
+              phone: c.phone,
+              para: c.para,
+              balanceDue: c.balanceDue,
+              dueDate: c.dueDate ? new Date(c.dueDate).toISOString().split('T')[0] : undefined,
+              dueReason: c.dueReason,
+              notes: c.notes,
+              createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : new Date().toISOString(),
+              updatedAt: c.updatedAt ? new Date(c.updatedAt).toISOString() : new Date().toISOString(),
+            });
+          }
+        }
+
+        // Delta C: Transactions
+        if (syncResult.deltas.transactions?.length) {
+          for (const t of syncResult.deltas.transactions) {
+            await db.transactions.put({
+              id: t.clientTxnId,
+              customerId: t.customerId,
+              type: t.type,
+              amount: t.amount,
+              timestamp: t.timestamp ? new Date(t.timestamp).toISOString() : new Date().toISOString(),
+              note: t.note,
+              billItemsSummary: t.billItemsSummary,
+            });
+          }
+        }
+      }
+
+      // 3. Save new sync timestamp
       if (syncResult.serverTimestamp) {
         localStorage.setItem('gk_last_sync', syncResult.serverTimestamp);
       }
