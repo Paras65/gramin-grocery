@@ -1,0 +1,493 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { db } from '../../db';
+import { useLanguage } from '../../context/LanguageContext';
+import type { DailyCashClose as DailyCashCloseType, DailyExpense } from '../../types';
+import {
+  connectBluetoothPrinter,
+  disconnectBluetoothPrinter,
+  isBluetoothPrinterConnected,
+  printDaySummary,
+} from '../../utils/thermalPrint';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function todayStr(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function nowTimeStr(): string {
+  return new Date().toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtINR(n: number): string {
+  return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+export const DailyCashClose: React.FC = () => {
+  const { t } = useLanguage();
+  const tc = t.cashClose;
+
+  const today = todayStr();
+
+  // Auto-fetched totals
+  const [cashSalesTotal, setCashSalesTotal] = useState<number>(0);
+  const [jamaTotal, setJamaTotal] = useState<number>(0);
+  const [loadingTotals, setLoadingTotals] = useState<boolean>(true);
+
+  // Form state
+  const [physicalCash, setPhysicalCash] = useState<string>('');
+  const [expenses, setExpenses] = useState<DailyExpense[]>([]);
+  const [expDesc, setExpDesc] = useState<string>('');
+  const [expAmt, setExpAmt] = useState<string>('');
+  const [note, setNote] = useState<string>('');
+
+  // Saved record
+  const [savedRecord, setSavedRecord] = useState<DailyCashCloseType | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+
+  // Bluetooth
+  const [btConnected, setBtConnected] = useState<boolean>(false);
+  const [btConnecting, setBtConnecting] = useState<boolean>(false);
+  const [btSupported] = useState<boolean>('bluetooth' in navigator);
+
+  // ─── Load Today's Totals ─────────────────────────────────────────────────
+  const loadTotals = useCallback(async () => {
+    setLoadingTotals(true);
+    try {
+      // Cash sales today
+      const todaySales = await db.sales
+        .where('timestamp')
+        .between(
+          new Date(today + 'T00:00:00').toISOString(),
+          new Date(today + 'T23:59:59').toISOString(),
+          true, true
+        )
+        .toArray();
+
+      // Filter by payment mode in JS (Dexie compound index not set up for paymentMode+timestamp)
+      const cashSales = todaySales
+        .filter(s => s.paymentMode === 'CASH')
+        .reduce((sum, s) => sum + s.totalAmount, 0);
+
+      // Jama (credit repayments) today
+      const allTxns = await db.transactions
+        .where('timestamp')
+        .between(
+          new Date(today + 'T00:00:00').toISOString(),
+          new Date(today + 'T23:59:59').toISOString(),
+          true, true
+        )
+        .toArray();
+
+      const jamaCollected = allTxns
+        .filter(tx => tx.type === 'JAMA')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+
+      setCashSalesTotal(Math.round(cashSales * 100) / 100);
+      setJamaTotal(Math.round(jamaCollected * 100) / 100);
+
+      // Check if already closed today
+      const existing = await db.dailyCashClose
+        .where('date').equals(today)
+        .first();
+      if (existing) setSavedRecord(existing);
+
+    } finally {
+      setLoadingTotals(false);
+    }
+  }, [today]);
+
+  useEffect(() => { loadTotals(); }, [loadTotals]);
+
+  // ─── Computed values ─────────────────────────────────────────────────────
+  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+  const physical = parseFloat(physicalCash) || 0;
+  const expectedCash = cashSalesTotal + jamaTotal - totalExpenses;
+  const difference = physical - expectedCash;
+
+  // ─── Expense helpers ─────────────────────────────────────────────────────
+  const addExpense = () => {
+    const amt = parseFloat(expAmt);
+    if (!expDesc.trim() || isNaN(amt) || amt <= 0) return;
+    setExpenses(prev => [...prev, {
+      id: 'exp_' + Math.random().toString(36).substring(2, 9),
+      description: expDesc.trim(),
+      amount: amt,
+      timestamp: new Date().toISOString(),
+    }]);
+    setExpDesc('');
+    setExpAmt('');
+  };
+
+  const removeExpense = (id?: string) => {
+    setExpenses(prev => prev.filter(e => e.id !== id));
+  };
+
+  // ─── Save / Close Day ────────────────────────────────────────────────────
+  const closeDay = async () => {
+    if (!physicalCash || isNaN(parseFloat(physicalCash))) return;
+
+    const record: DailyCashCloseType = {
+      id: 'cashclose_' + today,
+      date: today,
+      physicalCashInDrawer: physical,
+      totalCashSalesDay: cashSalesTotal,
+      totalJamaCollectedDay: jamaTotal,
+      totalExpenses,
+      expenses,
+      calculatedExpectedCash: expectedCash,
+      cashDifference: difference,
+      note: note.trim() || undefined,
+      closedAt: new Date().toISOString(),
+    };
+
+    await db.dailyCashClose.put(record);
+    setSavedRecord(record);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
+  };
+
+  // ─── WhatsApp Day Summary ─────────────────────────────────────────────────
+  const sendWhatsApp = () => {
+    const displayDate = new Date(today).toLocaleDateString('hi-IN', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    const diffLine =
+      difference === 0 ? '✅ गल्ला बिल्कुल मिला'
+      : difference > 0 ? `📈 ${fmtINR(difference)} अतिरिक्त`
+      : `⚠️ ${fmtINR(Math.abs(difference))} कम`;
+
+    const expLines = expenses.map(e => `   • ${e.description}: ${fmtINR(e.amount)}`).join('\n');
+
+    const msg = [
+      `🏪 *ग्रामीण किराना — दैनिक गल्ला हिसाब*`,
+      `📅 ${displayDate}`,
+      ``,
+      `💰 नकद बिक्री: *${fmtINR(cashSalesTotal)}*`,
+      `📥 जमा उधार: *${fmtINR(jamaTotal)}*`,
+      expenses.length > 0 ? `\n📤 खर्चे:\n${expLines}\n   कुल खर्च: *${fmtINR(totalExpenses)}*` : '',
+      ``,
+      `🧾 अपेक्षित नकद: *${fmtINR(expectedCash)}*`,
+      `💵 गल्ले में नकद: *${fmtINR(physical)}*`,
+      `${diffLine}`,
+      note ? `\n📝 ${note}` : '',
+      ``,
+      `⏰ बंद: ${nowTimeStr()}`,
+      `_ग्रामीण किराना ऐप द्वारा_`,
+    ].filter(Boolean).join('\n');
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  // ─── Thermal Print ────────────────────────────────────────────────────────
+  const handlePrint = async () => {
+    await printDaySummary({
+      storeName: 'ग्रामीण किराना',
+      date: new Date(today).toLocaleDateString('hi-IN'),
+      cashSales: cashSalesTotal,
+      jamaCollected: jamaTotal,
+      totalExpenses,
+      expenses: expenses.map(e => ({ description: e.description, amount: e.amount })),
+      physicalCash: physical,
+      expectedCash,
+      difference,
+      note: note || undefined,
+      closedAt: new Date().toLocaleTimeString('hi-IN'),
+    });
+  };
+
+  // ─── Bluetooth Connect ────────────────────────────────────────────────────
+  const handleBluetooth = async () => {
+    if (btConnected) {
+      disconnectBluetoothPrinter();
+      setBtConnected(false);
+      return;
+    }
+    setBtConnecting(true);
+    const ok = await connectBluetoothPrinter();
+    setBtConnected(ok && isBluetoothPrinterConnected());
+    setBtConnecting(false);
+  };
+
+  // ─── Difference Color ─────────────────────────────────────────────────────
+  const diffBg    = difference === 0 ? 'bg-emerald-50 border-emerald-300' : difference > 0 ? 'bg-blue-50 border-blue-300' : 'bg-red-50 border-red-300';
+  const diffText  = difference === 0 ? 'text-emerald-700' : difference > 0 ? 'text-blue-700' : 'text-red-700';
+  const diffLabel = difference === 0 ? tc.matched : difference > 0 ? `${tc.excess}: ${fmtINR(difference)}` : `${tc.shortage}: ${fmtINR(Math.abs(difference))}`;
+
+  // ─── Today display ────────────────────────────────────────────────────────
+  const todayDisplay = new Date().toLocaleDateString('hi-IN', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+  return (
+    <div className="max-w-3xl mx-auto px-2 sm:px-4 py-4 space-y-4">
+
+      {/* Header */}
+      <div className="village-card p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <div className="text-3xl sm:text-4xl">🏦</div>
+          <div className="min-w-0">
+            <h2 className="text-xl sm:text-2xl font-black text-stone-900 leading-tight">{tc.title}</h2>
+            <p className="text-sm text-stone-600 mt-0.5">{tc.subtitle}</p>
+            <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 w-fit">
+              <span>📅</span>
+              <span>{todayDisplay}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bluetooth connect badge */}
+        {btSupported && (
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleBluetooth}
+              disabled={btConnecting}
+              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+                btConnected
+                  ? 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100'
+                  : 'bg-stone-100 border-stone-300 text-stone-700 hover:bg-stone-200'
+              }`}
+            >
+              <span>{btConnected ? '🖨️ प्रिंटर जुड़ा ✅' : btConnecting ? '⏳ जोड़ रहे हैं...' : `🖨️ ${tc.bluetoothConnect}`}</span>
+            </button>
+            {btConnected && (
+              <span className="text-[11px] text-emerald-700 font-medium">Bluetooth ESC/POS ready</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Already closed today — show summary card */}
+      {savedRecord && (
+        <div className="village-card bahi-khata-edge-green p-4 bg-emerald-50/50">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xl">✅</span>
+            <h3 className="font-black text-emerald-800">आज का गल्ला बंद हो चुका है</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="bg-white rounded-lg px-3 py-2 border border-emerald-200">
+              <div className="text-xs text-stone-500">नकद बिक्री</div>
+              <div className="font-bold text-stone-900">{fmtINR(savedRecord.totalCashSalesDay)}</div>
+            </div>
+            <div className="bg-white rounded-lg px-3 py-2 border border-emerald-200">
+              <div className="text-xs text-stone-500">जमा उधार</div>
+              <div className="font-bold text-stone-900">{fmtINR(savedRecord.totalJamaCollectedDay)}</div>
+            </div>
+            <div className="bg-white rounded-lg px-3 py-2 border border-emerald-200">
+              <div className="text-xs text-stone-500">गल्ले में नकद</div>
+              <div className="font-bold text-stone-900">{fmtINR(savedRecord.physicalCashInDrawer)}</div>
+            </div>
+            <div className={`rounded-lg px-3 py-2 border ${savedRecord.cashDifference === 0 ? 'bg-emerald-100 border-emerald-300' : savedRecord.cashDifference > 0 ? 'bg-blue-100 border-blue-300' : 'bg-red-100 border-red-300'}`}>
+              <div className="text-xs text-stone-500">मिलान अंतर</div>
+              <div className={`font-bold ${savedRecord.cashDifference === 0 ? 'text-emerald-800' : savedRecord.cashDifference > 0 ? 'text-blue-800' : 'text-red-800'}`}>
+                {savedRecord.cashDifference === 0 ? '✅ सही मिला' : savedRecord.cashDifference > 0 ? `+${fmtINR(savedRecord.cashDifference)}` : fmtINR(savedRecord.cashDifference)}
+              </div>
+            </div>
+          </div>
+          <p className="text-[11px] text-stone-500 mt-3">{tc.closedAt} {new Date(savedRecord.closedAt).toLocaleTimeString('hi-IN')}</p>
+          {/* Allow reprint/reshare */}
+          <div className="flex gap-2 mt-3 flex-wrap">
+            <button
+              onClick={sendWhatsApp}
+              className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
+            >
+              {tc.whatsappSummary}
+            </button>
+            <button
+              onClick={handlePrint}
+              className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 bg-stone-800 hover:bg-stone-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
+            >
+              {tc.printSummary}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-fetched totals */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Cash Sales Card */}
+        <div className="village-card bahi-khata-edge-green p-4">
+          <div className="text-xs font-semibold text-stone-500 mb-1">{tc.cashSalesLabel}</div>
+          {loadingTotals ? (
+            <div className="h-7 bg-stone-200 animate-pulse rounded w-24" />
+          ) : (
+            <div className="text-2xl font-black text-stone-900">{fmtINR(cashSalesTotal)}</div>
+          )}
+          <div className="text-[11px] text-emerald-700 mt-1">🟢 नकद (Cash) बिल्स आज</div>
+        </div>
+
+        {/* Jama Collected Card */}
+        <div className="village-card bahi-khata-edge-gold p-4">
+          <div className="text-xs font-semibold text-stone-500 mb-1">{tc.jamaLabel}</div>
+          {loadingTotals ? (
+            <div className="h-7 bg-stone-200 animate-pulse rounded w-24" />
+          ) : (
+            <div className="text-2xl font-black text-stone-900">{fmtINR(jamaTotal)}</div>
+          )}
+          <div className="text-[11px] text-amber-700 mt-1">📥 उधार जमा हुई रकम</div>
+        </div>
+      </div>
+
+      {/* Physical Cash Input */}
+      <div className="village-card p-4 sm:p-5">
+        <label className="block text-sm font-bold text-stone-800 mb-1">
+          💵 {tc.physicalCash}
+        </label>
+        <p className="text-[11px] text-stone-500 mb-3">{tc.physicalCashHint}</p>
+        <input
+          type="number"
+          inputMode="numeric"
+          value={physicalCash}
+          onChange={e => setPhysicalCash(e.target.value)}
+          placeholder="0"
+          className="w-full text-3xl sm:text-4xl font-black text-stone-900 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 placeholder:text-stone-300 transition-all"
+        />
+      </div>
+
+      {/* Expenses Section */}
+      <div className="village-card p-4 sm:p-5">
+        <h3 className="font-black text-stone-800 mb-3">📤 {tc.expensesLabel}</h3>
+
+        {/* Expense add row */}
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            value={expDesc}
+            onChange={e => setExpDesc(e.target.value)}
+            placeholder={tc.expenseDesc}
+            className="flex-1 min-w-0 text-sm bg-white border border-stone-300 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+            onKeyDown={e => e.key === 'Enter' && addExpense()}
+          />
+          <input
+            type="number"
+            inputMode="numeric"
+            value={expAmt}
+            onChange={e => setExpAmt(e.target.value)}
+            placeholder="₹"
+            className="w-20 sm:w-24 text-sm text-right bg-white border border-stone-300 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+            onKeyDown={e => e.key === 'Enter' && addExpense()}
+          />
+          <button
+            onClick={addExpense}
+            className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-sm px-4 py-2 rounded-lg shrink-0 transition-all cursor-pointer"
+          >
+            +
+          </button>
+        </div>
+
+        {/* Expense list */}
+        {expenses.length === 0 ? (
+          <p className="text-[12px] text-stone-400 text-center py-3">कोई खर्च नहीं जोड़ा गया है। ऊपर से जोड़ें।</p>
+        ) : (
+          <div className="space-y-1.5">
+            {expenses.map(exp => (
+              <div key={exp.id} className="flex items-center justify-between bg-stone-50 border border-stone-200 rounded-lg px-3 py-2">
+                <span className="text-sm text-stone-800 min-w-0 truncate mr-2">{exp.description}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-sm font-bold text-red-700">{fmtINR(exp.amount)}</span>
+                  <button
+                    onClick={() => removeExpense(exp.id)}
+                    className="text-stone-400 hover:text-red-600 text-sm font-bold cursor-pointer"
+                    title="हटाएं"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="flex justify-between text-sm font-black text-red-700 pt-1 border-t border-stone-200 mt-1">
+              <span>कुल खर्च:</span>
+              <span>{fmtINR(totalExpenses)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Cash Reconciliation Panel */}
+      {physicalCash !== '' && (
+        <div className={`village-card p-4 sm:p-5 border-2 ${diffBg}`}>
+          <h3 className="font-black text-stone-800 mb-4">🧾 {tc.difference}</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-stone-600">{tc.cashSalesLabel}</span>
+              <span className="font-bold text-emerald-700">{fmtINR(cashSalesTotal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-stone-600">{tc.jamaLabel}</span>
+              <span className="font-bold text-amber-700">{fmtINR(jamaTotal)}</span>
+            </div>
+            {totalExpenses > 0 && (
+              <div className="flex justify-between">
+                <span className="text-stone-600">कुल खर्च (-):</span>
+                <span className="font-bold text-red-700">- {fmtINR(totalExpenses)}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-t border-stone-300 pt-2">
+              <span className="text-stone-700 font-semibold">{tc.expectedCash}</span>
+              <span className="font-black text-stone-900">{fmtINR(expectedCash)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-stone-700 font-semibold">{tc.physicalCash}</span>
+              <span className="font-black text-stone-900">{fmtINR(physical)}</span>
+            </div>
+          </div>
+
+          {/* Difference Badge */}
+          <div className={`mt-4 rounded-xl px-4 py-3 border-2 text-center ${diffBg}`}>
+            <div className={`text-lg font-black ${diffText}`}>{diffLabel}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Note */}
+      <div className="village-card p-4">
+        <label className="block text-sm font-bold text-stone-800 mb-2">📝 {tc.note}</label>
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="जैसे: कर्मचारी की छुट्टी थी, रात को देर से बंद हुई..."
+          rows={2}
+          className="w-full text-sm bg-white border border-stone-300 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200 resize-none"
+        />
+      </div>
+
+      {/* Action Buttons */}
+      <div className="space-y-2 pb-4">
+        {/* Save / Close Day */}
+        <button
+          onClick={closeDay}
+          disabled={!physicalCash || isNaN(parseFloat(physicalCash))}
+          className={`w-full py-4 rounded-xl font-black text-base tracking-tight transition-all active:scale-[0.98] cursor-pointer ${
+            saveSuccess
+              ? 'bg-emerald-600 text-white'
+              : physicalCash
+              ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-md'
+              : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+          }`}
+        >
+          {saveSuccess ? '✅ गल्ला सुरक्षित हो गया!' : `💾 ${tc.closeDayBtn}`}
+        </button>
+
+        {/* WhatsApp + Print row */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={sendWhatsApp}
+            disabled={!physicalCash}
+            className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-200 disabled:text-stone-400 text-white text-sm font-bold px-3 py-3 rounded-xl transition-colors cursor-pointer active:scale-95"
+          >
+            📲 व्हाट्सएप
+          </button>
+          <button
+            onClick={handlePrint}
+            disabled={!physicalCash}
+            className="flex items-center justify-center gap-1.5 bg-stone-800 hover:bg-stone-700 disabled:bg-stone-200 disabled:text-stone-400 text-white text-sm font-bold px-3 py-3 rounded-xl transition-colors cursor-pointer active:scale-95"
+          >
+            🖨️ {btConnected ? 'BT प्रिंट' : tc.printFallback}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
