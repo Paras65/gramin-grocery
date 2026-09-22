@@ -17,7 +17,10 @@ import { WelcomeLandingPage } from './components/Landing/WelcomeLandingPage';
 import { LowStockAlertBanner } from './components/Inventory/LowStockAlertBanner';
 import { ProfitLossReport } from './components/Reports/ProfitLossReport';
 import { UpdateNotificationBanner } from './components/Common/UpdateNotificationBanner';
+import { SuperAdminDashboard } from './components/Admin/SuperAdminDashboard';
+import { AdminLoginModal } from './components/Admin/AdminLoginModal';
 import { syncService } from './services/syncService';
+import { adminService } from './services/adminService';
 import type { UserRole } from './types';
 
 const MainApp: React.FC = () => {
@@ -29,6 +32,9 @@ const MainApp: React.FC = () => {
   const [posSearchQuery, setPosSearchQuery] = useState<string>('');
   const [isDbReady, setIsDbReady] = useState<boolean>(false);
   const [lowStockDismissed, setLowStockDismissed] = useState<boolean>(false);
+
+  const [isAdminMode, setIsAdminMode] = useState<boolean>(() => adminService.isSuperAdmin());
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState<boolean>(false);
 
   const [isLoggedIn, setIsLoggedIn] = useState(syncService.isLoggedIn());
   const [userRole, setUserRole] = useState<UserRole>(syncService.getRole());
@@ -59,7 +65,14 @@ const MainApp: React.FC = () => {
       }
     });
 
-    return () => unsub();
+    const unsubAdmin = adminService.subscribe(() => {
+      setIsAdminMode(adminService.isSuperAdmin());
+    });
+
+    return () => {
+      unsub();
+      unsubAdmin();
+    };
   }, []);
 
   if (!isDbReady) {
@@ -72,25 +85,44 @@ const MainApp: React.FC = () => {
     );
   }
 
+  // Super Admin Command Center Mode
+  if (isAdminMode) {
+    return (
+      <SuperAdminDashboard
+        onExit={() => {
+          setIsAdminMode(false);
+        }}
+      />
+    );
+  }
+
   // Pre-Login Gateway: Show Welcome Landing Page if not authenticated and not exploring demo
   if (!isLoggedIn && !isDemoExploring) {
     return (
-      <WelcomeLandingPage
-        onExploreDemo={async () => {
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('gk_exploring_demo', 'true');
-          }
-          await seedDemoSandboxData();
-          setIsDemoExploring(true);
-        }}
-        onLoginSuccess={() => {
-          setIsLoggedIn(true);
-          setIsDemoExploring(false);
-          if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('gk_exploring_demo');
-          }
-        }}
-      />
+      <>
+        <WelcomeLandingPage
+          onExploreDemo={async () => {
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('gk_exploring_demo', 'true');
+            }
+            await seedDemoSandboxData();
+            setIsDemoExploring(true);
+          }}
+          onLoginSuccess={() => {
+            setIsLoggedIn(true);
+            setIsDemoExploring(false);
+            if (typeof window !== 'undefined') {
+              sessionStorage.removeItem('gk_exploring_demo');
+            }
+          }}
+          onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+        />
+        <AdminLoginModal
+          isOpen={isAdminLoginOpen}
+          onClose={() => setIsAdminLoginOpen(false)}
+          onSuccess={() => setIsAdminMode(true)}
+        />
+      </>
     );
   }
 
@@ -160,7 +192,9 @@ const MainApp: React.FC = () => {
             <p className="text-xs mt-1">यह सुविधा मुनीम लॉगिन में बंद है।</p>
           </div>
         )}
-        {activeTab === 'settings' && userRole === 'owner' && <BackupRestore />}
+        {activeTab === 'settings' && userRole === 'owner' && (
+          <BackupRestore onOpenAdminLogin={() => setIsAdminLoginOpen(true)} />
+        )}
       </main>
 
       {/* Voice Assistant Modal */}
@@ -188,6 +222,13 @@ const MainApp: React.FC = () => {
           setIsMunimModalOpen(false);
           setUserRole('munim');
         }}
+      />
+
+      {/* Platform Super Admin Login Modal */}
+      <AdminLoginModal
+        isOpen={isAdminLoginOpen}
+        onClose={() => setIsAdminLoginOpen(false)}
+        onSuccess={() => setIsAdminMode(true)}
       />
 
       {/* Village Premium Mobile Bottom Navigation Bar */}

@@ -102,7 +102,7 @@ export interface DailyCashClose {
 
 export type TenantPlan = 'FREE' | 'PRO';
 
-export type UserRole = 'owner' | 'munim';
+export type UserRole = 'owner' | 'munim' | 'superadmin';
 
 export interface TenantInfo {
   id?: string;
@@ -114,4 +114,44 @@ export interface TenantInfo {
   plan?: TenantPlan;
   planExpiryDate?: string;
   munimPin?: string; // 4-digit munim/staff PIN (local only, hashed)
+}
+
+export interface PlatformMetrics {
+  totalStores: number;
+  proStores: number;
+  freeStores: number;
+  totalCustomers: number;
+  totalProducts: number;
+  totalGMV: number;
+  totalSalesCount: number;
+  totalVillageDebt: number;
+}
+
+export interface DistrictStat {
+  district: string;
+  storesCount: number;
+}
+
+export interface AdminStoreSummary {
+  id: string;
+  storeName: string;
+  ownerName: string;
+  phone: string;
+  address: {
+    village: string;
+    mohalla?: string;
+    block: string;
+    district: string;
+    state: string;
+  };
+  subscription: {
+    plan: TenantPlan;
+    status: 'ACTIVE' | 'EXPIRED';
+  };
+  customerCount: number;
+  totalDebt: number;
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }

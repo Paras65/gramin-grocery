@@ -9,6 +9,7 @@ import { apiLimiter } from './middleware/security.js';
 import authRoutes from './routes/auth.routes.js';
 import syncRoutes from './routes/sync.routes.js';
 import tenantRoutes from './routes/tenant.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 
 dotenv.config();
 
@@ -43,6 +44,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/sync', syncRoutes);
 app.use('/api/v1/tenant', tenantRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Production Static Frontend Serving (Unified Deployment on Render)
 app.use(express.static(clientDistPath));

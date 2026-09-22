@@ -7,8 +7,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'gk_default_secret_key_2026';
 
 export interface AuthUserPayload {
   userId: string;
-  tenantId: string;
-  role: 'OWNER' | 'CASHIER';
+  tenantId?: string;
+  role: 'OWNER' | 'CASHIER' | 'SUPER_ADMIN';
   mobile: string;
 }
 
@@ -63,14 +63,18 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// 3. Role-Based Access Guard (e.g. requireRole('OWNER'))
-export function requireRole(allowedRole: 'OWNER' | 'CASHIER') {
+// 3. Role-Based Access Guard (e.g. requireRole('OWNER') or requireRole('SUPER_ADMIN'))
+export function requireRole(allowedRole: 'OWNER' | 'CASHIER' | 'SUPER_ADMIN') {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    if (allowedRole === 'OWNER' && req.user.role !== 'OWNER') {
+    if (allowedRole === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Access forbidden: Super Admin privileges required' });
+    }
+
+    if (allowedRole === 'OWNER' && req.user.role !== 'OWNER' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ error: 'Access forbidden: Owner role required' });
     }
 

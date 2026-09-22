@@ -1,9 +1,9 @@
 import { AsyncLocalStorage } from 'async_hooks';
 
 export interface TenantStore {
-  tenantId: string;
+  tenantId?: string;
   userId?: string;
-  role?: 'OWNER' | 'CASHIER';
+  role?: 'OWNER' | 'CASHIER' | 'SUPER_ADMIN';
 }
 
 const tenantStorage = new AsyncLocalStorage<TenantStore>();

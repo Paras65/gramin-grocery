@@ -19,6 +19,7 @@
 11. [Module 11: 2-Way Multi-Tenant Cloud Sync Engine](#module-11-2-way-multi-tenant-cloud-sync-engine)
 12. [Module 12: Subscription & Role-Based Guardrails](#module-12-subscription--role-based-guardrails)
 13. [Module 13: Progressive Web App (PWA), Caching & SEO](#module-13-progressive-web-app-pwa-caching--seo)
+14. [Module 14: Central Super Admin Command Center & Multi-Store Control](#module-14-central-super-admin-command-center--multi-store-control)
 
 ---
 
@@ -271,6 +272,29 @@
 ### Mandatory Enhancements
 - [x] Add an in-app "ऐप इंस्टॉल करें (Install App)" quick-action button in Header/Settings using `beforeinstallprompt` event.
 - [x] Precache all critical SVG assets in `public/sw.js` for seamless offline visuals.
+
+---
+
+## Module 14: Central Super Admin Command Center & Multi-Store Control
+
+### Current Workflow
+- High-level platform administration console for Gramin Kirana coordinators and operators.
+- Protected by `SUPER_ADMIN` role-based authentication and secure PIN gate (`AdminLoginModal.tsx`).
+- Real-time aggregated platform commerce KPIs: Total registered stores, Village Starter (Free) vs Gramin Pro breakdown, Platform GMV sum, and Total village Khata debt across Chhattisgarh.
+- Chhattisgarh district segmentation (Raipur, Durg, Bilaspur, Bastar, Surguja, Rajnandgaon, etc.).
+- Multi-store directory with live search by shop name, owner name, mobile, and village.
+- 1-click Pro plan upgrade/downgrade for village storekeepers paying offline in cash/Panchayat.
+- Direct phone dialing (`tel:`) and direct WhatsApp merchant assistance links.
+- Store suspension and reactivation safeguards with zero data leakage across tenants.
+
+### Identified Gaps & Edge Cases
+1. **Master Admin Bootstrap in Air-Gapped / New Environments:** Newly deployed nodes need immediate admin bootstrap credentials without relying on manual database document insertions.
+2. **Cross-Tenant Aggregation Isolation:** Aggregated platform counts must never bypass tenant isolation for regular storekeeper requests.
+
+### Mandatory Enhancements
+- [x] Master Admin fallback environment configuration (`SUPER_ADMIN_MOBILE`, `SUPER_ADMIN_PIN`) for initial bootstrap.
+- [x] Dedicated admin route protection (`requireRole('SUPER_ADMIN')`) with optional `tenantId` bypass exclusively for platform-level aggregations.
+- [x] 100% mobile-responsive command center view with touch-friendly cards, district filter chips, and plan toggle buttons.
 
 ---
 
