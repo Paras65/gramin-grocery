@@ -27,10 +27,22 @@ export function autoTenantPlugin(schema: Schema) {
 
   queryMethods.forEach((method) => {
     schema.pre(method, function (this: any) {
+      const options = (typeof this.getOptions === 'function' ? this.getOptions() : this.options) || {};
       const context = getTenantContext();
 
-      // Allow bypassing only if explicitly specified by system operations or if session is SUPER_ADMIN
-      if (this.getOptions().bypassTenantCheck || context?.role === 'SUPER_ADMIN') {
+      // 1. Explicit bypass flag on query options
+      if (options.bypassTenantCheck || this.bypassTenantCheck) {
+        return;
+      }
+
+      // 2. Active session is SUPER_ADMIN
+      if (context?.role === 'SUPER_ADMIN') {
+        return;
+      }
+
+      // 3. Query filter already explicitly targets a tenantId (e.g. per-tenant admin lookup)
+      const queryFilter = typeof this.getQuery === 'function' ? this.getQuery() : {};
+      if (queryFilter && queryFilter.tenantId) {
         return;
       }
 

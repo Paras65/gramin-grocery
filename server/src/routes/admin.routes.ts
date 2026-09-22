@@ -9,6 +9,7 @@ import { Customer } from '../models/Customer.js';
 import { Sale } from '../models/Sale.js';
 import { Product } from '../models/Product.js';
 import { adminAuthLimiter, requireAuth, requireRole } from '../middleware/security.js';
+import { runWithTenantContext } from '../middleware/tenantContext.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'gk_default_secret_key_2026';
@@ -76,130 +77,134 @@ router.post('/login', adminAuthLimiter, async (req: Request, res: Response) => {
 
 // 2. Platform-Wide Key Performance Metrics & Statistics
 router.get('/overview', requireAuth, requireRole('SUPER_ADMIN'), async (_req: Request, res: Response) => {
-  try {
-    const [
-      totalStores,
-      proStores,
-      freeStores,
-      totalCustomers,
-      totalProducts,
-      salesAgg,
-      debtAgg,
-      districtBreakdown,
-      recentStores
-    ] = await Promise.all([
-      Tenant.countDocuments(),
-      Tenant.countDocuments({ 'subscription.plan': 'PRO', 'subscription.status': 'ACTIVE' }),
-      Tenant.countDocuments({ 'subscription.plan': 'FREE' }),
-      Customer.countDocuments({ isDeleted: false }).setOptions({ bypassTenantCheck: true }),
-      Product.countDocuments({ isDeleted: false }).setOptions({ bypassTenantCheck: true }),
-      Sale.aggregate([
-        { $group: { _id: null, totalSalesAmount: { $sum: '$totalAmount' }, count: { $sum: 1 } } }
-      ]),
-      Customer.aggregate([
-        { $match: { isDeleted: false } },
-        { $group: { _id: null, totalBalanceDue: { $sum: '$balanceDue' } } }
-      ]),
-      Tenant.aggregate([
-        { $group: { _id: '$address.district', count: { $sum: 1 } } },
-        { $sort: { count: -1 } }
-      ]),
-      Tenant.find()
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .select('storeName ownerName phone address subscription createdAt')
-        .lean()
-    ]);
-
-    const totalGMV = salesAgg[0]?.totalSalesAmount || 0;
-    const totalSalesCount = salesAgg[0]?.count || 0;
-    const totalVillageDebt = debtAgg[0]?.totalBalanceDue || 0;
-
-    res.json({
-      metrics: {
+  return runWithTenantContext({ role: 'SUPER_ADMIN' }, async () => {
+    try {
+      const [
         totalStores,
         proStores,
         freeStores,
         totalCustomers,
         totalProducts,
-        totalGMV: Math.round(totalGMV * 100) / 100,
-        totalSalesCount,
-        totalVillageDebt: Math.round(totalVillageDebt * 100) / 100,
-      },
-      districtBreakdown: districtBreakdown.map(d => ({
-        district: d._id || 'अन्य (Other)',
-        storesCount: d.count,
-      })),
-      recentStores,
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+        salesAgg,
+        debtAgg,
+        districtBreakdown,
+        recentStores
+      ] = await Promise.all([
+        Tenant.countDocuments(),
+        Tenant.countDocuments({ 'subscription.plan': 'PRO', 'subscription.status': 'ACTIVE' }),
+        Tenant.countDocuments({ 'subscription.plan': 'FREE' }),
+        Customer.countDocuments({ isDeleted: false }).setOptions({ bypassTenantCheck: true }),
+        Product.countDocuments({ isDeleted: false }).setOptions({ bypassTenantCheck: true }),
+        Sale.aggregate([
+          { $group: { _id: null, totalSalesAmount: { $sum: '$totalAmount' }, count: { $sum: 1 } } }
+        ]),
+        Customer.aggregate([
+          { $match: { isDeleted: false } },
+          { $group: { _id: null, totalBalanceDue: { $sum: '$balanceDue' } } }
+        ]),
+        Tenant.aggregate([
+          { $group: { _id: '$address.district', count: { $sum: 1 } } },
+          { $sort: { count: -1 } }
+        ]),
+        Tenant.find()
+          .sort({ createdAt: -1 })
+          .limit(5)
+          .select('storeName ownerName phone address subscription createdAt')
+          .lean()
+      ]);
+
+      const totalGMV = salesAgg[0]?.totalSalesAmount || 0;
+      const totalSalesCount = salesAgg[0]?.count || 0;
+      const totalVillageDebt = debtAgg[0]?.totalBalanceDue || 0;
+
+      res.json({
+        metrics: {
+          totalStores,
+          proStores,
+          freeStores,
+          totalCustomers,
+          totalProducts,
+          totalGMV: Math.round(totalGMV * 100) / 100,
+          totalSalesCount,
+          totalVillageDebt: Math.round(totalVillageDebt * 100) / 100,
+        },
+        districtBreakdown: districtBreakdown.map(d => ({
+          district: d._id || 'अन्य (Other)',
+          storesCount: d.count,
+        })),
+        recentStores,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 });
 
 // 3. Searchable Stores Registry with Per-Store Summaries
 router.get('/stores', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
-  try {
-    const { search = '', plan = 'ALL', district = 'ALL' } = req.query;
+  return runWithTenantContext({ role: 'SUPER_ADMIN' }, async () => {
+    try {
+      const { search = '', plan = 'ALL', district = 'ALL' } = req.query;
 
-    const filter: any = {};
+      const filter: any = {};
 
-    if (search) {
-      const q = String(search).trim();
-      filter.$or = [
-        { storeName: { $regex: q, $options: 'i' } },
-        { ownerName: { $regex: q, $options: 'i' } },
-        { phone: { $regex: q, $options: 'i' } },
-        { 'address.village': { $regex: q, $options: 'i' } },
-        { 'address.district': { $regex: q, $options: 'i' } },
-      ];
+      if (search) {
+        const q = String(search).trim();
+        filter.$or = [
+          { storeName: { $regex: q, $options: 'i' } },
+          { ownerName: { $regex: q, $options: 'i' } },
+          { phone: { $regex: q, $options: 'i' } },
+          { 'address.village': { $regex: q, $options: 'i' } },
+          { 'address.district': { $regex: q, $options: 'i' } },
+        ];
+      }
+
+      if (plan !== 'ALL' && (plan === 'FREE' || plan === 'PRO')) {
+        filter['subscription.plan'] = plan;
+      }
+
+      if (district !== 'ALL') {
+        filter['address.district'] = String(district);
+      }
+
+      const tenants = await Tenant.find(filter)
+        .sort({ createdAt: -1 })
+        .lean();
+
+      // Enrich with live customer & sales counts per tenant
+      const enrichedStores = await Promise.all(
+        tenants.map(async (t) => {
+          const [customerCount, debtAgg, ownerUser] = await Promise.all([
+            Customer.countDocuments({ tenantId: t._id, isDeleted: false }).setOptions({ bypassTenantCheck: true }),
+            Customer.aggregate([
+              { $match: { tenantId: t._id, isDeleted: false } },
+              { $group: { _id: null, totalDebt: { $sum: '$balanceDue' } } }
+            ]),
+            User.findOne({ tenantId: t._id, role: 'OWNER' }).select('isActive lastLoginAt').lean()
+          ]);
+
+          return {
+            id: t._id,
+            storeName: t.storeName,
+            ownerName: t.ownerName,
+            phone: t.phone,
+            address: t.address,
+            subscription: t.subscription,
+            customerCount,
+            totalDebt: debtAgg[0]?.totalDebt || 0,
+            isActive: ownerUser ? ownerUser.isActive : true,
+            lastLoginAt: ownerUser?.lastLoginAt,
+            createdAt: t.createdAt,
+            updatedAt: t.updatedAt,
+          };
+        })
+      );
+
+      res.json({ stores: enrichedStores });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
     }
-
-    if (plan !== 'ALL' && (plan === 'FREE' || plan === 'PRO')) {
-      filter['subscription.plan'] = plan;
-    }
-
-    if (district !== 'ALL') {
-      filter['address.district'] = String(district);
-    }
-
-    const tenants = await Tenant.find(filter)
-      .sort({ createdAt: -1 })
-      .lean();
-
-    // Enrich with live customer & sales counts per tenant
-    const enrichedStores = await Promise.all(
-      tenants.map(async (t) => {
-        const [customerCount, debtAgg, ownerUser] = await Promise.all([
-          Customer.countDocuments({ tenantId: t._id, isDeleted: false }).setOptions({ bypassTenantCheck: true }),
-          Customer.aggregate([
-            { $match: { tenantId: t._id, isDeleted: false } },
-            { $group: { _id: null, totalDebt: { $sum: '$balanceDue' } } }
-          ]),
-          User.findOne({ tenantId: t._id, role: 'OWNER' }).select('isActive lastLoginAt').lean()
-        ]);
-
-        return {
-          id: t._id,
-          storeName: t.storeName,
-          ownerName: t.ownerName,
-          phone: t.phone,
-          address: t.address,
-          subscription: t.subscription,
-          customerCount,
-          totalDebt: debtAgg[0]?.totalDebt || 0,
-          isActive: ownerUser ? ownerUser.isActive : true,
-          lastLoginAt: ownerUser?.lastLoginAt,
-          createdAt: t.createdAt,
-          updatedAt: t.updatedAt,
-        };
-      })
-    );
-
-    res.json({ stores: enrichedStores });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+  });
 });
 
 // 4. Update Store Subscription Plan & Status (1-Click Pro Upgrade)
