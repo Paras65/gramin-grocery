@@ -10,6 +10,7 @@ import { db } from '../../db';
 import type { CartItem, Customer, PaymentMode, Product } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { printReceipt } from '../../utils/thermalPrint';
+import { generateQRCodeSVG, buildUpiPayUrl } from '../../utils/qrCode';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { DemoLimitModal } from '../Demo/DemoLimitModal';
 import { StoreAuthModal } from '../Auth/StoreAuthModal';
@@ -43,10 +44,18 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
   const [customUnit, setCustomUnit] = useState<string>('piece');
   const [saveCustomToCatalog, setSaveCustomToCatalog] = useState<boolean>(true);
 
+  // Discount & Store UPI states
+  const [discount, setDiscount] = useState<string>('');
+  const [storeUpiId, setStoreUpiId] = useState<string>(() => localStorage.getItem('gk_store_upi_id') || '');
+  const [isEditingUpi, setIsEditingUpi] = useState<boolean>(false);
+  const [tempUpiInput, setTempUpiInput] = useState<string>('');
+
   // Completed bill receipt modal
   const [lastCompletedBill, setLastCompletedBill] = useState<{
     items: CartItem[];
     total: number;
+    discount?: number;
+    originalTotal?: number;
     paymentMode: PaymentMode;
     customer?: Customer;
     timestamp: string;
@@ -196,7 +205,32 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
   };
 
   const totalBillAmount = Math.round(cart.reduce((sum, item) => sum + item.calculatedPrice, 0) * 100) / 100;
+  const discountAmount = Math.min(totalBillAmount, Math.max(0, parseFloat(discount) || 0));
+  const finalBillAmount = Math.max(0, Math.round((totalBillAmount - discountAmount) * 100) / 100);
   const totalCartItemsCount = cart.reduce((sum, item) => sum + (item.product.isLoose ? 1 : item.quantity), 0);
+
+  const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
+  const currentBalance = selectedCustomer?.balanceDue || 0;
+  const projectedBalance = Math.round((currentBalance + finalBillAmount) * 100) / 100;
+  const customerCreditLimit = selectedCustomer?.creditLimit ?? 2000;
+  const isCreditLimitExceeded = Boolean(
+    paymentMode === 'UDHAAR' && 
+    selectedCustomer && 
+    projectedBalance > customerCreditLimit
+  );
+
+  // Save Store UPI ID inline
+  const handleSaveStoreUpi = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleaned = tempUpiInput.trim();
+    if (!cleaned || !cleaned.includes('@')) {
+      alert('कृपया मान्य UPI ID दर्ज करें (उदा. 98261XXXXX@ybl या name@oksbi)');
+      return;
+    }
+    localStorage.setItem('gk_store_upi_id', cleaned);
+    setStoreUpiId(cleaned);
+    setIsEditingUpi(false);
+  };
 
   const handleFinishBill = async () => {
     if (cart.length === 0) return;
@@ -206,13 +240,29 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
       return;
     }
 
-    if (paymentMode === 'UDHAAR' && !selectedCustomerId) {
-      alert(language === 'hi' ? 'कृपया उधार खाते के लिए ग्राहक चुनें!' : 'Please select a customer for Udhaar credit!');
-      return;
+    if (paymentMode === 'UDHAAR') {
+      if (!selectedCustomerId || !selectedCustomer) {
+        alert(language === 'hi' ? 'कृपया उधार खाते के लिए ग्राहक चुनें!' : 'Please select a customer for Udhaar credit!');
+        return;
+      }
+
+      if (isCreditLimitExceeded) {
+        const excess = Math.round((projectedBalance - customerCreditLimit) * 100) / 100;
+        const proceed = window.confirm(
+          `⚠️ उधारी सीमा पार (Credit Limit Exceeded)!\n\n` +
+          `ग्राहक: ${selectedCustomer.name}\n` +
+          `वर्तमान उधारी: ₹${currentBalance}\n` +
+          `यह बिल: ₹${finalBillAmount}\n` +
+          `नया बकाया होगा: ₹${projectedBalance}\n` +
+          `स्वीकृत सीमा: ₹${customerCreditLimit}\n` +
+          `(सीमा से ₹${excess} अधिक)\n\n` +
+          `क्या आप फिर भी यह उधार बिल दर्ज करना चाहते हैं?`
+        );
+        if (!proceed) return;
+      }
     }
 
     const timestamp = new Date().toISOString();
-    const customer = customers.find(c => c.id === selectedCustomerId);
     const saleId = 'sale_' + Math.random().toString(36).substring(2, 9);
 
     // Atomic multi-table ACID transaction
@@ -220,7 +270,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
       await db.sales.add({
         id: saleId,
         customerId: selectedCustomerId || undefined,
-        customerName: customer?.name,
+        customerName: selectedCustomer?.name,
         items: cart.map(it => ({
           productId: it.product.id,
           name: it.product.name,
@@ -230,26 +280,26 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           unitPrice: it.product.sellingPrice,
           total: it.calculatedPrice,
         })),
-        totalAmount: totalBillAmount,
+        totalAmount: finalBillAmount,
+        discount: discountAmount > 0 ? discountAmount : undefined,
         paymentMode,
         timestamp
       });
 
-      if (paymentMode === 'UDHAAR' && customer && customer.id) {
-        const newBal = (customer.balanceDue || 0) + totalBillAmount;
-        await db.customers.update(customer.id, {
-          balanceDue: newBal,
+      if (paymentMode === 'UDHAAR' && selectedCustomer && selectedCustomer.id) {
+        await db.customers.update(selectedCustomer.id, {
+          balanceDue: projectedBalance,
           updatedAt: timestamp
         });
 
         const itemsSummary = cart.map(it => `${it.product.hindiName || it.product.name} (${it.quantity}${it.product.unit})`).join(', ');
         await db.transactions.add({
           id: 'txn_' + Math.random().toString(36).substring(2, 9),
-          customerId: customer.id,
+          customerId: selectedCustomer.id,
           type: 'UDHAAR',
-          amount: totalBillAmount,
+          amount: finalBillAmount,
           timestamp,
-          note: 'दुकान बिल खरीदारी',
+          note: discountAmount > 0 ? `दुकान बिल खरीदारी (₹${discountAmount} छूट लागू)` : 'दुकान बिल खरीदारी',
           billItemsSummary: itemsSummary
         });
       }
@@ -275,13 +325,16 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
 
     setLastCompletedBill({
       items: [...cart],
-      total: totalBillAmount,
+      total: finalBillAmount,
+      originalTotal: totalBillAmount,
+      discount: discountAmount > 0 ? discountAmount : undefined,
       paymentMode,
-      customer,
+      customer: selectedCustomer,
       timestamp
     });
 
     setCart([]);
+    setDiscount('');
     setSelectedCustomerId('');
     setPaymentMode('CASH');
     setIsMobileCartOpen(false);
@@ -289,7 +342,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
 
   const generateWhatsAppShare = () => {
     if (!lastCompletedBill) return;
-    const { items, total, paymentMode, customer, timestamp } = lastCompletedBill;
+    const { items, total, originalTotal, discount: billDiscount, paymentMode, customer, timestamp } = lastCompletedBill;
 
     const dateStr = new Date(timestamp).toLocaleDateString('hi-IN', {
       day: 'numeric',
@@ -309,7 +362,11 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
       text += `${idx + 1}. ${it.product.hindiName || it.product.name} - ${it.quantity} ${it.product.unit} = ₹${it.calculatedPrice}\n`;
     });
     text += `---------------------------\n`;
-    text += `💰 *कुल योग: ₹${total}*\n`;
+    if (billDiscount && billDiscount > 0) {
+      text += `📦 सकल मूल्य: ₹${originalTotal || (total + billDiscount)}\n`;
+      text += `🎁 छूट / बट्टा: -₹${billDiscount}\n`;
+    }
+    text += `💰 *कुल देय योग: ₹${total}*\n`;
     text += `💳 भुगतान: ${paymentMode === 'CASH' ? 'नकद (Cash)' : paymentMode === 'UDHAAR' ? 'उधार खाता (Credit)' : 'ऑनलाइन (UPI)'}\n`;
 
     if (paymentMode === 'UDHAAR' && customer) {
@@ -444,14 +501,108 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
 
       {/* Bill Summary & Payment Controls */}
       <div className="pt-3 border-t border-stone-200 space-y-3 shrink-0">
+        {/* Bill Discount & Quick Round-Off */}
+        {cart.length > 0 && (
+          <div className="bg-[#faf8f3] p-2.5 rounded-xl border border-amber-200/70 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-stone-700 flex items-center gap-1">
+                <span>🏷️ छूट / बट्टा (Discount):</span>
+                {discountAmount > 0 && (
+                  <span className="text-rose-700 font-black text-xs">-₹{discountAmount}</span>
+                )}
+              </span>
+              {discountAmount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setDiscount('')}
+                  className="text-[10px] text-stone-500 hover:text-rose-700 font-bold underline cursor-pointer"
+                >
+                  छूट हटाएं (₹0)
+                </button>
+              )}
+            </div>
+
+            {/* Quick Round-Off Chips */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {totalBillAmount % 1 !== 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const change = Math.round((totalBillAmount % 1) * 100) / 100;
+                    setDiscount(String(change));
+                  }}
+                  className="text-[10px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2 py-1 rounded-lg cursor-pointer active:scale-95 transition-all"
+                  title="सिक्के छोड़कर पूरा रुपया बनाएं"
+                >
+                  🪙 सिक्के छोड़ें (-₹{(Math.round((totalBillAmount % 1) * 100) / 100).toFixed(2)})
+                </button>
+              )}
+              {[1, 2, 5].map(amt => {
+                if (totalBillAmount <= amt) return null;
+                const isSelected = discountAmount === amt;
+                return (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setDiscount(isSelected ? '' : String(amt))}
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border cursor-pointer active:scale-95 transition-all ${
+                      isSelected
+                        ? 'bg-amber-700 text-white border-amber-800 shadow-2xs'
+                        : 'bg-white text-stone-700 border-stone-200 hover:bg-amber-50'
+                    }`}
+                  >
+                    -₹{amt}
+                  </button>
+                );
+              })}
+              <div className="flex items-center gap-1 ml-auto">
+                <span className="text-[10px] text-stone-500 font-semibold">अन्य ₹:</span>
+                <input
+                  type="number"
+                  min="0"
+                  max={totalBillAmount}
+                  step="any"
+                  value={discount}
+                  onChange={e => setDiscount(e.target.value)}
+                  placeholder="0"
+                  className="w-16 p-1 text-xs bg-white border border-stone-300 rounded-lg text-right font-black text-amber-900 outline-hidden focus:border-amber-600"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Total Display */}
-        <div className="flex items-center justify-between bg-amber-500/10 px-3.5 py-2.5 rounded-xl border border-amber-500/30">
-          <span className="font-bold text-stone-800 text-xs sm:text-sm">
-            {t.pos.totalPayable}
-          </span>
-          <span className="text-xl sm:text-2xl font-black text-amber-900">
-            ₹{totalBillAmount}
-          </span>
+        <div className="bg-amber-500/10 px-3.5 py-2.5 rounded-xl border border-amber-500/30">
+          {discountAmount > 0 ? (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-stone-600 font-semibold">
+                <span>सकल सामान मूल्य:</span>
+                <span>₹{totalBillAmount}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-rose-700 font-bold">
+                <span>छूट / बट्टा लागू:</span>
+                <span>-₹{discountAmount}</span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-amber-200">
+                <span className="font-bold text-stone-900 text-xs sm:text-sm">
+                  {t.pos.totalPayable} (Net):
+                </span>
+                <span className="text-xl sm:text-2xl font-black text-amber-950">
+                  ₹{finalBillAmount}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-stone-800 text-xs sm:text-sm">
+                {t.pos.totalPayable}
+              </span>
+              <span className="text-xl sm:text-2xl font-black text-amber-900">
+                ₹{finalBillAmount}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Payment Mode Selector */}
@@ -501,9 +652,9 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           </div>
         </div>
 
-        {/* Customer Select Dropdown */}
+        {/* Customer Select Dropdown (For Udhaar or UPI tracking) */}
         {(paymentMode === 'UDHAAR' || paymentMode === 'UPI') && (
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <label className="text-[11px] font-bold text-stone-700 flex items-center justify-between">
               <span>{t.pos.selectCustomer}:</span>
               {paymentMode === 'UDHAAR' && (
@@ -518,10 +669,120 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
               <option value="">-- ग्राहक चुनें / Select Customer --</option>
               {customers.map((c: Customer) => (
                 <option key={c.id} value={c.id}>
-                  {c.name} ({c.para}) - बकाया: ₹{c.balanceDue}
+                  {c.name} ({c.para}) - बकाया: ₹{c.balanceDue} | सीमा: ₹{c.creditLimit ?? 2000}
                 </option>
               ))}
             </select>
+
+            {/* Udhaar Credit Limit Guard Indicator */}
+            {paymentMode === 'UDHAAR' && selectedCustomer && (
+              <div className={`p-2 rounded-xl text-xs border ${
+                isCreditLimitExceeded 
+                  ? 'bg-rose-50 border-rose-300 text-rose-950' 
+                  : 'bg-[#faf8f3] border-amber-200/80 text-stone-700'
+              }`}>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span>वर्तमान बकाया: <b>₹{currentBalance}</b></span>
+                  <span>उधारी सीमा: <b>₹{customerCreditLimit}</b></span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] mt-1 pt-1 border-t border-stone-200/60 font-bold">
+                  <span>नया बकाया होगा:</span>
+                  <span className={isCreditLimitExceeded ? 'text-rose-700 font-black' : 'text-stone-900 font-black'}>
+                    ₹{projectedBalance}
+                  </span>
+                </div>
+                {isCreditLimitExceeded && (
+                  <div className="mt-1 pt-1 border-t border-rose-200 text-[10px] text-rose-800 font-black flex items-center gap-1">
+                    <span>⚠️ उधारी सीमा से ₹{Math.round((projectedBalance - customerCreditLimit) * 100) / 100} अधिक! बिल पूरा करने पर पुष्टि ली जाएगी।</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Dynamic Offline UPI QR Code Card */}
+        {paymentMode === 'UPI' && (
+          <div className="p-3 bg-white rounded-2xl border border-indigo-200 shadow-xs space-y-2">
+            {storeUpiId && !isEditingUpi ? (
+              <div className="flex flex-col items-center text-center">
+                <div className="flex items-center justify-between w-full mb-1">
+                  <div className="flex items-center gap-1 text-[11px] font-black text-indigo-900">
+                    <QrCode className="w-3.5 h-3.5 text-indigo-700" />
+                    <span>PhonePe / GPay / Paytm QR</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTempUpiInput(storeUpiId);
+                      setIsEditingUpi(true);
+                    }}
+                    className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer underline"
+                  >
+                    बदलें ✏️
+                  </button>
+                </div>
+
+                {/* QR Code SVG */}
+                <div
+                  className="p-2 bg-white rounded-xl border border-indigo-100 shadow-2xs flex items-center justify-center my-1"
+                  dangerouslySetInnerHTML={{
+                    __html: generateQRCodeSVG(
+                      buildUpiPayUrl(
+                        storeUpiId,
+                        syncService.getStoreInfo()?.storeName || 'ग्रामीण किराना',
+                        finalBillAmount
+                      ),
+                      140
+                    )
+                  }}
+                />
+
+                <div className="mt-1 text-center">
+                  <div className="text-xs font-black text-indigo-950">
+                    ग्राहक से <span className="text-emerald-700 text-sm font-black">₹{finalBillAmount}</span> स्कैन कराएं
+                  </div>
+                  <div className="text-[10px] text-stone-500 font-medium">
+                    UPI: <span className="font-semibold text-stone-700">{storeUpiId}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="text-xs font-bold text-stone-800 flex items-center gap-1">
+                  <span>📱</span>
+                  <span>दुकानदार की UPI ID (PhonePe/GPay) दर्ज करें:</span>
+                </div>
+                <p className="text-[10px] text-stone-500 m-0">
+                  UPI ID डालते ही ग्राहक के लिए ₹{finalBillAmount} का स्वचालित QR कोड बन जाएगा।
+                </p>
+                <form onSubmit={handleSaveStoreUpi} className="flex gap-1.5 pt-1">
+                  <input
+                    type="text"
+                    required
+                    value={tempUpiInput}
+                    onChange={e => setTempUpiInput(e.target.value)}
+                    placeholder="उदा. 98261XXXXX@ybl"
+                    className="flex-1 p-2 bg-[#faf8f3] border border-stone-300 rounded-xl text-xs font-bold text-stone-900 outline-hidden focus:border-indigo-500"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs px-3 py-2 rounded-xl cursor-pointer"
+                  >
+                    सुरक्षित करें
+                  </button>
+                  {storeUpiId && isEditingUpi && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingUpi(false)}
+                      className="bg-stone-100 text-stone-600 text-xs px-2 rounded-xl"
+                    >
+                      रद्द
+                    </button>
+                  )}
+                </form>
+              </div>
+            )}
           </div>
         )}
 
@@ -536,7 +797,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           }`}
         >
           <CheckCircle className="w-4 h-4" />
-          <span>{t.pos.finishBill} (₹{totalBillAmount})</span>
+          <span>{t.pos.finishBill} (₹{finalBillAmount})</span>
         </button>
       </div>
     </div>
@@ -711,7 +972,14 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
               </div>
               <div className="text-left">
                 <div className="text-[10px] text-stone-400 font-medium">कुल बिल</div>
-                <div className="text-base font-black text-amber-400 leading-tight">₹{totalBillAmount}</div>
+                <div className="text-base font-black text-amber-400 leading-tight">
+                  ₹{finalBillAmount}
+                  {discountAmount > 0 && (
+                    <span className="text-[10px] text-rose-300 font-bold ml-1">
+                      (-₹{discountAmount})
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs">
@@ -862,10 +1130,27 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                   </div>
                 ))}
               </div>
-              <div className="pt-2 border-t border-stone-200 flex justify-between font-black text-stone-950 text-base">
-                <span>कुल भुगतान:</span>
-                <span className="text-emerald-800">₹{lastCompletedBill.total}</span>
-              </div>
+              {lastCompletedBill.discount && lastCompletedBill.discount > 0 ? (
+                <div className="pt-2 border-t border-stone-200 space-y-1">
+                  <div className="flex justify-between text-stone-600 font-medium">
+                    <span>सकल सामान मूल्य:</span>
+                    <span>₹{lastCompletedBill.originalTotal || (lastCompletedBill.total + lastCompletedBill.discount)}</span>
+                  </div>
+                  <div className="flex justify-between text-rose-700 font-bold">
+                    <span>छूट / बट्टा:</span>
+                    <span>-₹{lastCompletedBill.discount}</span>
+                  </div>
+                  <div className="flex justify-between font-black text-stone-950 text-base pt-1 border-t border-stone-200">
+                    <span>कुल भुगतान:</span>
+                    <span className="text-emerald-800">₹{lastCompletedBill.total}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-2 border-t border-stone-200 flex justify-between font-black text-stone-950 text-base">
+                  <span>कुल भुगतान:</span>
+                  <span className="text-emerald-800">₹{lastCompletedBill.total}</span>
+                </div>
+              )}
               <div className="text-[11px] text-stone-500 font-medium">
                 भुगतान माध्यम: {lastCompletedBill.paymentMode === 'CASH' ? 'नकद (Cash)' : lastCompletedBill.paymentMode === 'UDHAAR' ? 'उधार खाता (Credit)' : 'ऑनलाइन (UPI)'}
               </div>

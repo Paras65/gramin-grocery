@@ -64,6 +64,8 @@
 - [x] Camera scanner error fallback with visual step-by-step permission reset guide.
 - [x] Non-blocking amber warning when selling item with 0 stock: "स्टॉक में 0 है — क्या नया माल आया है?"
 - [x] Atomic ACID multi-table Dexie transaction across sales, customer balance, ledger, and stock decrement.
+- [x] Dynamic Offline UPI Payment QR Code generated on-device using pure SVG for the exact bill amount (`upi://pay?pa=...&am=...`).
+- [x] Quick Bill Discount & Round-Off Chips (-₹1, -₹2, -₹5, coin change) with net payable ledger integration.
 
 ---
 
@@ -98,11 +100,13 @@
 1. **Partial Repayment Receipt:** When a customer pays partial Jama (e.g. ₹500 out of ₹1,200), there is no 1-tap "रसीद व्हाट्सएप पर भेजें (Send Receipt)" generated specifically for the Jama transaction.
 2. **Customer Deletion Guard:** Deleting a customer who still has positive `balanceDue` can cause untracked debt leakage.
 3. **Phone Number Dialing:** Customer phone numbers are formatted for WhatsApp, but clicking on them does not provide a direct `tel:` link for normal phone calling.
+4. **Credit Limit Ceiling:** Without an approved credit limit, debt can accumulate unnoticed until default occurs.
 
 ### Mandatory Enhancements
 - [x] Instant 1-tap WhatsApp payment acknowledgment slip when recording a "जमा (+)" transaction.
 - [x] Block customer deletion if `balanceDue > 0` with message: "पहले बकाया शून्य करें (Clear balance first)".
 - [x] Add 1-tap phone call button (`tel:`) next to WhatsApp icon on customer card.
+- [x] Customer Credit Limit Guard (उधारी सीमा अलर्ट): Set limit on creation/ledger, highlight card if limit is breached, and prompt POS warning before finalizing excess credit sales.
 
 ---
 

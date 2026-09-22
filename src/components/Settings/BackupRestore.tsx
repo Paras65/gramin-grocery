@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, ShieldCheck, RefreshCw, Sparkles, Printer, Smartphone, CheckCircle2, Bluetooth, LogOut } from 'lucide-react';
+import { Download, Upload, ShieldCheck, RefreshCw, Sparkles, Printer, Smartphone, CheckCircle2, Bluetooth, LogOut, QrCode } from 'lucide-react';
 import { exportDatabaseToJSON, importDatabaseFromJSON, initializeDatabaseIfEmpty, db } from '../../db';
 import { useLanguage } from '../../context/LanguageContext';
 import { syncService } from '../../services/syncService';
@@ -19,6 +19,9 @@ export const BackupRestore: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+
+  // Store UPI Settings
+  const [storeUpiId, setStoreUpiId] = useState(() => localStorage.getItem('gk_store_upi_id') || '');
 
   // Printer slip customization
   const [receiptHeader, setReceiptHeader] = useState(() => localStorage.getItem('gk_receipt_header') || '');
@@ -59,6 +62,13 @@ export const BackupRestore: React.FC = () => {
     localStorage.setItem('gk_receipt_header', receiptHeader.trim());
     localStorage.setItem('gk_receipt_footer', receiptFooter.trim());
     setStatusMessage('✅ प्रिंटर पर्ची सेटिंग्स सफलतापूर्वक सुरक्षित हो गईं!');
+    setTimeout(() => setStatusMessage(''), 3500);
+  };
+
+  const handleSaveUpiSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('gk_store_upi_id', storeUpiId.trim());
+    setStatusMessage('✅ दुकान की UPI ID सुरक्षित हो गई! अब POS में ग्राहक के लिए डायनेमिक QR कोड दिखेगा।');
     setTimeout(() => setStatusMessage(''), 3500);
   };
 
@@ -406,6 +416,53 @@ export const BackupRestore: React.FC = () => {
             className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-amber-300 text-xs font-bold cursor-pointer transition shadow-xs active:scale-95"
           >
             पर्ची संदेश सेव करें
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {/* Store UPI Payment Settings Card */}
+    <div className="village-card rounded-3xl p-5 sm:p-6 bg-white shadow-2xs border border-emerald-300/80 space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="p-2.5 rounded-2xl bg-emerald-100 text-emerald-800 shrink-0">
+          <QrCode className="w-5 h-5" />
+        </div>
+        <div>
+          <h3 className="font-black text-stone-950 text-base m-0 flex items-center gap-2">
+            <span>दुकान UPI भुगतान सेटिंग्स (POS डायनेमिक QR कोड)</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black">
+              PhonePe / GPay / Paytm
+            </span>
+          </h3>
+          <p className="text-xs text-stone-600 m-0 mt-0.5 font-medium">
+            अपना UPI ID दर्ज करें ताकि बिलिंग के समय ग्राहक के लिए सही राशि का QR कोड स्क्रीन पर स्वतः बन जाए
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSaveUpiSettings} className="space-y-3 pt-1">
+        <div>
+          <label className="block text-xs font-bold text-stone-700 mb-1">
+            दुकानदार की UPI VPA / ID:
+          </label>
+          <input
+            type="text"
+            value={storeUpiId}
+            onChange={(e) => setStoreUpiId(e.target.value)}
+            placeholder="उदा. 98260XXXXX@ybl या shopname@okaxis"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 text-xs font-mono font-bold text-stone-900 bg-[#faf8f3]"
+          />
+          <span className="text-[10px] text-stone-500 font-medium mt-1 block">
+            ग्राहक जब POS में 'ऑनलाइन (UPI)' चुनेगा, तो ठीक बिल राशि का QR कोड स्क्रीन पर दिखेगा।
+          </span>
+        </div>
+
+        <div className="flex justify-end pt-1">
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer transition shadow-xs active:scale-95"
+          >
+            UPI ID सुरक्षित करें
           </button>
         </div>
       </form>

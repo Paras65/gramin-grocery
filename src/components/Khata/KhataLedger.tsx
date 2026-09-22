@@ -35,11 +35,30 @@ export const KhataLedger: React.FC = () => {
   const [newCustPhone, setNewCustPhone] = useState('');
   const [newCustPara, setNewCustPara] = useState('Patel Para (पटेल पारा)');
   const [newCustBalance, setNewCustBalance] = useState('');
+  const [newCustCreditLimit, setNewCustCreditLimit] = useState('2000');
   const [newCustDueReason, setNewCustDueReason] = useState<DueReason>('KHARIF_DHAN');
   const [newCustDueDate, setNewCustDueDate] = useState(() => {
     return new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
   });
   const [newCustNotes, setNewCustNotes] = useState('');
+
+  // Update credit limit for an existing customer
+  const handleUpdateCreditLimit = async () => {
+    if (!activeCustomerForLedger?.id) return;
+    const currentLimit = activeCustomerForLedger.creditLimit ?? 2000;
+    const input = window.prompt(`ग्राहक "${activeCustomerForLedger.name}" की उधारी सीमा (क्रेडिट लिमिट ₹) दर्ज करें:`, String(currentLimit));
+    if (input === null) return;
+    const val = parseFloat(input);
+    if (isNaN(val) || val < 0) {
+      alert('कृपया सही राशि दर्ज करें!');
+      return;
+    }
+    await db.customers.update(activeCustomerForLedger.id, {
+      creditLimit: val,
+      updatedAt: new Date().toISOString()
+    });
+    setActiveCustomerForLedger(prev => prev ? { ...prev, creditLimit: val } : null);
+  };
 
   // Get distinct Paras
   const allParas: string[] = Array.from(new Set(customers.map((c: Customer) => c.para).filter(Boolean)));
@@ -145,6 +164,7 @@ export const KhataLedger: React.FC = () => {
       phone: newCustPhone.trim(),
       para: newCustPara,
       balanceDue: initialBal,
+      creditLimit: parseFloat(newCustCreditLimit) || 2000,
       dueDate: newCustDueDate,
       dueReason: newCustDueReason,
       notes: newCustNotes,
@@ -167,6 +187,7 @@ export const KhataLedger: React.FC = () => {
     setNewCustName('');
     setNewCustPhone('');
     setNewCustBalance('');
+    setNewCustCreditLimit('2000');
     setNewCustNotes('');
   };
 
@@ -435,6 +456,17 @@ export const KhataLedger: React.FC = () => {
                       <span className="font-bold text-stone-800">{customer.dueDate}</span>
                     </div>
                   )}
+                  <div className="flex items-center justify-between text-[11px] text-stone-500">
+                    <span>उधारी सीमा:</span>
+                    <span className={`font-bold ${customer.balanceDue > (customer.creditLimit ?? 2000) ? 'text-rose-700 font-black' : 'text-stone-800'}`}>
+                      ₹{customer.creditLimit ?? 2000}
+                      {customer.balanceDue > (customer.creditLimit ?? 2000) && (
+                        <span className="ml-1 text-[10px] bg-rose-100 text-rose-800 border border-rose-300 px-1 py-0.2 rounded font-black">
+                          सीमा पार!
+                        </span>
+                      )}
+                    </span>
+                  </div>
                   {customer.notes && (
                     <div className="text-[11px] text-stone-600 italic pt-1 border-t border-amber-100 line-clamp-1">
                       "{customer.notes}"
@@ -607,15 +639,27 @@ export const KhataLedger: React.FC = () => {
               </button>
             </div>
 
-            {/* Current Balance Alert */}
-            <div className="my-3 bg-[#faf8f3] p-3 rounded-2xl border border-amber-200/60 flex items-center justify-between">
+            {/* Current Balance & Credit Limit Alert */}
+            <div className="my-3 bg-[#faf8f3] p-3 rounded-2xl border border-amber-200/60 flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
               <div>
                 <span className="text-xs text-stone-500 font-medium">कुल अंतिम बकाया:</span>
                 <div className="text-xl font-black text-rose-700">₹{activeCustomerForLedger.balanceDue}</div>
               </div>
+              <div className="text-left sm:text-right">
+                <span className="text-[10px] text-stone-500 font-semibold block">उधारी सीमा (Limit):</span>
+                <button
+                  type="button"
+                  onClick={handleUpdateCreditLimit}
+                  className="inline-flex items-center gap-1 text-xs font-black text-amber-900 bg-amber-100 hover:bg-amber-200 px-2.5 py-1 rounded-lg border border-amber-300 cursor-pointer active:scale-95 transition-all"
+                  title="उधारी सीमा बदलें"
+                >
+                  <span>₹{activeCustomerForLedger.creditLimit ?? 2000}</span>
+                  <span className="text-[10px] text-amber-700">✏️ बदलें</span>
+                </button>
+              </div>
               <button
                 onClick={() => sendWhatsAppReminder(activeCustomerForLedger)}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shrink-0"
               >
                 <Share2 className="w-3.5 h-3.5" />
                 <span>तगादा भेजें</span>
@@ -781,6 +825,21 @@ export const KhataLedger: React.FC = () => {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-stone-700 block mb-1">
+                    उधारी सीमा (क्रेडिट लिमिट ₹):
+                  </label>
+                  <input
+                    type="number"
+                    value={newCustCreditLimit}
+                    onChange={e => setNewCustCreditLimit(e.target.value)}
+                    placeholder="2000"
+                    className="w-full p-2 border border-stone-300 rounded-xl text-xs text-stone-900 font-semibold outline-hidden focus:border-amber-600"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">
                     भुगतान चक्र (साधन):
                   </label>
                   <select
@@ -794,18 +853,17 @@ export const KhataLedger: React.FC = () => {
                     <option value="OTHER">अन्य</option>
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-stone-700 block mb-1">
-                  अपेक्षित भुगतान तारीख:
-                </label>
-                <input
-                  type="date"
-                  value={newCustDueDate}
-                  onChange={e => setNewCustDueDate(e.target.value)}
-                  className="w-full p-2 border border-stone-300 rounded-xl text-xs text-stone-900 font-semibold outline-hidden focus:border-amber-600"
-                />
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">
+                    अपेक्षित भुगतान तारीख:
+                  </label>
+                  <input
+                    type="date"
+                    value={newCustDueDate}
+                    onChange={e => setNewCustDueDate(e.target.value)}
+                    className="w-full p-2 border border-stone-300 rounded-xl text-xs text-stone-900 font-semibold outline-hidden focus:border-amber-600"
+                  />
+                </div>
               </div>
 
               <div>

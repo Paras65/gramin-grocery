@@ -25,6 +25,7 @@ export interface Customer {
   phone: string;
   para: string; // Village mohalla/neighborhood (e.g., Patel Para, School Para)
   balanceDue: number; // Positive means customer owes shopkeeper
+  creditLimit?: number; // Maximum allowed credit limit in ₹ (e.g., 2000)
   dueDate?: string;
   dueReason?: DueReason;
   notes?: string;
@@ -61,6 +62,7 @@ export interface Sale {
     total: number;
   }[];
   totalAmount: number;
+  discount?: number; // Cash discount or round-off in ₹
   paymentMode: PaymentMode;
   customerId?: string;
   customerName?: string;

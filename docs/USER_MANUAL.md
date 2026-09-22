@@ -11,9 +11,12 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Selecting Items & Categories](#selecting-items--categories)
    - [Loose Weight Pricing (खुला सामान: पाव, आधा किलो)](#loose-weight-pricing-खुला-सामान-पाव-आधा-किलो)
    - [Payment Options: Cash, Udhaar, and UPI](#payment-options-cash-udhaar-and-upi)
+   - [Dynamic Offline UPI Payment QR Code (स्वचालित UPI QR कोड)](#dynamic-offline-upi-payment-qr-code-स्वचालित-upi-qr-कोड)
+   - [Bill Discount & Round-Off Chips (छूट / बट्टा व सिक्के छोड़ें)](#bill-discount--round-off-chips-छूट--बट्टा-व-सिक्के-छोड़ें)
    - [Sharing Receipts via WhatsApp](#sharing-receipts-via-whatsapp)
 3. [Udhaar & Bahi-Khata Ledger (ग्राहक उधार बही-खाता)](#3-udhaar--bahi-khata-ledger-ग्राहक-उधार-बही-खाता)
    - [Village Mohalla / Para Grouping](#village-mohalla--para-grouping)
+   - [Customer Credit Limit Guard (ग्राहक उधारी सीमा व सुरक्षा अलर्ट)](#customer-credit-limit-guard-ग्राहक-उधारी-सीमा-व-सुरक्षा-अलर्ट)
    - [Harvest & Scheme Repayment Dates (धान खरीदी / महतारी वंदन)](#harvest--scheme-repayment-dates-धान-खरीदी--महतारी-वंदन)
    - [Recording Payments Received (जमा) & New Credit (उधार)](#recording-payments-received-जमा--new-credit-उधार)
    - [WhatsApp Payment Receipts & Reminders (जमा रसीद व तगादा)](#whatsapp-payment-receipts--reminders-जमा-रसीद-व-तगादा)
@@ -123,13 +126,25 @@ Gramin Kirana is built to run **100% offline** without needing a continuous inte
 2. **Udhaar (उधार खाता):** Requires choosing a registered customer from the dropdown. The bill total is automatically added to that customer’s running debt balance.
 3. **UPI (ऑनलाइन):** For digital payments received via phone scanner.
 
+### Dynamic Offline UPI Payment QR Code (स्वचालित UPI QR कोड)
+- **100% Offline QR Generation:** Gramin Kirana generates dynamic payment QR codes directly inside your device without relying on internet servers or third-party image APIs.
+- **Shopkeeper UPI Setup:** Go to **सेटिंग्स व बैकअप (Settings)** to enter your store's UPI ID (e.g. PhonePe, Google Pay, Paytm, or BHIM UPI ID). You can also set or change it directly on the POS counter with 1-tap.
+- **Exact Bill QR Display:** When selecting **ऑनलाइन (UPI)** during checkout, an instant QR code appears showing the exact net bill amount (e.g. ₹150.00).
+- **Customer Convenience:** The customer simply opens any UPI app on their phone (PhonePe, GPay, Paytm, BHIM, Cred) and scans your screen. There is zero risk of the customer typing an incorrect amount or sending money to the wrong account.
+
+### Bill Discount & Round-Off Chips (छूट / बट्टा व सिक्के छोड़ें)
+- **Quick Coin Round-Off (सिक्के छोड़ें):** In village stores, loose coins (paise) are often rounded off to the nearest rupee. If a bill contains coins (e.g., ₹148.50), a 1-tap chip appears to round down to whole rupees.
+- **Quick Discount Chips (-₹1, -₹2, -₹5):** For familiar neighbors or round figures, quickly deduct ₹1, ₹2, or ₹5 with a single tap.
+- **Custom Discount Entry:** Enter any custom discount amount in the ₹ box.
+- **Net Bill Integrity:** The bill summary, customer Udhaar ledger balance, and receipt reflect the actual net payable amount after discount.
+
 ### Adding Ad-Hoc Items & 0-Stock Alerts (कस्टम सामान व स्टॉक चेतावनी)
 - **+ सामान (Quick Ad-Hoc Item):** If a customer requests an unlisted item (e.g., coconut, festival items, or loose gur), tap **"+ सामान"** in the search bar. Enter the name, price, and unit. You can toggle **"दुकान स्टॉक लिस्ट में भी जोड़ें"** to permanently save it to your inventory for future billing.
 - **⚠️ 0 स्टॉक चेतावनी (Out-of-Stock Warning):** If an item with 0 recorded inventory is added to the cart, a distinct amber warning badge appears on the item. This alerts you that untracked stock has arrived without blocking the customer checkout.
 
 ### Sharing Receipts via WhatsApp
 - When a bill is finalized, a receipt appears with the option to click **"व्हाट्सएप पर पर्ची भेजें" (Share Bill via WhatsApp)**.
-- This opens WhatsApp with a clean, itemized receipt and shows the customer their previous and new outstanding balance.
+- This opens WhatsApp with a clean, itemized receipt showing the gross bill, any discounts given, the net paid amount, and the customer's previous and new outstanding balance.
 
 ---
 
@@ -138,6 +153,12 @@ Gramin Kirana is built to run **100% offline** without needing a continuous inte
 ### Village Mohalla / Para Grouping
 - In villages, multiple customers often share the same name (e.g. 4 "Ramesh Sahu").
 - Every customer is tagged with their **Mohalla / Para** (e.g. *Patel Para, School Para, Bazar Mohalla, Talab Paar*). Use the drop-down filter to quickly view only customers from a specific neighborhood.
+
+### Customer Credit Limit Guard (ग्राहक उधारी सीमा व सुरक्षा अलर्ट)
+- **Setting an Udhaar Limit:** When adding a new customer in the Khata Ledger, you can set a safe maximum credit limit (defaults to ₹2,000, or any custom amount like ₹5,000 or ₹10,000).
+- **1-Tap Limit Revisions:** On existing customer ledger accounts, tap the limit badge (✏️ बदलें) at any time to revise the approved credit ceiling.
+- **Visual Alert Badges:** If a customer's outstanding balance exceeds their approved limit, their card displays a prominent red **"सीमा पार!" (Limit Exceeded)** badge.
+- **POS Checkout Protection:** In the POS billing screen, when Udhaar is chosen, the system calculates the projected balance in real time. If the new bill pushes the customer past their approved limit, an instant warning banner appears in the cart, and the system prompts for explicit confirmation before finalizing the credit sale.
 
 ### Harvest & Scheme Repayment Dates (धान खरीदी / महतारी वंदन)
 Instead of arbitrary monthly deadlines, you can tag each customer's expected repayment source:
