@@ -1,0 +1,25 @@
+# Render Blueprint Specification for Gramin Kirana POS
+# Deploy: https://dashboard.render.com/blueprints
+
+services:
+  - type: web
+    name: gramin-kirana-pos
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install && npm run build:all
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false # Set securely in Render Dashboard (MongoDB Atlas connection string)
+      - key: JWT_SECRET
+        generateValue: true # Render automatically generates a secure random 32-char token
+      - key: RATE_LIMIT_MAX
+        value: 300
+

@@ -1,13 +1,71 @@
 <!doctype html>
-<html lang="hi">
+<html lang="hi" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Cache Busting HTTP Equiv for Stale Elimination -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
+    <!-- Security Headers via Meta -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' http://localhost:5000 ws://localhost:5173 https:; worker-src 'self' blob:;" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="camera=(self), microphone=(self), geolocation=(), payment=()" />
+
+    <!-- Core SEO Meta -->
+    <title>ग्रामीण किराना - Gramin Kirana | गाँव की दुकान का 100% ऑफलाइन POS व बही-खाता</title>
+    <meta name="description" content="ग्रामीण किराना (Gramin Kirana): गाँव व कस्बों की दुकानों के लिए 100% ऑफलाइन बिलिंग POS, फसल चक्र व महतारी वंदन अनुसार डिजिटल उधार बही-खाता, ब्लूटूथ थर्मल प्रिंटर और साप्ताहिक हाट-बाजार मोड।" />
+    <meta name="keywords" content="ग्रामीण किराना, gramin kirana, kirana pos, offline grocery billing, bahi khata app, chhattisgarh kirana billing, udhaar khata, thermal printer billing, mandi restock" />
+    <meta name="author" content="Gramin Kirana Team" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://gramin-grocery.web.app/" />
+
+    <!-- Open Graph (Facebook, WhatsApp Preview) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gramin-grocery.web.app/" />
+    <meta property="og:title" content="ग्रामीण किराना - गाँव की दुकान का 100% ऑफलाइन POS व बही-खाता" />
+    <meta property="og:description" content="बिना इंटरनेट के चलने वाला गाँव की दुकान का सम्पूर्ण बिलिंग, बारकोड स्कैनर, उधार खाता और ब्लूटूथ प्रिंटर ऐप।" />
+    <meta property="og:image" content="/favicon.svg" />
+    <meta property="og:locale" content="hi_IN" />
+    <meta property="og:site_name" content="Gramin Kirana" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="ग्रामीण किराना - Gramin Kirana POS" />
+    <meta name="twitter:description" content="गाँव की दुकान का 100% ऑफलाइन बिलिंग व डिजिटल बही-खाता।" />
+    <meta name="twitter:image" content="/favicon.svg" />
+
+    <!-- PWA Settings -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <meta name="theme-color" content="#1c1917" />
-    <meta name="description" content="ग्रामीण किराना - गाँव की दुकान का 100% ऑफलाइन बिलिंग (POS), उधार बही-खाता, मंडी खरीदारी लिस्ट व खराबी गार्ड" />
-    <title>ग्रामीण किराना - Gramin Kirana | गाँव की दुकान का डिजिटल बही-खाता</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="GraminKirana" />
+
+    <!-- SEO Schema (JSON-LD) for Local Store / POS Application -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "ग्रामीण किराना (Gramin Kirana)",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "All modern browsers, Android, iOS, Windows",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR"
+      },
+      "description": "100% Offline-First Village Grocery Store Point of Sale and Udhaar Khata Management software tailored for rural India.",
+      "inLanguage": ["hi", "en"]
+    }
+    </script>
   </head>
-  <body>
+  <body class="bg-[#fbf9f4] antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

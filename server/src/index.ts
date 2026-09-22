@@ -1,3 +1,5 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -9,6 +11,10 @@ import syncRoutes from './routes/sync.routes.js';
 import tenantRoutes from './routes/tenant.routes.js';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const clientDistPath = path.resolve(__dirname, '../../dist');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +43,21 @@ app.get('/health', (_req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/sync', syncRoutes);
 app.use('/api/v1/tenant', tenantRoutes);
+
+// Production Static Frontend Serving (Unified Deployment on Render)
+app.use(express.static(clientDistPath));
+
+app.get('*', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // If API route or health, do not serve index.html
+  if (req.path.startsWith('/api') || req.path === '/health') {
+    return next();
+  }
+  res.sendFile(path.join(clientDistPath, 'index.html'), (err) => {
+    if (err) {
+      next();
+    }
+  });
+});
 
 // Global Error Handler
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
