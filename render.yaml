@@ -22,4 +22,7 @@ services:
         generateValue: true # Render automatically generates a secure random 32-char token
       - key: RATE_LIMIT_MAX
         value: 300
+      - key: ADMIN_PASSWORD
+        sync: false # Set securely in Render Dashboard or defaults to gramin_admin_2026
+
 

@@ -11,45 +11,33 @@ import { authLimiter, requireAuth, requireRole } from '../middleware/security.js
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'gk_default_secret_key_2026';
-const SUPER_ADMIN_MOBILE = process.env.SUPER_ADMIN_MOBILE || '9999999999';
-const SUPER_ADMIN_PIN = process.env.SUPER_ADMIN_PIN || '9999';
 
 const AdminLoginSchema = z.object({
-  mobile: z.string().min(4),
-  pin: z.string().min(4),
+  password: z.string().min(1, 'Password is required'),
 });
 
 // 1. Super Admin Login
 router.post('/login', authLimiter, async (req: Request, res: Response) => {
   try {
-    const { mobile, pin } = AdminLoginSchema.parse(req.body);
+    const { password } = AdminLoginSchema.parse(req.body);
 
-    let isMatch = false;
-    let adminName = 'Platform Super Admin';
-    let adminUserId = 'super_admin_master';
+    const configuredPassword = (
+      process.env.ADMIN_PASSWORD || 
+      process.env.SUPER_ADMIN_PASSWORD || 
+      'gramin_admin_2026'
+    ).trim();
 
-    // 1A. Check if a dedicated DB Super Admin user exists
-    const dbAdmin = await User.findOne({ mobile, role: 'SUPER_ADMIN' });
-    if (dbAdmin) {
-      isMatch = await dbAdmin.comparePin(pin);
-      adminName = dbAdmin.name;
-      adminUserId = dbAdmin._id.toString();
-    } else {
-      // 1B. Fallback to Master Admin Credentials from environment
-      if (mobile === SUPER_ADMIN_MOBILE && pin === SUPER_ADMIN_PIN) {
-        isMatch = true;
-      }
+    if (password.trim() !== configuredPassword) {
+      return res.status(401).json({ error: 'अमान्य एडमिन सुरक्षा पासवर्ड (Invalid Admin Password)' });
     }
 
-    if (!isMatch) {
-      return res.status(401).json({ error: 'अमान्य सुपर एडमिन क्रेडेंशियल्स (Invalid Admin Mobile/PIN)' });
-    }
+    const adminUserId = 'super_admin_master';
+    const adminName = 'Platform Super Admin';
 
     const token = jwt.sign(
       {
         userId: adminUserId,
         role: 'SUPER_ADMIN',
-        mobile,
         name: adminName,
       },
       JWT_SECRET,
@@ -61,16 +49,15 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
       token,
       user: {
         id: adminUserId,
-        name: adminName,
         role: 'SUPER_ADMIN',
-        mobile,
+        name: adminName,
       },
     });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation failed', details: err.errors });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'कृपया सुरक्षा पासवर्ड दर्ज करें।' });
     }
-    res.status(500).json({ error: err.message || 'Internal server error' });
+    res.status(500).json({ error: 'एडमिन लॉगिन में त्रुटि: ' + error.message });
   }
 });
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, X, ArrowRight, AlertCircle, Phone } from 'lucide-react';
+import { ShieldCheck, Lock, X, ArrowRight, AlertCircle, KeyRound } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 
 interface AdminLoginModalProps {
@@ -9,8 +9,7 @@ interface AdminLoginModalProps {
 }
 
 export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [mobile, setMobile] = useState('');
-  const [pin, setPin] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -20,18 +19,19 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
     e.preventDefault();
     setError('');
 
-    if (!mobile.trim() || !pin.trim()) {
-      setError('कृपया मोबाइल नंबर और 4-अंकीय पिन दर्ज करें।');
+    if (!password.trim()) {
+      setError('कृपया एडमिन सुरक्षा पासवर्ड दर्ज करें।');
       return;
     }
 
     try {
       setLoading(true);
-      await adminService.login(mobile.trim(), pin.trim());
+      await adminService.login(password.trim());
+      setPassword('');
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'अमान्य सुपर एडमिन क्रेडेंशियल्स');
+      setError(err.message || 'अमान्य एडमिन सुरक्षा पासवर्ड');
     } finally {
       setLoading(false);
     }
@@ -72,38 +72,23 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
           <div>
             <label className="text-xs font-bold text-stone-700 block mb-1">
-              एडमिन मोबाइल नंबर / ID:
+              मास्टर एडमिन सुरक्षा पासवर्ड:
             </label>
             <div className="relative">
-              <Phone className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-              <input
-                type="text"
-                required
-                autoFocus
-                value={mobile}
-                onChange={e => setMobile(e.target.value)}
-                placeholder="उदा. 9999999999"
-                className="w-full pl-9 pr-3 py-2.5 bg-[#faf8f3] border border-stone-300 rounded-xl text-xs sm:text-sm font-bold text-stone-900 outline-hidden focus:border-amber-600"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-bold text-stone-700 block mb-1">
-              मास्टर एडमिन पिन (4-Digits):
-            </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+              <KeyRound className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
               <input
                 type="password"
                 required
-                maxLength={8}
-                value={pin}
-                onChange={e => setPin(e.target.value)}
-                placeholder="••••"
-                className="w-full pl-9 pr-3 py-2.5 bg-[#faf8f3] border border-stone-300 rounded-xl text-xs sm:text-sm font-bold text-stone-900 tracking-widest outline-hidden focus:border-amber-600"
+                autoFocus
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="एडमिन सुरक्षा पासवर्ड दर्ज करें..."
+                className="w-full pl-9 pr-3 py-2.5 bg-[#faf8f3] border border-stone-300 rounded-xl text-xs sm:text-sm font-bold text-stone-900 outline-hidden focus:border-amber-600 focus:bg-white"
               />
             </div>
+            <p className="text-[10px] text-stone-400 mt-1 font-medium">
+              यह पासवर्ड सर्वर पर्यावरण चर (ADMIN_PASSWORD) से सुरक्षित रूप से सत्यापित होता है।
+            </p>
           </div>
 
           <div className="pt-2">
@@ -116,7 +101,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>पोर्टल में प्रवेश करें</span>
+                  <Lock className="w-4 h-4" />
+                  <span>कमांड सेंटर में प्रवेश करें</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

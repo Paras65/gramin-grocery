@@ -279,7 +279,7 @@
 
 ### Current Workflow
 - High-level platform administration console for Gramin Kirana coordinators and operators.
-- Protected by `SUPER_ADMIN` role-based authentication and secure PIN gate (`AdminLoginModal.tsx`).
+- Protected by `SUPER_ADMIN` role-based authentication and secure master password gate (`ADMIN_PASSWORD` from `.env`).
 - Real-time aggregated platform commerce KPIs: Total registered stores, Village Starter (Free) vs Gramin Pro breakdown, Platform GMV sum, and Total village Khata debt across Chhattisgarh.
 - Chhattisgarh district segmentation (Raipur, Durg, Bilaspur, Bastar, Surguja, Rajnandgaon, etc.).
 - Multi-store directory with live search by shop name, owner name, mobile, and village.
@@ -292,7 +292,7 @@
 2. **Cross-Tenant Aggregation Isolation:** Aggregated platform counts must never bypass tenant isolation for regular storekeeper requests.
 
 ### Mandatory Enhancements
-- [x] Master Admin fallback environment configuration (`SUPER_ADMIN_MOBILE`, `SUPER_ADMIN_PIN`) for initial bootstrap.
+- [x] Environment-variable-based master password authentication (`ADMIN_PASSWORD`).
 - [x] Dedicated admin route protection (`requireRole('SUPER_ADMIN')`) with optional `tenantId` bypass exclusively for platform-level aggregations.
 - [x] 100% mobile-responsive command center view with touch-friendly cards, district filter chips, and plan toggle buttons.
 

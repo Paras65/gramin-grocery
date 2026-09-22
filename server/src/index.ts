@@ -1,17 +1,15 @@
+import 'dotenv/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import { connectDB } from './config/db.js';
 import { apiLimiter } from './middleware/security.js';
 import authRoutes from './routes/auth.routes.js';
 import syncRoutes from './routes/sync.routes.js';
 import tenantRoutes from './routes/tenant.routes.js';
 import adminRoutes from './routes/admin.routes.js';
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

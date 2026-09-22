@@ -10,7 +10,7 @@ export interface AdminUser {
   id: string;
   name: string;
   role: 'SUPER_ADMIN';
-  mobile: string;
+  mobile?: string;
 }
 
 export interface PlatformOverviewResponse {
@@ -53,11 +53,11 @@ class AdminService {
     return Boolean(this.getToken() && this.getAdminInfo()?.role === 'SUPER_ADMIN');
   }
 
-  public async login(mobile: string, pin: string): Promise<AdminUser> {
+  public async login(password: string): Promise<AdminUser> {
     const res = await fetch(`${API_BASE}/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mobile: mobile.trim(), pin: pin.trim() }),
+      body: JSON.stringify({ password: password.trim() }),
     });
 
     const data = await res.json();
