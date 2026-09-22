@@ -22,6 +22,10 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [demoBillsCount, setDemoBillsCount] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => {
+    const ls = localStorage.getItem('gk_last_sync');
+    return ls ? new Date(ls).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }) : null;
+  });
   const [isSubModalOpen, setIsSubModalOpen] = useState<boolean>(false);
 
   const refreshAuthState = useCallback(async () => {
@@ -32,6 +36,10 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
     if (loggedIn) {
       const count = await syncService.getPendingSyncCount();
       setPendingCount(count);
+      const ls = localStorage.getItem('gk_last_sync');
+      if (ls) {
+        setLastSyncTime(new Date(ls).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }));
+      }
     } else {
       const demoCount = await syncService.getDemoBillCount();
       setDemoBillsCount(demoCount);
@@ -54,6 +62,9 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
 
     const unsubSync = syncService.subscribe((status) => {
       setIsSyncing(status.isSyncing);
+      if (status.lastSyncedAt) {
+        setLastSyncTime(status.lastSyncedAt);
+      }
       refreshAuthState();
     });
 
@@ -244,25 +255,35 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
             )}
 
             {isLoggedIn && (
-              <button
-                onClick={() => syncService.triggerSync()}
-                disabled={isSyncing || !isOnline}
-                className={`flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
-                  pendingCount > 0
-                    ? 'bg-amber-900/60 text-amber-200 border-amber-500/60 animate-pulse'
-                    : 'bg-emerald-950/60 text-emerald-300 border-emerald-700/60'
-                }`}
-                title="क्लाउड सिंक की स्थिति"
-              >
-                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-amber-300' : 'text-emerald-400'}`} />
-                <span>
-                  {isSyncing
-                    ? 'सिंक हो रहा है...'
-                    : pendingCount > 0
-                    ? `${pendingCount} बिल सिंक बाकी`
-                    : '🟢 सिंक सुरक्षित'}
-                </span>
-              </button>
+              <div className="flex items-center gap-2">
+                {lastSyncTime && (
+                  <span className="hidden sm:inline-block text-[10px] text-stone-400 font-medium">
+                    अंतिम सिंक: {lastSyncTime}
+                  </span>
+                )}
+                <button
+                  onClick={async () => {
+                    await syncService.triggerSync();
+                    refreshAuthState();
+                  }}
+                  disabled={isSyncing || !isOnline}
+                  className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer shadow-xs active:scale-95 ${
+                    pendingCount > 0
+                      ? 'bg-amber-900/70 text-amber-200 border-amber-500 hover:bg-amber-800'
+                      : 'bg-emerald-950/70 text-emerald-300 border-emerald-700 hover:bg-emerald-900/60'
+                  }`}
+                  title={isOnline ? 'क्लाउड बैकअप सुरक्षित करें (1-क्लिक सिंक)' : 'इंटरनेट बंद है (ऑफ़लाइन)'}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-amber-300' : 'text-emerald-400'}`} />
+                  <span>
+                    {isSyncing
+                      ? 'सिंक चालू है...'
+                      : pendingCount > 0
+                      ? `${pendingCount} बाकी • अभी सिंक करें`
+                      : '🟢 बैकअप सुरक्षित • सिंक करें'}
+                  </span>
+                </button>
+              </div>
             )}
           </div>
         </div>

@@ -259,9 +259,21 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
                         className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none text-sm font-bold text-stone-900 tracking-widest bg-stone-50/50"
                       />
                     </div>
-                    <span className="text-[11px] text-stone-500 mt-1 block">
-                      डेमो के लिए डिफ़ॉल्ट पिन: <strong>1234</strong>
-                    </span>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-[11px] text-stone-500">
+                        4 अंकों का गुप्त पासवर्ड
+                      </span>
+                      <a
+                        href={`https://wa.me/?text=${encodeURIComponent(
+                          `नमस्ते Gramin Kirana टीम, मैं अपना स्टोर लॉगिन पिन भूल गया हूँ। मेरा रजिस्टर्ड मोबाइल नंबर ${loginMobile || '_____'} है। कृपया पिन रीसेट करने में सहायता करें।`
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] font-bold text-amber-800 hover:text-amber-900 underline decoration-amber-500/60"
+                      >
+                        पिन भूल गए? (Forgot PIN)
+                      </a>
+                    </div>
                   </div>
 
                   <button

@@ -12,6 +12,8 @@ export const SpoilageExpiryGuard: React.FC = () => {
 
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [logProdName, setLogProdName] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [deductFromStock, setDeductFromStock] = useState<boolean>(true);
   const [logQty, setLogQty] = useState('');
   const [logUnit, setLogUnit] = useState('pouch');
   const [logReason, setLogReason] = useState<SpoilageReason>('POWER_CUT');
@@ -33,23 +35,64 @@ export const SpoilageExpiryGuard: React.FC = () => {
     .filter((s: SpoilageLog) => s.reason === 'POWER_CUT')
     .reduce((sum: number, s: SpoilageLog) => sum + (s.estimatedLoss || 0), 0);
 
+  const handleProductSelect = (nameVal: string) => {
+    setLogProdName(nameVal);
+    const matched = products.find(p => 
+      p.name.toLowerCase() === nameVal.trim().toLowerCase() ||
+      (p.hindiName && p.hindiName.toLowerCase() === nameVal.trim().toLowerCase()) ||
+      `${p.name} (${p.hindiName || ''})`.toLowerCase() === nameVal.trim().toLowerCase()
+    );
+
+    if (matched) {
+      setSelectedProductId(matched.id || '');
+      setLogUnit(matched.unit || 'pouch');
+      const qtyNum = parseFloat(logQty) || 1;
+      setLogLoss(String(Math.round(matched.purchasePrice * qtyNum)));
+    } else {
+      setSelectedProductId('');
+    }
+  };
+
+  const handleQtyChange = (qtyVal: string) => {
+    setLogQty(qtyVal);
+    const matched = products.find(p => p.id === selectedProductId);
+    if (matched) {
+      const qtyNum = parseFloat(qtyVal) || 0;
+      setLogLoss(String(Math.round(matched.purchasePrice * qtyNum)));
+    }
+  };
+
   const handleSaveSpoilage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!logProdName.trim() || !logLoss) return;
 
+    const qty = parseFloat(logQty) || 1;
+    const loss = parseFloat(logLoss) || 0;
+
     await db.spoilageLogs.add({
       id: 'spoil_' + Math.random().toString(36).substring(2, 9),
       productName: logProdName.trim(),
-      quantity: parseFloat(logQty) || 1,
+      quantity: qty,
       unit: logUnit,
       reason: logReason,
-      estimatedLoss: parseFloat(logLoss) || 0,
+      estimatedLoss: loss,
       timestamp: new Date().toISOString(),
       note: logNote.trim()
     });
 
+    // Auto-deduct from stock if enabled
+    const targetProduct = selectedProductId 
+      ? products.find(p => p.id === selectedProductId)
+      : products.find(p => p.name.toLowerCase() === logProdName.trim().toLowerCase());
+
+    if (deductFromStock && targetProduct && targetProduct.id) {
+      const updatedStock = Math.max(0, (targetProduct.stockQty || 0) - qty);
+      await db.products.update(targetProduct.id, { stockQty: updatedStock });
+    }
+
     setIsLogModalOpen(false);
     setLogProdName('');
+    setSelectedProductId('');
     setLogQty('');
     setLogLoss('');
     setLogNote('');
@@ -303,11 +346,19 @@ export const SpoilageExpiryGuard: React.FC = () => {
                 <input
                   type="text"
                   required
+                  list="spoilage-inventory-list"
                   value={logProdName}
-                  onChange={e => setLogProdName(e.target.value)}
+                  onChange={e => handleProductSelect(e.target.value)}
                   placeholder="उदा. अमुल दूध या रहर दाल"
                   className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-semibold text-stone-900 outline-hidden focus:border-amber-500"
                 />
+                <datalist id="spoilage-inventory-list">
+                  {products.map(p => (
+                    <option key={p.id} value={p.name}>
+                      {p.hindiName ? `${p.hindiName} • स्टॉक: ${p.stockQty} ${p.unit}` : `स्टॉक: ${p.stockQty} ${p.unit}`}
+                    </option>
+                  ))}
+                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -317,9 +368,10 @@ export const SpoilageExpiryGuard: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     required
                     value={logQty}
-                    onChange={e => setLogQty(e.target.value)}
+                    onChange={e => handleQtyChange(e.target.value)}
                     placeholder="4"
                     className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-bold text-stone-900 outline-hidden focus:border-amber-500"
                   />
@@ -340,6 +392,30 @@ export const SpoilageExpiryGuard: React.FC = () => {
                     <option value="liter">liter (लीटर)</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Stock Auto-Deduct Option */}
+              <div className="bg-amber-50/60 p-2.5 rounded-xl border border-amber-200/60 space-y-1.5">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-stone-800">
+                  <input
+                    type="checkbox"
+                    checked={deductFromStock}
+                    onChange={e => setDeductFromStock(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded border-amber-300 focus:ring-emerald-500"
+                  />
+                  <span>दुकान स्टॉक में से भी घटाएं (Auto-deduct from stock)</span>
+                </label>
+                {selectedProductId && (
+                  <p className="text-[11px] text-amber-900 font-medium pl-6 m-0">
+                    {(() => {
+                      const p = products.find(x => x.id === selectedProductId);
+                      if (!p) return null;
+                      const q = parseFloat(logQty) || 1;
+                      const after = Math.max(0, p.stockQty - q);
+                      return `वर्तमान स्टॉक: ${p.stockQty} ${p.unit} ➔ नया स्टॉक: ${after} ${p.unit}`;
+                    })()}
+                  </p>
+                )}
               </div>
 
               <div>

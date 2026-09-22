@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import confetti from 'canvas-confetti';
 import { 
   Zap, Check, Trash2, Printer, Plus, Minus,
-  RotateCcw, Sparkles
+  RotateCcw, Sparkles, Settings, Share2, X
 } from 'lucide-react';
 import { db } from '../../db';
 import type { Product, Sale } from '../../types';
@@ -32,10 +32,25 @@ export const HaatBazaarMode: React.FC = () => {
   const [lastSaleBanner, setLastSaleBanner] = useState<{ total: number; change: number } | null>(null);
   const [isDemoLimitOpen, setIsDemoLimitOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isConfigureTilesOpen, setIsConfigureTilesOpen] = useState<boolean>(false);
+  const [tileSearch, setTileSearch] = useState<string>('');
+  const [customTileIds, setCustomTileIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('gk_haat_custom_tiles');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [tempTileIds, setTempTileIds] = useState<string[]>([]);
 
   // Filter top 12 Fast-Moving Haat Items
   const haatFastItems = useMemo(() => {
-    // Select popular staple, rural_special, snacks, and hygiene products
+    if (customTileIds.length > 0) {
+      const selected = products.filter(p => p.id && customTileIds.includes(p.id));
+      if (selected.length > 0) return selected.slice(0, 12);
+    }
+
     const priorityNames = [
       'Gud (Jaggery Bheli)',
       'Sarson Tel (Mustard Loose)',
@@ -53,9 +68,8 @@ export const HaatBazaarMode: React.FC = () => {
 
     const matched = products.filter(p => priorityNames.includes(p.name));
     if (matched.length >= 8) return matched;
-    // Fallback if custom names differ
     return products.slice(0, 12);
-  }, [products]);
+  }, [products, customTileIds]);
 
   // Today's Haat Sales Total
   const todayStr = new Date().toISOString().split('T')[0];
@@ -226,6 +240,48 @@ export const HaatBazaarMode: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKey);
   });
 
+  const handleCloseHaatSession = () => {
+    const storeInfo = syncService.getStoreInfo();
+    const storeName = storeInfo?.storeName || 'ग्रामीण किराना';
+    const dateStr = new Date().toLocaleDateString('hi-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+    const timeStr = new Date().toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' });
+
+    let text = `🎪 *${storeName} - साप्ताहिक हाट-बाज़ार बिक्री सारांश*\n`;
+    text += `📅 तारीख: ${dateStr} (${timeStr})\n`;
+    text += `👥 कुल ग्राहक / बिल: ${todayHaatSales.length}\n`;
+    text += `💵 कुल नकद बिक्री: ₹${totalHaatCash}\n`;
+    text += `---------------------------\n`;
+    text += `🙏 हाट सत्र संपन्न।`;
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleToggleTileSelection = (id?: string) => {
+    if (!id) return;
+    setTempTileIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(x => x !== id);
+      } else {
+        if (prev.length >= 12) {
+          alert('आप अधिकतम 12 सामान ही चुन सकते हैं।');
+          return prev;
+        }
+        return [...prev, id];
+      }
+    });
+  };
+
+  const handleSaveTiles = () => {
+    setCustomTileIds(tempTileIds);
+    localStorage.setItem('gk_haat_custom_tiles', JSON.stringify(tempTileIds));
+    setIsConfigureTilesOpen(false);
+  };
+
   return (
     <div className="space-y-3 pb-24 md:pb-6">
       {/* Top Banner: Haat Live Cash Meter */}
@@ -250,8 +306,31 @@ export const HaatBazaarMode: React.FC = () => {
             </div>
           </div>
 
-          {/* Live Cash Counter Badge */}
-          <div className="flex items-center gap-2">
+          {/* Live Cash Counter Badge & Haat Actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                setTempTileIds(customTileIds.length > 0 ? [...customTileIds] : haatFastItems.map(p => p.id || ''));
+                setIsConfigureTilesOpen(true);
+              }}
+              className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+              title="हाट स्क्रीन पर दिखने वाले 12 सामान बदलें"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>12 बटन बदलें</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCloseHaatSession}
+              className="bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/50 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-xs"
+              title="हाट का पूरा हिसाब व्हाट्सएप पर भेजें"
+            >
+              <Share2 className="w-3.5 h-3.5 text-emerald-200" />
+              <span>सत्र सारांश</span>
+            </button>
+
             <div className="bg-stone-950/70 border border-amber-400/40 px-3 py-1.5 rounded-xl text-right">
               <span className="text-[10px] text-stone-400 block leading-tight font-medium">
                 {th.todayCash}
@@ -496,6 +575,109 @@ export const HaatBazaarMode: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Configure 12 Tiles Modal */}
+      {isConfigureTilesOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-5 max-w-lg w-full shadow-2xl border border-amber-300 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-amber-100 text-amber-900 rounded-xl">
+                  <Settings className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-stone-950 text-base m-0">
+                    हाट स्क्रीन के 12 बटन चुनें
+                  </h3>
+                  <p className="text-xs text-amber-800 font-bold m-0">
+                    चुने हुए: {tempTileIds.length} / 12 सामान
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsConfigureTilesOpen(false)}
+                className="text-stone-400 hover:text-stone-700 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search filter for products */}
+            <div className="my-3">
+              <input
+                type="text"
+                value={tileSearch}
+                onChange={e => setTileSearch(e.target.value)}
+                placeholder="सामान खोजें (उदा. गुड़, दाल, तेल)..."
+                className="w-full p-2.5 bg-[#faf8f3] border border-amber-200 rounded-xl text-xs sm:text-sm font-semibold outline-hidden focus:border-amber-500"
+              />
+            </div>
+
+            {/* Product Checkbox Selection List */}
+            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 max-h-[50vh]">
+              {products
+                .filter(p => 
+                  p.name.toLowerCase().includes(tileSearch.toLowerCase()) || 
+                  p.hindiName.toLowerCase().includes(tileSearch.toLowerCase())
+                )
+                .map(p => {
+                  const isChecked = !!p.id && tempTileIds.includes(p.id);
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => handleToggleTileSelection(p.id)}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-all ${
+                        isChecked 
+                          ? 'bg-amber-50/80 border-amber-500 ring-1 ring-amber-400/50' 
+                          : 'bg-[#faf8f3] border-stone-200 hover:bg-stone-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleTileSelection(p.id)}
+                          className="w-4 h-4 text-amber-600 rounded border-stone-300 pointer-events-none"
+                        />
+                        <div className="truncate">
+                          <div className="text-xs sm:text-sm font-black text-stone-900 truncate">
+                            {language === 'hi' ? p.hindiName : p.name}
+                          </div>
+                          <div className="text-[11px] text-stone-500 truncate">
+                            {language === 'hi' ? p.name : p.hindiName} • स्टॉक: {p.stockQty} {p.unit}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-xs sm:text-sm font-black text-emerald-800">
+                          ₹{p.sellingPrice}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-stone-200 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsConfigureTilesOpen(false)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 cursor-pointer"
+              >
+                रद्द करें
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTiles}
+                className="flex-1 py-2.5 rounded-xl text-xs font-black bg-amber-700 hover:bg-amber-600 text-white cursor-pointer shadow-xs active:scale-95"
+              >
+                बटन सुरक्षित करें ➔
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Demo Quota Modal */}
       <DemoLimitModal

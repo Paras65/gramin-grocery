@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Camera, X, Flashlight, FlashlightOff, AlertCircle, CheckCircle, Keyboard } from 'lucide-react';
 import { db } from '../../db';
 import type { Product } from '../../types';
@@ -83,77 +83,30 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     setTorchOn(false);
   };
 
-  // Start camera and barcode loop
-  useEffect(() => {
-    if (!isOpen) {
-      stopCamera();
-      setLastScannedMsg(null);
-      setCameraError('');
-      return;
+  // Find product and trigger callback
+  const handleBarcodeMatched = useCallback(async (code: string) => {
+    // Look up by barcode first, then by id if matches format
+    let matched = await db.products.where('barcode').equals(code).first();
+    if (!matched) {
+      matched = await db.products.where('id').equals(code).first();
     }
 
-    let isMounted = true;
-
-    async function initCamera() {
-      try {
-        setCameraError('');
-        const constraints: MediaStreamConstraints = {
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
-        };
-
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        if (!isMounted) {
-          stream.getTracks().forEach(t => t.stop());
-          return;
-        }
-
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-
-        // Check if torch/flashlight is supported
-        const track = stream.getVideoTracks()[0];
-        const capabilities = track.getCapabilities ? (track.getCapabilities() as { torch?: boolean }) : {};
-        if (capabilities.torch) {
-          setCanTorch(true);
-        }
-
-        // Initialize BarcodeDetector loop
-        if ('BarcodeDetector' in window && window.BarcodeDetector) {
-          setIsBarcodeDetectorSupported(true);
-          const detector = new window.BarcodeDetector({
-            formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
-          });
-
-          isDetectingRef.current = true;
-          startScanLoop(detector);
-        } else {
-          setIsBarcodeDetectorSupported(false);
-        }
-      } catch (err: unknown) {
-        console.error('Camera access error:', err);
-        setHasCamera(false);
-        setCameraError('कैमरा चालू नहीं हो सका। कृपया अनुमति (Permission) दें या नीचे बारकोड नंबर डालें।');
-      }
+    if (matched) {
+      playBeep();
+      onProductScanned(matched);
+      setLastScannedMsg({
+        name: language === 'hi' ? matched.hindiName : matched.name,
+        price: matched.sellingPrice,
+      });
+      setTimeout(() => setLastScannedMsg(null), 2500);
+    } else {
+      setCameraError(`बारकोड "${code}" से कोई सामान नहीं मिला। कृपया स्टॉक लिस्ट में जोड़ें।`);
+      setTimeout(() => setCameraError(''), 3500);
     }
-
-    initCamera();
-
-    return () => {
-      isMounted = false;
-      stopCamera();
-    };
-  }, [isOpen]);
+  }, [language, onProductScanned]);
 
   // Continuous frame analysis
-  const startScanLoop = (detector: BarcodeDetectorShim) => {
+  const startScanLoop = useCallback((detector: BarcodeDetectorShim) => {
     const scanFrame = async () => {
       if (!isDetectingRef.current || !videoRef.current) return;
 
@@ -179,29 +132,69 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     };
 
     animationFrameIdRef.current = requestAnimationFrame(scanFrame);
-  };
+  }, [handleBarcodeMatched]);
 
-  // Find product and trigger callback
-  const handleBarcodeMatched = async (code: string) => {
-    // Look up by barcode first, then by id if matches format
-    let matched = await db.products.where('barcode').equals(code).first();
-    if (!matched) {
-      matched = await db.products.where('id').equals(code).first();
+  const initCamera = useCallback(async () => {
+    try {
+      setCameraError('');
+      setHasCamera(true);
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      // Check if torch/flashlight is supported
+      const track = stream.getVideoTracks()[0];
+      const capabilities = track.getCapabilities ? (track.getCapabilities() as { torch?: boolean }) : {};
+      if (capabilities.torch) {
+        setCanTorch(true);
+      }
+
+      // Initialize BarcodeDetector loop
+      if ('BarcodeDetector' in window && window.BarcodeDetector) {
+        setIsBarcodeDetectorSupported(true);
+        const detector = new window.BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
+        });
+
+        isDetectingRef.current = true;
+        startScanLoop(detector);
+      } else {
+        setIsBarcodeDetectorSupported(false);
+      }
+    } catch (err: unknown) {
+      console.error('Camera access error:', err);
+      setHasCamera(false);
+      setCameraError('कैमरा चालू नहीं हो सका। कृपया अनुमति (Permission) दें या नीचे बारकोड नंबर डालें।');
+    }
+  }, [startScanLoop]);
+
+  // Start camera when modal opens
+  useEffect(() => {
+    if (!isOpen) {
+      stopCamera();
+      setLastScannedMsg(null);
+      setCameraError('');
+      return;
     }
 
-    if (matched) {
-      playBeep();
-      onProductScanned(matched);
-      setLastScannedMsg({
-        name: language === 'hi' ? matched.hindiName : matched.name,
-        price: matched.sellingPrice,
-      });
-      setTimeout(() => setLastScannedMsg(null), 2500);
-    } else {
-      setCameraError(`बारकोड "${code}" से कोई सामान नहीं मिला। कृपया स्टॉक लिस्ट में जोड़ें।`);
-      setTimeout(() => setCameraError(''), 3500);
-    }
-  };
+    initCamera();
+
+    return () => {
+      stopCamera();
+    };
+  }, [isOpen, initCamera]);
 
   // Manual barcode submission (or USB handheld scanner input)
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -304,10 +297,38 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         </div>
 
         {/* Error / Warning Notice */}
+        {/* Error / Warning Notice with Visual Permission Guide */}
         {cameraError && (
-          <div className="bg-rose-50 border-y border-rose-200 px-4 py-2 text-xs text-rose-800 font-semibold flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span className="leading-tight">{cameraError}</span>
+          <div className="bg-rose-50 border-y border-rose-200 px-4 py-3 text-xs text-rose-900 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 font-bold">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="leading-tight">{cameraError}</span>
+              </div>
+              <button
+                onClick={initCamera}
+                className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer shrink-0"
+              >
+                पुनः प्रयास करें
+              </button>
+            </div>
+            {!hasCamera && (
+              <div className="bg-white/80 p-2.5 rounded-xl border border-rose-200 text-[11px] text-stone-700 space-y-1">
+                <div className="font-bold text-stone-900">कैमरा अनुमति चालू करने के 3 आसान चरण:</div>
+                <div className="flex items-start gap-1">
+                  <span className="font-bold text-rose-700">1.</span>
+                  <span>ब्राउज़र के ऊपर एड्रेस बार में 🔒 (Lock) या 'साइट सेटिंग्स' पर क्लिक करें।</span>
+                </div>
+                <div className="flex items-start gap-1">
+                  <span className="font-bold text-rose-700">2.</span>
+                  <span><strong>Camera (कैमरा)</strong> विकल्प को <strong>'Allow' (अनुमति दें)</strong> पर सेट करें।</span>
+                </div>
+                <div className="flex items-start gap-1">
+                  <span className="font-bold text-rose-700">3.</span>
+                  <span>ऊपर <strong>पुनः प्रयास करें</strong> दबाएं या पेज को रीफ्रेश करें।</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

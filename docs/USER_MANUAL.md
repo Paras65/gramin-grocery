@@ -16,7 +16,8 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Village Mohalla / Para Grouping](#village-mohalla--para-grouping)
    - [Harvest & Scheme Repayment Dates (धान खरीदी / महतारी वंदन)](#harvest--scheme-repayment-dates-धान-खरीदी--महतारी-वंदन)
    - [Recording Payments Received (जमा) & New Credit (उधार)](#recording-payments-received-जमा--new-credit-उधार)
-   - [Sending WhatsApp Payment Reminders](#sending-whatsapp-payment-reminders)
+   - [WhatsApp Payment Receipts & Reminders (जमा रसीद व तगादा)](#whatsapp-payment-receipts--reminders-जमा-रसीद-व-तगादा)
+   - [Direct Phone Dialing & Safe Customer Guard (कॉल व खाता सुरक्षा)](#direct-phone-dialing--safe-customer-guard-कॉल-व-खाता-सुरक्षा)
    - [Viewing Customer Transaction History](#viewing-customer-transaction-history)
 4. [Mandi Restock Planner (मंडी / शहर खरीदारी लिस्ट)](#4-mandi-restock-planner-मंडी--शहर-खरीदारी-लिस्ट)
    - [Auto-Generated Low Stock List](#auto-generated-low-stock-list)
@@ -31,10 +32,10 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
 7. [Voice Assistant (बोलकर दर्ज करें)](#7-voice-assistant-बोलकर-दर्ज-करें)
 8. [Data Backup & Privacy (डेटा बैकअप व सुरक्षा)](#8-data-backup--privacy-डेटा-बैकअप-व-सुरक्षा)
 9. [Store Login & Multi-Staff Access (दुकानदार लॉगिन व मुनीम खाता)](#9-store-login--multi-staff-access-दुकानदार-लॉगिन-व-मुनीम-खाता)
-   - [Registering Your Store & Active Shop Banner](#registering-your-store--active-shop-banner)
+   - [Registering Your Store & PIN Recovery Helpline](#registering-your-store--pin-recovery-helpline)
    - [Roles & Sensitive Data Privacy Guardrails](#roles--sensitive-data-privacy-guardrails)
 10. [Automatic Cloud Sync & Multi-Store Isolation (क्लाउड ऑटो-सिंक व सुरक्षा)](#10-automatic-cloud-sync--multi-store-isolation-क्लाउड-ऑटो-सिंक-व-सुरक्षा)
-   - [100% Offline with Live Cloud Sync Badge](#100-offline-with-live-cloud-sync-badge)
+   - [100% Offline with Live Cloud Sync & 1-Click Backup](#100-offline-with-live-cloud-sync--1-click-backup)
    - [Multi-Store Local Switching Isolation Guarantee](#multi-store-local-switching-isolation-guarantee-सुरक्षित-दुकान-बदलाव)
 11. [Village Premium Look & Multi-Device Usability (ग्रामीण प्रीमियम लुक व मोबाइल/टैबलेट उपयोग)](#11-village-premium-look--multi-device-usability-ग्रामीण-प्रीमियम-लुक-व-मोबाइलटैबलेट-उपयोग)
 12. [Daily Cash Drawer Closing (दैनिक गल्ला व रोकड़ हिसाब)](#12-daily-cash-drawer-closing-दैनिक-गल्ला-व-रोकड़-हिसाब)
@@ -110,6 +111,10 @@ Gramin Kirana is built to run **100% offline** without needing a continuous inte
 2. **Udhaar (उधार खाता):** Requires choosing a registered customer from the dropdown. The bill total is automatically added to that customer’s running debt balance.
 3. **UPI (ऑनलाइन):** For digital payments received via phone scanner.
 
+### Adding Ad-Hoc Items & 0-Stock Alerts (कस्टम सामान व स्टॉक चेतावनी)
+- **+ सामान (Quick Ad-Hoc Item):** If a customer requests an unlisted item (e.g., coconut, festival items, or loose gur), tap **"+ सामान"** in the search bar. Enter the name, price, and unit. You can toggle **"दुकान स्टॉक लिस्ट में भी जोड़ें"** to permanently save it to your inventory for future billing.
+- **⚠️ 0 स्टॉक चेतावनी (Out-of-Stock Warning):** If an item with 0 recorded inventory is added to the cart, a distinct amber warning badge appears on the item. This alerts you that untracked stock has arrived without blocking the customer checkout.
+
 ### Sharing Receipts via WhatsApp
 - When a bill is finalized, a receipt appears with the option to click **"व्हाट्सएप पर पर्ची भेजें" (Share Bill via WhatsApp)**.
 - This opens WhatsApp with a clean, itemized receipt and shows the customer their previous and new outstanding balance.
@@ -132,9 +137,13 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 - **जमा (+):** Green button to record a partial or full payment. Deducts from the customer's balance.
 - **उधार (-):** Red button to add a new credit amount directly to the customer's ledger.
 
-### Sending WhatsApp Payment Reminders
-- Click the **WhatsApp तगादा** button on any customer card.
-- Automatically generates a polite reminder message in Hindi mentioning their exact balance and repayment agreement date.
+### WhatsApp Payment Receipts & Reminders (जमा रसीद व तगादा)
+- **1-टैप जमा रसीद (Instant Repayment Receipt):** Whenever you record a payment (`जमा (+)`) from a customer, a prompt offers to send an immediate WhatsApp receipt directly to the customer confirming the received amount and their newly reduced balance.
+- **उधार तगादा (Polite Balance Reminder):** Click the **WhatsApp तगादा** button on any customer card to send a respectful reminder in Hindi detailing their pending balance and agreed repayment festival/scheme date.
+
+### Direct Phone Dialing & Safe Customer Guard (कॉल व खाता सुरक्षा)
+- **1-टैप फोन कॉल (Direct Calling):** Tap the green telephone icon directly beside any customer's name on their card to dial their mobile number instantly without manual copy-pasting.
+- **बकाया खाता सुरक्षा (Protection Against Accidental Deletion):** If a customer has an active outstanding balance (`₹1` or more), the red delete button is locked. You can only remove a customer card once their balance is completely paid up (`₹0`), guarding your store from accidental loss of credit records.
 
 ### Viewing Customer Transaction History
 - Click the **इतिहास (History)** icon on any customer card to review all historical purchases and payments.
@@ -161,6 +170,7 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 ### Logging Power-Cut & Heat Losses (दूध/दही/कोल्ड ड्रिंक)
 - Unstable electricity and load-shedding can spoil dairy and beverages.
 - Click **"+ नुकसान दर्ज करें" (Log Loss)** to record spoiled milk, curd, or broken bottles, specifying the reason (⚡ *बिजली कटौती*, ☀️ *गर्मी*, 🐀 *चूहा/कीड़ा*).
+- **ऑटो-स्टॉक कटौती (Automatic Stock Deduction):** When you select an item from your inventory, the system automatically suggests the purchase rate and calculates the loss. With the **"दुकान स्टॉक में से भी घटाएं"** option enabled, the spoiled count is automatically subtracted from your store inventory so your stock counts remain accurate without manual adjustment.
 - Keeps an accurate tally of total financial losses.
 
 ### Tracking Upcoming Expiry Items
@@ -201,9 +211,10 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 
 Gramin Kirana supports distinct operational roles and multi-store privacy to ensure counter convenience and shop secrecy:
 
-### Registering Your Store & Welcome Screen Onboarding
+### Registering Your Store & PIN Recovery Helpline
 - **स्वागत स्क्रीन (Welcome Landing Screen):** Unauthenticated users first see the Welcome Landing Page with features, pricing, and side-by-side tabs for **"दुकानदार लॉगिन"** and **"+ नई दुकान जोड़ें"**.
-- Fill in your store name, owner name, village, district, mobile number, and a 4-digit secret PIN.
+- Fill in your store name, owner name, village, district, 10-digit mobile number, and a 4-digit secret PIN.
+- **पिन भूल गए? (Forgot PIN Helpline):** If you ever forget your 4-digit PIN, click the **"पिन भूल गए? सहायता पाएं"** link on the login screen. It directly opens a pre-composed WhatsApp message to our support desk with your shop's mobile number for verified, rapid reset assistance.
 - **सीधे काउंटर पर प्रवेश (Immediate Counter Access):** As soon as you register or log in, the welcome landing screen closes and your shop's **तुरंत बिलिंग (POS)** counter opens instantly—no distracting ads or extra clicks.
 - Once logged in, your shop identity is clearly visible at the top of every screen:
   - **🏪 दुकान का नाम व गाँव:** Displays your store name and village/district location so you always know which shop ledger is active.
@@ -225,11 +236,11 @@ Gramin Kirana supports distinct operational roles and multi-store privacy to ens
 
 ## 10. Automatic Cloud Sync & Multi-Store Isolation (क्लाउड ऑटो-सिंक व सुरक्षा)
 
-### 100% Offline with Live Cloud Sync Badge
+### 100% Offline with Live Cloud Sync & 1-Click Backup
 - You can continue billing customers even when village electricity or mobile network is down.
-- **लाइव सिंक काउंटर (Live Delta Counter):** The top navigation bar displays a live sync badge:
-  - `🟢 सिंक सुरक्षित (Synced)`: Indicates all bills and ledger entries are safely backed up in the cloud.
-  - `🟠 N बिल सिंक बाकी (N Pending)`: Shows the exact number of offline bills or repayments waiting to be uploaded. Tapping this badge immediately initiates background sync as soon as connectivity returns.
+- **लाइव सिंक काउंटर व अंतिम समय (Live Status & Timestamp):** The top navigation bar displays a live sync badge showing the time of the last successful backup (e.g., `अंतिम सिंक: 07:45 PM`):
+  - `🟢 बैकअप सुरक्षित • सिंक करें`: Indicates all bills and ledger entries are safely backed up in the cloud. You can click anytime to run an on-demand refresh.
+  - `🟠 N बाकी • अभी सिंक करें`: Shows the exact number of offline bills or repayments waiting to be uploaded. Tapping this badge immediately initiates background sync as soon as connectivity returns, with a clear spinning indicator.
 
 ### Multi-Store Local Switching Isolation Guarantee (सुरक्षित दुकान बदलाव)
 - When multiple shopkeepers or branches share a single counter tablet or phone, Gramin Kirana enforces complete privacy isolation.
@@ -334,6 +345,10 @@ Gramin Kirana turns any standard Android phone, iPhone, or laptop webcam into a 
 ### Torch Light & Night Counter Usability (टॉर्च लाइट)
 - For dimly lit village counters or evening power cuts, tap the **टॉर्च (Flashlight)** icon inside the camera window to illuminate the package barcode instantly.
 
+### Camera Permission Guide & Quick Retry (कैमरा अनुमति व सुधार)
+- If your phone or browser displays a permission blocked message, the app displays a simple 3-step visual instruction box directly inside the window.
+- Click the **🔒 लॉक** icon in your browser's address bar, set **Camera** to **Allow**, and tap **"पुनः प्रयास करें (Retry)"** to resume instant scanning without closing your current cart.
+
 ### USB Handheld Barcode Reader Compatibility (USB स्कैनर सपोर्ट)
 - If you use a physical USB handheld barcode gun or wireless desktop scanner, it works automatically without configuration. Simply plug the scanner into your computer or phone (via OTG adapter) and scan barcodes directly into the bill.
 
@@ -367,6 +382,7 @@ Village grocery stores experience intense counter rushes on weekly market days (
 - Open the **🎪 हाट मोड** tab (or tap the **🎪 हाट मोड** quick-switch badge in the POS screen).
 - The screen displays the top 12 high-velocity market items (*गुड़, खुला सरसों तेल, नमक, बीड़ी 502, चीता माचिस, पारले-जी, रिन साबुन, चायपत्ती, दालें*) as oversized, high-contrast touch tiles.
 - Tapping any item adds it to the tally with a single touch—no sub-menus, search typing, or weight selectors required.
+- **⚙️ 12 बटन बदलें (Customize Tiles):** If you sell different items during different festival markets (e.g. Holi, Diwali, or summer season), click **"12 बटन बदलें"** in the top bar to select any 12 products from your shop inventory.
 
 ### Quick Tender & Change Calculator (छुट्टे पैसे हिसाब)
 - Quick-tap cash tender buttons (**बराबर, ₹50, ₹100, ₹200, ₹500**) let the cashier instantly check exact change to return to the customer in bold numerals.
@@ -375,8 +391,9 @@ Village grocery stores experience intense counter rushes on weekly market days (
 - Tapping the giant green **⚡ 1-टैप नकद पूरा** button (or pressing **Enter** on keyboard) completes the sale in under 1.5 seconds.
 - Automatically saves the sale, deducts stock, rings a cashier chime, and clears the pad instantly for the next villager waiting in line.
 
-### Live Haat Cash & Customer Meter (हाट रोकड़ मीटर)
+### Live Haat Cash & Session Summary (हाट रोकड़ मीटर व सत्र सारांश)
 - The header displays a live ticker showing total Haat cash collected today along with the total count of customers served during the market session.
+- **🏁 सत्र सारांश (WhatsApp Report):** At the end of the market rush, tap **"सत्र सारांश"** to generate a clean summary of total cash collected and customers served, ready to share to your family or shop phone via WhatsApp.
 
 ---
 

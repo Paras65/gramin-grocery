@@ -76,11 +76,19 @@ export const StoreAuthModal: React.FC<StoreAuthModalProps> = ({ isOpen, onClose 
     await syncService.triggerSync();
   };
 
-  const handleLogout = () => {
-    syncService.logout();
+  const handleLogout = async () => {
+    const pending = await syncService.getPendingSyncCount();
+    if (pending > 0) {
+      const ok = window.confirm(
+        `चेतावनी: आपके ${pending} बिल/खाता रिकॉर्ड्स अभी क्लाउड पर सुरक्षित नहीं हुए हैं!\n\nयदि आप अभी लॉगआउट करेंगे तो डेटा नष्ट हो सकता है।\n\nक्या आप सच में लॉगआउट करना चाहते हैं?`
+      );
+      if (!ok) return;
+    }
+    await syncService.logout(true);
     setIsLoggedIn(false);
     setStoreInfo(null);
     setUserInfo(null);
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -198,12 +206,13 @@ export const StoreAuthModal: React.FC<StoreAuthModalProps> = ({ isOpen, onClose 
                   <div className="relative">
                     <Phone className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
                     <input
-                      type="text"
+                      type="tel"
                       required
+                      maxLength={10}
                       value={mobile}
-                      onChange={(e) => setMobile(e.target.value)}
-                      placeholder="98261XXXXX"
-                      className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 outline-hidden focus:border-emerald-600"
+                      onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
+                      placeholder="9826123456"
+                      className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 outline-hidden focus:border-emerald-600 font-bold"
                     />
                   </div>
                 </div>
@@ -219,10 +228,22 @@ export const StoreAuthModal: React.FC<StoreAuthModalProps> = ({ isOpen, onClose 
                       required
                       maxLength={4}
                       value={pin}
-                      onChange={(e) => setPin(e.target.value)}
+                      onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                       placeholder="••••"
                       className="w-full pl-9 pr-3 py-2 border border-stone-300 rounded-xl text-lg tracking-widest text-stone-900 outline-hidden focus:border-emerald-600 font-bold"
                     />
+                  </div>
+                  <div className="flex justify-end mt-1.5">
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(
+                        `नमस्ते Gramin Kirana टीम, मैं अपना स्टोर लॉगिन पिन भूल गया हूँ। मेरा रजिस्टर्ड मोबाइल नंबर ${mobile || '_____'} है। कृपया पिन रीसेट करने में सहायता करें।`
+                      )}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] font-bold text-emerald-800 hover:text-emerald-900 underline decoration-emerald-500/60"
+                    >
+                      पिन भूल गए? (Forgot PIN)
+                    </a>
                   </div>
                 </div>
 

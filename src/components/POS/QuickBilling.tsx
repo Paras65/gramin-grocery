@@ -4,7 +4,7 @@ import confetti from 'canvas-confetti';
 import { 
   Search, Trash2, CheckCircle, Share2, 
   CreditCard, Banknote, QrCode, ShoppingBag,
-  ArrowRight, X, Scale, Printer, Scan
+  ArrowRight, X, Scale, Printer, Scan, Plus
 } from 'lucide-react';
 import { db } from '../../db';
 import type { CartItem, Customer, PaymentMode, Product } from '../../types';
@@ -36,6 +36,12 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState<boolean>(false);
   const [isDemoLimitOpen, setIsDemoLimitOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState<boolean>(false);
+  const [customName, setCustomName] = useState<string>('');
+  const [customPrice, setCustomPrice] = useState<string>('');
+  const [customQty, setCustomQty] = useState<string>('1');
+  const [customUnit, setCustomUnit] = useState<string>('piece');
+  const [saveCustomToCatalog, setSaveCustomToCatalog] = useState<boolean>(true);
 
   // Completed bill receipt modal
   const [lastCompletedBill, setLastCompletedBill] = useState<{
@@ -132,6 +138,39 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
       addToCart(activeLooseProduct, selectedWeight);
       setActiveLooseProduct(null);
     }
+  };
+
+  const handleAddCustomItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const priceNum = parseFloat(customPrice);
+    const qtyNum = parseFloat(customQty) || 1;
+    if (!customName.trim() || isNaN(priceNum) || priceNum <= 0) return;
+
+    const prodId = 'prod_' + Math.random().toString(36).substring(2, 9);
+    const newProduct: Product = {
+      id: prodId,
+      name: customName.trim(),
+      hindiName: customName.trim(),
+      category: 'rural_special',
+      purchasePrice: Math.round(priceNum * 0.8),
+      sellingPrice: priceNum,
+      stockQty: saveCustomToCatalog ? 25 : 0,
+      unit: customUnit as 'kg' | 'g' | 'liter' | 'packet' | 'piece' | 'pouch',
+      minStockThreshold: 5,
+      isLoose: customUnit === 'kg',
+    };
+
+    if (saveCustomToCatalog) {
+      await db.products.add(newProduct);
+    }
+
+    addToCart(newProduct, qtyNum);
+
+    setIsCustomModalOpen(false);
+    setCustomName('');
+    setCustomPrice('');
+    setCustomQty('1');
+    setCustomUnit('piece');
   };
 
   const updateCartQty = (index: number, newQty: number) => {
@@ -326,6 +365,12 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
 
       {/* Cart Items List */}
       <div className="flex-1 overflow-y-auto py-2.5 space-y-2 pr-1">
+        {cart.some(it => it.product.stockQty <= 0) && (
+          <div className="p-2 rounded-xl bg-amber-50 border border-amber-300 text-[11px] text-amber-950 font-bold flex items-center gap-1.5">
+            <span>⚠️</span>
+            <span>कुछ सामान का स्टॉक 0 है — क्या नया माल आया है?</span>
+          </div>
+        )}
         {cart.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-stone-400">
             <ShoppingBag className="w-12 h-12 text-stone-300 stroke-[1.5] mb-2" />
@@ -339,8 +384,15 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
               className="p-2.5 rounded-xl bg-[#faf8f3] border border-amber-200/50 flex items-center justify-between gap-2 shadow-2xs"
             >
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-stone-900 text-xs sm:text-sm truncate">
-                  {language === 'hi' ? item.product.hindiName : item.product.name}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-bold text-stone-900 text-xs sm:text-sm truncate">
+                    {language === 'hi' ? item.product.hindiName : item.product.name}
+                  </span>
+                  {item.product.stockQty <= 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-300 shrink-0" title="स्टॉक में 0 है — अतिरिक्त बिक्री">
+                      ⚠️ 0 स्टॉक
+                    </span>
+                  )}
                 </div>
                 <div className="text-[11px] text-stone-500 font-medium">
                   ₹{item.product.sellingPrice} /{item.product.unit}
@@ -512,6 +564,20 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           )}
           <button
             type="button"
+            onClick={() => {
+              if (searchQuery.trim()) {
+                setCustomName(searchQuery.trim());
+              }
+              setIsCustomModalOpen(true);
+            }}
+            className="bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-950 border border-amber-300/80 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer shrink-0 transition-all"
+            title="दुकान का कोई भी खुला या अन्य सामान सीधे बिल में जोड़ें"
+          >
+            <Plus className="w-4 h-4 text-amber-800" />
+            <span className="hidden sm:inline">सामान</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setIsBarcodeScannerOpen(true)}
             className="bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 border border-amber-300/80 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer shrink-0 transition-all"
             title="कैमरा बारकोड स्कैनर (Barcode Scanner)"
@@ -597,6 +663,28 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
               </button>
             );
           })}
+
+          {filteredProducts.length === 0 && (
+            <div className="col-span-2 sm:col-span-3 text-center py-10 px-4 bg-white/80 rounded-3xl border border-dashed border-amber-300 shadow-2xs">
+              <p className="text-sm font-black text-stone-800 m-0">
+                {searchQuery ? `'${searchQuery}' नाम का कोई सामान नहीं मिला` : 'इस श्रेणी में कोई सामान नहीं है'}
+              </p>
+              <p className="text-xs text-stone-500 mt-1 mb-3">
+                आप इसे तुरंत बिल में जोड़ सकते हैं और चाहें तो दुकान स्टॉक में भी हमेशा के लिए सुरक्षित रख सकते हैं।
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (searchQuery.trim()) setCustomName(searchQuery.trim());
+                  setIsCustomModalOpen(true);
+                }}
+                className="bg-amber-700 hover:bg-amber-800 active:scale-95 text-white font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer shadow-xs inline-flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ नया / खुला सामान तुरंत बिल में जोड़ें</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -843,6 +931,127 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
         onOpenRegister={() => setIsAuthModalOpen(true)}
         onOpenLogin={() => setIsAuthModalOpen(true)}
       />
+
+      {/* Ad-Hoc / Custom Item Modal */}
+      {isCustomModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-amber-200">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-xl bg-amber-100 text-amber-900">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <h3 className="font-black text-stone-950 text-base m-0">
+                  सामान सीधे बिल में जोड़ें
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsCustomModalOpen(false)}
+                className="text-stone-400 hover:text-stone-700 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCustomItem} className="mt-3 space-y-3">
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">
+                  सामान का नाम: *
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  placeholder="उदा. गुड़, नारियल, अगरबत्ती"
+                  className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-bold text-stone-900 outline-hidden focus:border-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">
+                    दर / कीमत (₹): *
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={customPrice}
+                    onChange={e => setCustomPrice(e.target.value)}
+                    placeholder="50"
+                    className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-black text-amber-950 outline-hidden focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">
+                    मात्रा (Qty): *
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={customQty}
+                    onChange={e => setCustomQty(e.target.value)}
+                    placeholder="1"
+                    className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-bold text-stone-900 outline-hidden focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">
+                  इकाई (Unit):
+                </label>
+                <select
+                  value={customUnit}
+                  onChange={e => setCustomUnit(e.target.value)}
+                  className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs font-bold text-stone-900 outline-hidden focus:border-amber-500"
+                >
+                  <option value="piece">piece (नग / पैकेट)</option>
+                  <option value="kg">kg (किलो)</option>
+                  <option value="packet">packet (पैकेट)</option>
+                  <option value="liter">liter (लीटर)</option>
+                  <option value="pouch">pouch (पाउच)</option>
+                </select>
+              </div>
+
+              {/* Save to Catalog Toggle */}
+              <div className="bg-amber-50/60 p-2.5 rounded-xl border border-amber-200/70">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-stone-800">
+                  <input
+                    type="checkbox"
+                    checked={saveCustomToCatalog}
+                    onChange={e => setSaveCustomToCatalog(e.target.checked)}
+                    className="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500"
+                  />
+                  <span>📦 दुकान स्टॉक लिस्ट में भी जोड़ें (Save to catalog)</span>
+                </label>
+                <p className="text-[10px] text-stone-500 mt-1 pl-6 m-0">
+                  इसे चालू रखने पर यह सामान भविष्य में भी स्टॉक लिस्ट व सर्च में दिखाई देगा।
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCustomModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-stone-100 text-stone-600 hover:bg-stone-200 cursor-pointer"
+                >
+                  रद्द करें
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl text-xs font-black bg-amber-700 hover:bg-amber-600 text-white cursor-pointer shadow-xs active:scale-95"
+                >
+                  बिल में जोड़ें ➔
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Store Registration & Login Modal */}
       <StoreAuthModal

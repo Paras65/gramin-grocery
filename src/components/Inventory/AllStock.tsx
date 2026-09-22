@@ -8,7 +8,7 @@ import { syncService } from '../../services/syncService';
 
 export const AllStock: React.FC = () => {
   const { language, t } = useLanguage();
-  const isCashier = syncService.getUserInfo()?.role === 'CASHIER';
+  const isCashier = syncService.getRole() === 'munim' || syncService.getUserInfo()?.role === 'CASHIER';
   const products = useLiveQuery(() => db.products.toArray()) || [];
 
   const [searchQuery, setSearchQuery] = useState('');

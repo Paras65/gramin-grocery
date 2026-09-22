@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { 
   Search, Calendar, ArrowUpRight, ArrowDownLeft, 
   Share2, History, AlertTriangle, UserPlus, X, BookOpen,
-  Printer, FileText, Send, Lock
+  Printer, FileText, Send, Lock, Phone, Trash2
 } from 'lucide-react';
 import { db } from '../../db';
 import type { Customer, DueReason, Transaction } from '../../types';
@@ -87,11 +87,44 @@ export const KhataLedger: React.FC = () => {
         timestamp,
         note: txnNote || (type === 'JAMA' ? 'भुगतान प्राप्त (Cash Received)' : 'उधार दिया (Credit)')
       });
+
+      // 1-Tap Jama payment receipt via WhatsApp
+      if (type === 'JAMA' && customer.phone && customer.phone.length === 10) {
+        const storeName = syncService.getStoreInfo()?.storeName || 'गाँव किराना स्टोर';
+        const msg = encodeURIComponent(
+          `✅ *जमा पावती (Payment Received)*\n` +
+          `दुकान: ${storeName}\n` +
+          `ग्राहक: ${customer.name}\n` +
+          `--------------------\n` +
+          `जमा की गई राशि: ₹${amount.toFixed(2)}\n` +
+          `नया बकाया शेष: ₹${newBalance.toFixed(2)}\n` +
+          `दिनांक: ${new Date().toLocaleDateString('hi-IN')}\n\n` +
+          `धन्यवाद! आपका हिसाब सुरक्षित दर्ज कर लिया गया है।`
+        );
+        window.open(`https://wa.me/91${customer.phone}?text=${msg}`, '_blank');
+      }
     }
 
     setTxnModal(null);
     setTxnAmount('');
     setTxnNote('');
+  };
+
+  // Safe Customer Account Deletion (Guard against deleting customers with balanceDue > 0)
+  const handleDeleteCustomer = async (cust: Customer) => {
+    if (cust.balanceDue > 0) {
+      alert(`⚠️ खाता बंद नहीं हो सकता!\n\n${cust.name} पर अभी ₹${cust.balanceDue} का बकाया शेष है।\nखाता हटाने से पहले बकाया राशि शून्य (₹0) होना अनिवार्य है।`);
+      return;
+    }
+
+    const ok = window.confirm(`क्या आप सच में ${cust.name} का खाता हमेशा के लिए हटाना चाहते हैं?`);
+    if (!ok) return;
+
+    if (cust.id) {
+      await db.customers.delete(cust.id);
+      await db.transactions.where('customerId').equals(cust.id).delete();
+      setActiveCustomerForLedger(null);
+    }
   };
 
   // Handle Add New Customer
@@ -436,6 +469,17 @@ export const KhataLedger: React.FC = () => {
                 </div>
 
                 <div className="flex gap-1">
+                  {/* Phone Call (Direct Dial) */}
+                  {customer.phone && customer.phone.length === 10 && (
+                    <a
+                      href={`tel:${customer.phone}`}
+                      className="p-2 rounded-xl text-blue-700 hover:bg-blue-50 border border-blue-200 cursor-pointer active:scale-95 transition-all flex items-center justify-center"
+                      title={`कॉल करें (${customer.phone})`}
+                    >
+                      <Phone className="w-4 h-4" />
+                    </a>
+                  )}
+
                   {/* WhatsApp Reminder */}
                   {hasBalance && (
                     <button
@@ -638,13 +682,24 @@ export const KhataLedger: React.FC = () => {
                   <span>📲 खाता पर्ची</span>
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveCustomerForLedger(null)}
-                className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl cursor-pointer transition-colors"
-              >
-                बंद करें
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCustomer(activeCustomerForLedger)}
+                  className="py-2 px-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-rose-200"
+                  title="बकाया शून्य होने पर खाता हटाएं"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>खाता हटाएं</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCustomerForLedger(null)}
+                  className="flex-1 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl cursor-pointer transition-colors"
+                >
+                  बंद करें
+                </button>
+              </div>
             </div>
           </div>
         </div>
