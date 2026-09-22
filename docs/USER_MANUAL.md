@@ -284,8 +284,8 @@ Gramin Kirana supports distinct operational roles and multi-store privacy to ens
   - Designed for helpers or family members running the counter while you are away.
   - Can quickly bill customers, search items, and record repayment receipts (जमा).
   - **थोक भाव व मुनाफ़ा गोपनीयता (Wholesale Price & Margin Hidden):** In the inventory list, wholesale purchase prices (`खरीद भाव`) and profit percentages (`मुनाफ़ा`) are completely masked so counter staff cannot view your supplier costs or margin secrets.
-  - **स्टॉक सुरक्षा (Stock Lock):** Adding new products or modifying item rates is reserved exclusively for the shop owner.
-  - **बैकअप सुरक्षा (Backup Lock):** Full shop database downloads, file restores, and data resets are strictly locked to prevent unauthorized data exports.
+  - **स्टॉक व मंडी सुरक्षा (Stock & Mandi Lock):** Adding new products, modifying item rates, and accessing Mandi procurement budgeting are reserved exclusively for the shop owner.
+  - **वित्तीय रिपोर्ट व बैकअप सुरक्षा (Financial Report & Backup Lock):** Monthly profit/loss reports, evening cash till reconciliations, full shop database downloads, and data resets are strictly locked to prevent unauthorized access.
 
 ---
 

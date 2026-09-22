@@ -213,54 +213,57 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
 
     const timestamp = new Date().toISOString();
     const customer = customers.find(c => c.id === selectedCustomerId);
-
     const saleId = 'sale_' + Math.random().toString(36).substring(2, 9);
-    await db.sales.add({
-      id: saleId,
-      customerId: selectedCustomerId || undefined,
-      customerName: customer?.name,
-      items: cart.map(it => ({
-        productId: it.product.id,
-        name: it.product.name,
-        hindiName: it.product.hindiName,
-        quantity: it.quantity,
-        unit: it.product.unit,
-        unitPrice: it.product.sellingPrice,
-        total: it.calculatedPrice,
-      })),
-      totalAmount: totalBillAmount,
-      paymentMode,
-      timestamp
-    });
 
-    if (paymentMode === 'UDHAAR' && customer && customer.id) {
-      const newBal = (customer.balanceDue || 0) + totalBillAmount;
-      await db.customers.update(customer.id, {
-        balanceDue: newBal,
-        updatedAt: timestamp
+    // Atomic multi-table ACID transaction
+    await db.transaction('rw', [db.sales, db.customers, db.transactions, db.products], async () => {
+      await db.sales.add({
+        id: saleId,
+        customerId: selectedCustomerId || undefined,
+        customerName: customer?.name,
+        items: cart.map(it => ({
+          productId: it.product.id,
+          name: it.product.name,
+          hindiName: it.product.hindiName,
+          quantity: it.quantity,
+          unit: it.product.unit,
+          unitPrice: it.product.sellingPrice,
+          total: it.calculatedPrice,
+        })),
+        totalAmount: totalBillAmount,
+        paymentMode,
+        timestamp
       });
 
-      const itemsSummary = cart.map(it => `${it.product.hindiName || it.product.name} (${it.quantity}${it.product.unit})`).join(', ');
-      await db.transactions.add({
-        id: 'txn_' + Math.random().toString(36).substring(2, 9),
-        customerId: customer.id,
-        type: 'UDHAAR',
-        amount: totalBillAmount,
-        timestamp,
-        note: 'दुकान बिल खरीदारी',
-        billItemsSummary: itemsSummary
-      });
-    }
+      if (paymentMode === 'UDHAAR' && customer && customer.id) {
+        const newBal = (customer.balanceDue || 0) + totalBillAmount;
+        await db.customers.update(customer.id, {
+          balanceDue: newBal,
+          updatedAt: timestamp
+        });
 
-    for (const item of cart) {
-      if (item.product.id) {
-        const currentProd = await db.products.get(item.product.id);
-        if (currentProd) {
-          const updatedStock = Math.max(0, currentProd.stockQty - item.quantity);
-          await db.products.update(item.product.id, { stockQty: Math.round(updatedStock * 100) / 100 });
+        const itemsSummary = cart.map(it => `${it.product.hindiName || it.product.name} (${it.quantity}${it.product.unit})`).join(', ');
+        await db.transactions.add({
+          id: 'txn_' + Math.random().toString(36).substring(2, 9),
+          customerId: customer.id,
+          type: 'UDHAAR',
+          amount: totalBillAmount,
+          timestamp,
+          note: 'दुकान बिल खरीदारी',
+          billItemsSummary: itemsSummary
+        });
+      }
+
+      for (const item of cart) {
+        if (item.product.id) {
+          const currentProd = await db.products.get(item.product.id);
+          if (currentProd) {
+            const updatedStock = Math.max(0, currentProd.stockQty - item.quantity);
+            await db.products.update(item.product.id, { stockQty: Math.round(updatedStock * 100) / 100 });
+          }
         }
       }
-    }
+    });
 
     try {
       confetti({

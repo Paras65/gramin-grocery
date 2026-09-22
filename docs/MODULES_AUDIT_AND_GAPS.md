@@ -62,6 +62,7 @@
 - [x] Add toggle when adding custom item: "दुकान स्टॉक लिस्ट में भी जोड़ें (Save to catalog)".
 - [x] Camera scanner error fallback with visual step-by-step permission reset guide.
 - [x] Non-blocking amber warning when selling item with 0 stock: "स्टॉक में 0 है — क्या नया माल आया है?"
+- [x] Atomic ACID multi-table Dexie transaction across sales, customer balance, ledger, and stock decrement.
 
 ---
 
@@ -245,6 +246,7 @@
 ### Mandatory Enhancements
 - [x] Graceful downgrade banner: Never block offline sales if subscription lapses; simply toggle PRO-gated cards.
 - [x] Hide purchase prices (खरीद भाव) and profit margins when active role is Munim.
+- [x] Lock Mandi procurement planner and Monthly Profit/Loss reports for Munim role (Owner-only access).
 
 ---
 

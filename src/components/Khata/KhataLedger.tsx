@@ -74,18 +74,21 @@ export const KhataLedger: React.FC = () => {
     const timestamp = new Date().toISOString();
 
     if (customer.id) {
-      await db.customers.update(customer.id, {
-        balanceDue: newBalance,
-        updatedAt: timestamp
-      });
+      // Atomic ACID transaction for customer balance and ledger entry
+      await db.transaction('rw', [db.customers, db.transactions], async () => {
+        await db.customers.update(customer.id!, {
+          balanceDue: newBalance,
+          updatedAt: timestamp
+        });
 
-      await db.transactions.add({
-        id: 'txn_' + Math.random().toString(36).substring(2, 9),
-        customerId: customer.id,
-        type,
-        amount,
-        timestamp,
-        note: txnNote || (type === 'JAMA' ? 'भुगतान प्राप्त (Cash Received)' : 'उधार दिया (Credit)')
+        await db.transactions.add({
+          id: 'txn_' + Math.random().toString(36).substring(2, 9),
+          customerId: customer.id!,
+          type,
+          amount,
+          timestamp,
+          note: txnNote || (type === 'JAMA' ? 'भुगतान प्राप्त (Cash Received)' : 'उधार दिया (Credit)')
+        });
       });
 
       // 1-Tap Jama payment receipt via WhatsApp

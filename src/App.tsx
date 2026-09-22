@@ -124,10 +124,26 @@ const MainApp: React.FC = () => {
         )}
         {activeTab === 'haat' && <HaatBazaarMode />}
         {activeTab === 'khata' && <KhataLedger />}
-        {activeTab === 'mandi' && <MandiPlanner />}
+        {/* Munim role: block mandi procurement planning */}
+        {activeTab === 'mandi' && userRole === 'munim' && (
+          <div className="text-center py-16 text-stone-500">
+            <div className="text-4xl mb-3">🔒</div>
+            <p className="font-bold text-base text-stone-700">मंडी खरीदारी योजना — केवल दुकानदार</p>
+            <p className="text-xs mt-1">थोक भाव व खरीदारी बजट केवल दुकानदार खाते में उपलब्ध है।</p>
+          </div>
+        )}
+        {activeTab === 'mandi' && userRole === 'owner' && <MandiPlanner />}
         {activeTab === 'spoilage' && <SpoilageExpiryGuard />}
         {activeTab === 'inventory' && <AllStock />}
-        {activeTab === 'reports' && <ProfitLossReport />}
+        {/* Munim role: block profit/loss reports */}
+        {activeTab === 'reports' && userRole === 'munim' && (
+          <div className="text-center py-16 text-stone-500">
+            <div className="text-4xl mb-3">🔒</div>
+            <p className="font-bold text-base text-stone-700">माहवारी लाभ-हानि रिपोर्ट — केवल दुकानदार</p>
+            <p className="text-xs mt-1">दुकान का शुद्ध मुनाफ़ा व वित्तीय रिपोर्ट मुनीम लॉगिन में बंद है।</p>
+          </div>
+        )}
+        {activeTab === 'reports' && userRole === 'owner' && <ProfitLossReport />}
         {/* Munim role: block cashClose and settings tabs */}
         {activeTab === 'cashClose' && userRole === 'munim' && (
           <div className="text-center py-16 text-stone-500">

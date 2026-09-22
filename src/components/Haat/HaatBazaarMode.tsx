@@ -178,20 +178,21 @@ export const HaatBazaarMode: React.FC = () => {
       paymentMode: 'CASH',
     };
 
-    // Save to IndexedDB
-    await db.sales.add(saleRecord);
+    // Atomic ACID transaction for sale and stock decrement
+    await db.transaction('rw', [db.sales, db.products], async () => {
+      await db.sales.add(saleRecord);
 
-    // Decrement stock in database
-    for (const item of cart) {
-      if (item.product.id) {
-        const prod = await db.products.get(item.product.id);
-        if (prod) {
-          await db.products.update(item.product.id, {
-            stockQty: Math.max(0, prod.stockQty - item.quantity)
-          });
+      for (const item of cart) {
+        if (item.product.id) {
+          const prod = await db.products.get(item.product.id);
+          if (prod) {
+            await db.products.update(item.product.id, {
+              stockQty: Math.max(0, prod.stockQty - item.quantity)
+            });
+          }
         }
       }
-    }
+    });
 
     // Audio & Visual celebratory feedback
     playHaatChime();

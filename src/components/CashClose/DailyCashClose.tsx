@@ -81,7 +81,7 @@ export const DailyCashClose: React.FC = () => {
         .where('timestamp')
         .between(
           new Date(today + 'T00:00:00').toISOString(),
-          new Date(today + 'T23:59:59').toISOString(),
+          new Date(today + 'T23:59:59.999').toISOString(),
           true, true
         )
         .toArray();
@@ -96,7 +96,7 @@ export const DailyCashClose: React.FC = () => {
         .where('timestamp')
         .between(
           new Date(today + 'T00:00:00').toISOString(),
-          new Date(today + 'T23:59:59').toISOString(),
+          new Date(today + 'T23:59:59.999').toISOString(),
           true, true
         )
         .toArray();
