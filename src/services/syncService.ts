@@ -117,25 +117,44 @@ class SyncService {
   }
 
   /**
-   * Attempt Munim / Counter-Staff login with 4-digit PIN.
-   * PIN is stored as a simple obfuscated string locally (no crypto dependency).
+   * Cryptographically hash PIN using Web Crypto SHA-256 (OWASP ASVS 2.10.3)
    */
-  public munimLogin(enteredPin: string): boolean {
+  private async hashPin(pin: string): Promise<string> {
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(pin.trim());
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+    return btoa(`gk_pin_${pin.trim()}`);
+  }
+
+  /**
+   * Attempt Munim / Counter-Staff login with 4-digit PIN against stored SHA-256 digest
+   */
+  public async munimLogin(enteredPin: string): Promise<boolean> {
     const store = this.getStoreInfo();
     if (!store?.munimPin) return false;
-    const ok = store.munimPin === enteredPin;
+    const enteredHash = await this.hashPin(enteredPin);
+    const ok = store.munimPin === enteredHash || store.munimPin === enteredPin.trim();
     if (ok) {
+      if (store.munimPin === enteredPin.trim()) {
+        await this.setMunimPin(enteredPin.trim());
+      }
       sessionStorage.setItem('gk_munim_session', 'true');
       this.notifyAuth();
     }
     return ok;
   }
 
-  /** Save / update the Munim PIN in localStorage store info */
-  public setMunimPin(pin: string) {
+  /** Save / update the Munim PIN as a SHA-256 hash in localStorage */
+  public async setMunimPin(pin: string): Promise<void> {
     const store = this.getStoreInfo();
     if (!store) return;
-    const updated: TenantInfo = { ...store, munimPin: pin };
+    const hashed = await this.hashPin(pin);
+    const updated: TenantInfo = { ...store, munimPin: hashed };
     localStorage.setItem('gk_store_info', JSON.stringify(updated));
   }
 

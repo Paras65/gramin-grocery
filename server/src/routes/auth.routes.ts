@@ -80,7 +80,7 @@ router.post('/register-store', authLimiter, async (req: Request, res: Response) 
         mobile: user.mobile,
       },
       JWT_SECRET,
-      { expiresIn: '90d' } // Long-lived session for rural grocery counters
+      { expiresIn: '14d' } // Bounded enterprise session window (SOC 2 / ISO 27001)
     );
 
     res.status(201).json({
@@ -139,7 +139,7 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
         mobile: user.mobile,
       },
       JWT_SECRET,
-      { expiresIn: '90d' }
+      { expiresIn: '14d' } // Bounded enterprise session window (SOC 2 / ISO 27001)
     );
 
     res.json({

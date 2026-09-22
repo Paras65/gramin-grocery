@@ -91,15 +91,26 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 export function requireRole(allowedRole: 'OWNER' | 'CASHIER' | 'SUPER_ADMIN') {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized: Authentication required' });
     }
 
-    if (allowedRole === 'SUPER_ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+    const { role } = req.user;
+
+    // Super Admin inherits all operational privileges
+    if (role === 'SUPER_ADMIN') {
+      return next();
+    }
+
+    if (allowedRole === 'SUPER_ADMIN') {
       return res.status(403).json({ error: 'Access forbidden: Super Admin privileges required' });
     }
 
-    if (allowedRole === 'OWNER' && req.user.role !== 'OWNER' && req.user.role !== 'SUPER_ADMIN') {
-      return res.status(403).json({ error: 'Access forbidden: Owner role required' });
+    if (allowedRole === 'OWNER' && role !== 'OWNER') {
+      return res.status(403).json({ error: 'Access forbidden: Store Owner privileges required' });
+    }
+
+    if (allowedRole === 'CASHIER' && role !== 'CASHIER' && role !== 'OWNER') {
+      return res.status(403).json({ error: 'Access forbidden: Cashier or Store Owner privileges required' });
     }
 
     next();

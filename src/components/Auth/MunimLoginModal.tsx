@@ -16,13 +16,13 @@ export const MunimLoginModal: React.FC<MunimLoginModalProps> = ({ isOpen, onClos
 
   const store = syncService.getStoreInfo();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (pin.length !== 4) {
       setError('4 अंकों का PIN डालें');
       return;
     }
-    const ok = syncService.munimLogin(pin);
+    const ok = await syncService.munimLogin(pin);
     if (ok) {
       setPin('');
       setError('');

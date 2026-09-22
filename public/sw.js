@@ -55,10 +55,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Security Guard 3: Strict API & Sensitive Path Exclusion (Zero Caching)
+  // Security Guard 3: Strict API, Health, Service Worker & Sensitive Path Exclusion (Zero Caching)
+  const pathname = url.pathname.toLowerCase();
   if (
-    url.pathname.startsWith('/api/') ||
-    url.pathname === '/health' ||
+    pathname === '/sw.js' ||
+    pathname.startsWith('/api/') ||
+    pathname === '/health' ||
     request.headers.has('Authorization') ||
     request.headers.has('x-auth-token')
   ) {
