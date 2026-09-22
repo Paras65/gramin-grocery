@@ -35,6 +35,14 @@ export const authLimiter = rateLimit({
   message: { error: 'Too many authentication attempts, please try again after 15 minutes.' },
 });
 
+export const adminAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5, // Strict: 5 attempts per 15 minutes for Super Admin
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'सुरक्षा अलर्ट: बहुत सारे गलत प्रयास। कृपया 15 मिनट बाद पुनः प्रयास करें (Too many admin attempts. Locked for 15 minutes).' },
+});
+
 // 2. JWT Verification & Tenant Context Injection
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization || (req.headers['x-auth-token'] as string);

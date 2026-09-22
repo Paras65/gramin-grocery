@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
@@ -7,7 +8,7 @@ import { User } from '../models/User.js';
 import { Customer } from '../models/Customer.js';
 import { Sale } from '../models/Sale.js';
 import { Product } from '../models/Product.js';
-import { authLimiter, requireAuth, requireRole } from '../middleware/security.js';
+import { adminAuthLimiter, requireAuth, requireRole } from '../middleware/security.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'gk_default_secret_key_2026';
@@ -16,24 +17,36 @@ const AdminLoginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-// 1. Super Admin Login
-router.post('/login', authLimiter, async (req: Request, res: Response) => {
+// 1. Super Admin Login with Strict Hardening
+router.post('/login', adminAuthLimiter, async (req: Request, res: Response) => {
   try {
     const { password } = AdminLoginSchema.parse(req.body);
 
-    const configuredPassword = (
-      process.env.ADMIN_PASSWORD || 
-      process.env.SUPER_ADMIN_PASSWORD || 
-      'gramin_admin_2026'
-    ).trim();
+    const isProd = process.env.NODE_ENV === 'production';
+    const rawEnvPassword = process.env.ADMIN_PASSWORD || process.env.SUPER_ADMIN_PASSWORD;
 
-    if (password.trim() !== configuredPassword) {
+    // Hardening 1: Fail-closed production enforcement
+    if (isProd && (!rawEnvPassword || rawEnvPassword.trim() === 'gramin_admin_2026' || rawEnvPassword.trim().length < 8)) {
+      console.error('[SECURITY WARNING] Production ADMIN_PASSWORD is missing or using insecure default.');
+      return res.status(503).json({
+        error: 'सर्वर सुरक्षा अलर्ट: उत्पादन परिवेश में एडमिन पासवर्ड सुरक्षित रूप से कॉन्फ़िगर नहीं है (Production admin password missing/insecure).'
+      });
+    }
+
+    const configuredPassword = (rawEnvPassword || 'gramin_admin_2026').trim();
+
+    // Hardening 2: Timing-Safe Constant-Time comparison via SHA-256 digest
+    const inputHash = crypto.createHash('sha256').update(password.trim()).digest();
+    const expectedHash = crypto.createHash('sha256').update(configuredPassword).digest();
+
+    if (!crypto.timingSafeEqual(inputHash, expectedHash)) {
       return res.status(401).json({ error: 'अमान्य एडमिन सुरक्षा पासवर्ड (Invalid Admin Password)' });
     }
 
     const adminUserId = 'super_admin_master';
     const adminName = 'Platform Super Admin';
 
+    // Hardening 3: Short 8-hour session lifetime
     const token = jwt.sign(
       {
         userId: adminUserId,
@@ -41,7 +54,7 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
         name: adminName,
       },
       JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: '8h' }
     );
 
     res.json({

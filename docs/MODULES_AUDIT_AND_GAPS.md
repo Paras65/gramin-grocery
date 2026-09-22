@@ -293,6 +293,10 @@
 
 ### Mandatory Enhancements
 - [x] Environment-variable-based master password authentication (`ADMIN_PASSWORD`).
+- [x] Cryptographic constant-time timing-safe comparison (`crypto.timingSafeEqual` with SHA-256) to eliminate timing attacks.
+- [x] Dedicated strict brute-force rate-limiting (`adminAuthLimiter`: max 5 attempts per 15 minutes).
+- [x] Production fail-closed security: Rejects default or short passwords when `NODE_ENV === 'production'`.
+- [x] Reduced admin JWT session window: Shortened from 30 days to 8 hours.
 - [x] Dedicated admin route protection (`requireRole('SUPER_ADMIN')`) with optional `tenantId` bypass exclusively for platform-level aggregations.
 - [x] 100% mobile-responsive command center view with touch-friendly cards, district filter chips, and plan toggle buttons.
 
