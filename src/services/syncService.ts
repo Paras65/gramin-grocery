@@ -249,7 +249,12 @@ class SyncService {
     localStorage.removeItem('gk_auth_token');
     localStorage.removeItem('gk_store_info');
     localStorage.removeItem('gk_user_info');
+    localStorage.removeItem('gk_admin_token');
+    localStorage.removeItem('gk_admin_info');
     localStorage.removeItem('gk_last_sync');
+    sessionStorage.removeItem('gk_munim_session');
+    sessionStorage.removeItem('gk_exploring_demo');
+    sessionStorage.clear();
 
     this.setStatus({ isSyncing: false, lastSyncedAt: undefined });
     this.notifyAuth();

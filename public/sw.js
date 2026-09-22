@@ -1,5 +1,5 @@
-// Gramin Kirana Service Worker — Stale-Free Enterprise PWA Cache
-const CACHE_VERSION = 'gk-pos-v1.0.1';
+// Gramin Kirana Service Worker — Enterprise Hardened PWA Cache
+const CACHE_VERSION = 'gk-pos-v1.0.2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -11,16 +11,16 @@ const PRECACHE_ASSETS = [
   '/icons.svg'
 ];
 
-// 1. Install Event: Pre-cache app shell
+// 1. Install Event: Atomic Pre-caching of verified app shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS);
-    })
+    }).then(() => self.skipWaiting())
   );
 });
 
-// 2. Activate Event: Wipe out all old cache versions & claim clients
+// 2. Activate Event: Deterministic purge of obsolete cache generations
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -33,24 +33,44 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 3. PostMessage Handler: Seamless skip-waiting on user refresh prompt
+// 3. PostMessage Handler: Safe skip-waiting signal
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
 
-// 4. Fetch Strategy
+// 4. Fetch Interception Guard
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Security & Data Integrity: NEVER cache API mutations or backend endpoints
-  if (url.pathname.startsWith('/api/') || request.method !== 'GET') {
-    return; // Direct network fetch, no Service Worker caching
+  // Security Guard 1: Only handle GET requests
+  if (request.method !== 'GET') {
+    return;
   }
 
-  // Strategy A: HTML Navigation (index.html) -> Network-First with Offline Fallback
+  // Security Guard 2: Origin isolation (prevent caching cross-origin APIs or CDNs)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Security Guard 3: Strict API & Sensitive Path Exclusion (Zero Caching)
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname === '/health' ||
+    request.headers.has('Authorization') ||
+    request.headers.has('x-auth-token')
+  ) {
+    return;
+  }
+
+  // Security Guard 4: Scheme verification (ignore chrome-extension://, etc.)
+  if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // Strategy A: Navigation (HTML document) -> Network-First with Offline Fallback
   if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
       fetch(request, { cache: 'no-cache' })
@@ -69,12 +89,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy B: Static Assets (JS, CSS, SVGs, Fonts) -> Stale-While-Revalidate
+  // Strategy B: Static Assets (JS, CSS, SVGs, Images) -> Stale-While-Revalidate
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request)
         .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
+          // Verify response is clean, non-partial, and from same origin
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             const clone = networkResponse.clone();
             caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
           }

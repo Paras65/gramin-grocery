@@ -3,13 +3,23 @@ import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
 import { runWithTenantContext } from './tenantContext.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'gk_default_secret_key_2026';
+const isProd = process.env.NODE_ENV === 'production';
+const rawJwtSecret = process.env.JWT_SECRET;
+
+// Fail-Closed Security Policy (SOC 2 CC6.6 / ISO 27001 A.8.24)
+if (isProd && (!rawJwtSecret || rawJwtSecret === 'gk_default_secret_key_2026' || rawJwtSecret.length < 32)) {
+  console.error('[CRITICAL SECURITY ERROR] Production JWT_SECRET is unset or insecure! Refusing to start.');
+  process.exit(1);
+}
+
+const JWT_SECRET = rawJwtSecret || 'gk_default_secret_key_2026';
 
 export interface AuthUserPayload {
   userId: string;
   tenantId?: string;
   role: 'OWNER' | 'CASHIER' | 'SUPER_ADMIN';
-  mobile: string;
+  mobile?: string;
+  name?: string;
 }
 
 declare global {
@@ -54,7 +64,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as AuthUserPayload;
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as AuthUserPayload;
     req.user = decoded;
 
     // Run downstream request within the isolated tenant context
@@ -66,7 +76,10 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
       },
       () => next()
     );
-  } catch (err) {
+  } catch (err: any) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Session expired. Please log in again.' });
+    }
     return res.status(403).json({ error: 'Invalid or expired session token' });
   }
 }
