@@ -462,12 +462,26 @@ router.get('/payment-claims', requireAuth, requireRole('SUPER_ADMIN'), async (re
 router.post('/payment-claims/:id/approve', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const claim = await PaymentClaim.findById(id);
+    const approvedBy = (req as any).user?.name || 'SUPER_ADMIN';
+    const approvedAt = new Date();
+
+    // Atomic find-and-update guarantees zero race-condition / double-approval
+    const claim = await PaymentClaim.findOneAndUpdate(
+      { _id: id, status: 'PENDING' },
+      {
+        $set: {
+          status: 'APPROVED',
+          approvedBy,
+          approvedAt,
+        },
+      },
+      { new: true }
+    );
+
     if (!claim) {
-      return res.status(404).json({ error: 'भुगतान क्लेम नहीं मिला (Payment claim not found)' });
-    }
-    if (claim.status === 'APPROVED') {
-      return res.status(400).json({ error: 'यह क्लेम पहले से ही स्वीकृत है (Claim already approved)' });
+      return res.status(400).json({
+        error: 'यह क्लेम पहले से ही स्वीकृत है, अस्वीकृत है या नहीं मिला। (Claim already processed or not pending)',
+      });
     }
 
     const tenant = await Tenant.findById(claim.tenantId);
@@ -479,14 +493,18 @@ router.post('/payment-claims/:id/approve', requireAuth, requireRole('SUPER_ADMIN
     const durationMs = months * 30 * 86400000;
     const now = Date.now();
 
-    // Plan stacking: if currently PRO and unexpired, extend from existing expiry date
+    // Safe Plan Stacking: verify date validity to prevent NaN
+    const currentExpiryTime = tenant.subscription?.planExpiryDate
+      ? new Date(tenant.subscription.planExpiryDate).getTime()
+      : 0;
+
     let newExpiryDate: Date;
     if (
       tenant.subscription?.plan === 'PRO' &&
-      tenant.subscription?.planExpiryDate &&
-      new Date(tenant.subscription.planExpiryDate).getTime() > now
+      !isNaN(currentExpiryTime) &&
+      currentExpiryTime > now
     ) {
-      newExpiryDate = new Date(new Date(tenant.subscription.planExpiryDate).getTime() + durationMs);
+      newExpiryDate = new Date(currentExpiryTime + durationMs);
     } else {
       newExpiryDate = new Date(now + durationMs);
     }
@@ -497,11 +515,6 @@ router.post('/payment-claims/:id/approve', requireAuth, requireRole('SUPER_ADMIN
       planExpiryDate: newExpiryDate,
     };
     await tenant.save();
-
-    claim.status = 'APPROVED';
-    claim.approvedBy = (req as any).user?.name || 'SUPER_ADMIN';
-    claim.approvedAt = new Date();
-    await claim.save();
 
     res.json({
       message: `भुगतान स्वीकृत! दुकान ${tenant.storeName} के लिए प्रो प्लान ${newExpiryDate.toLocaleDateString('hi-IN')} तक सक्रिय हो गया है।`,

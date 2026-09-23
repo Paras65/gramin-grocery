@@ -72,6 +72,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       setLoadingClaim(true);
       const claim = await syncService.getPaymentClaimStatus();
       setActiveClaim(claim);
+      // Auto-refresh store subscription in real-time if approved
+      if (claim?.status === 'APPROVED') {
+        await syncService.triggerSync();
+      }
     } catch (err) {
       console.warn('Could not fetch claim status:', err);
     } finally {
@@ -83,10 +87,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
   const currentPlanConfig = DURATION_OPTIONS.find(d => d.months === selectedDuration) || DURATION_OPTIONS[0];
 
-  // Dynamic UPI URL payload
-  const cleanStoreName = (storeInfo?.storeName || 'Shop').replace(/[^a-zA-Z0-9]/g, '');
-  const upiNote = encodeURIComponent(`Pro-${currentPlanConfig.months}M-${cleanStoreName}`);
-  const upiUri = `upi://pay?pa=${platformUpiId}&pn=${encodeURIComponent('Gramin Kirana')}&am=${currentPlanConfig.price}&cu=INR&tn=${upiNote}`;
+  // Dynamic UPI URL payload: NPCI compliant (alphanumeric, max 25 chars without special symbols)
+  const cleanStoreName = (storeInfo?.storeName || 'Shop').replace(/[^a-zA-Z0-9]/g, '').slice(0, 15);
+  const upiNote = `Pro${currentPlanConfig.months}M${cleanStoreName}`;
+  const upiUri = `upi://pay?pa=${platformUpiId}&pn=${encodeURIComponent('GraminKirana')}&am=${currentPlanConfig.price}&cu=INR&tn=${upiNote}`;
 
   const handleCopyUpiId = () => {
     navigator.clipboard.writeText(platformUpiId);

@@ -188,6 +188,27 @@ router.post('/subscription/claim', requireAuth, async (req: Request, res: Respon
       });
     }
 
+    // Edge Case 1: Strict Plan Duration & Amount Matrix Validation
+    const duration = Number(planDurationMonths);
+    const VALID_TIERS: Record<number, number> = {
+      1: 99,
+      3: 269,
+      12: 999,
+    };
+
+    if (!VALID_TIERS[duration]) {
+      return res.status(400).json({
+        error: 'अमान्य योजना अवधि: केवल 1 महीना, 3 महीने या 1 वर्ष का चुनाव मान्य है।',
+      });
+    }
+
+    const expectedAmount = VALID_TIERS[duration];
+    if (Number(amount) !== expectedAmount) {
+      return res.status(400).json({
+        error: `अमान्य भुगतान राशि: ${duration} माह के लिए निर्धारित शुल्क ₹${expectedAmount} है।`,
+      });
+    }
+
     const tenant = await Tenant.findById(tenantId);
     if (!tenant) {
       return res.status(404).json({ error: 'दुकान नहीं मिली (Store not found)' });
@@ -201,23 +222,44 @@ router.post('/subscription/claim', requireAuth, async (req: Request, res: Respon
       });
     }
 
-    // Check if this store already has this UTR pending
-    let claim = await PaymentClaim.findOne({ tenantId, utrNumber: cleanUtr });
+    // Edge Case 2: Cross-Store Collision Guard on Pending Claims
+    const existingPending = await PaymentClaim.findOne({ utrNumber: cleanUtr, status: 'PENDING' });
+    if (existingPending) {
+      if (existingPending.tenantId.toString() === tenantId.toString()) {
+        return res.json({
+          message: 'इस UTR के लिए क्लेम पहले से सबमिट है और समीक्षाधीन है।',
+          claim: existingPending,
+        });
+      } else {
+        return res.status(400).json({
+          error: 'यह UTR नंबर पहले से किसी अन्य अनुरोध में समीक्षाधीन है। यदि यह आपका वैध UTR है तो कृपया हेल्पलाइन से संपर्क करें।',
+        });
+      }
+    }
+
+    // Edge Case 3: Re-submission after previous rejection
+    let claim = await PaymentClaim.findOne({ tenantId, utrNumber: cleanUtr, status: 'REJECTED' });
     if (claim) {
-      return res.json({
-        message: 'इस UTR के लिए क्लेम पहले से सबमिट है और समीक्षाधीन है।',
+      claim.amount = expectedAmount;
+      claim.planDurationMonths = duration;
+      claim.status = 'PENDING';
+      claim.rejectionReason = undefined;
+      await claim.save();
+
+      return res.status(200).json({
+        message: 'संशोधित भुगतान क्लेम पुनः समीक्षा हेतु सफलतापूर्वक सबमिट हो गया है।',
         claim,
       });
     }
 
-    // Create new claim
+    // Create fresh claim
     claim = await PaymentClaim.create({
       tenantId: tenant._id,
       storeName: tenant.storeName,
       ownerName: tenant.ownerName,
       phone: tenant.phone,
-      amount: Number(amount) || 99,
-      planDurationMonths: Number(planDurationMonths) || 1,
+      amount: expectedAmount,
+      planDurationMonths: duration,
       utrNumber: cleanUtr,
       status: 'PENDING',
     });

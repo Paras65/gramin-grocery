@@ -540,8 +540,12 @@ class SyncService {
           const pendingClaim = JSON.parse(pendingClaimStr);
           await this.submitPaymentClaim(pendingClaim.amount, pendingClaim.planDurationMonths, pendingClaim.utrNumber);
           localStorage.removeItem('gk_pending_pro_claim');
-        } catch (e) {
+        } catch (e: any) {
           console.warn('Auto-sync of offline payment claim skipped/failed:', e);
+          // If error indicates a permanent bad request (e.g. duplicate UTR or invalid duration), remove to prevent infinite retry loops
+          if (e.message && (e.message.includes('स्वीकृत हो चुका') || e.message.includes('अमान्य योजना') || e.message.includes('अन्य अनुरोध में समीक्षाधीन'))) {
+            localStorage.removeItem('gk_pending_pro_claim');
+          }
         }
       }
 
