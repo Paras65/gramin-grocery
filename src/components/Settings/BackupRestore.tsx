@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, ShieldCheck, RefreshCw, Sparkles, Printer, Smartphone, CheckCircle2, Bluetooth, LogOut, QrCode } from 'lucide-react';
-import { exportDatabaseToJSON, importDatabaseFromJSON, initializeDatabaseIfEmpty, db } from '../../db';
+import { Download, Upload, ShieldCheck, RefreshCw, Sparkles, Printer, Smartphone, CheckCircle2, Bluetooth, LogOut, QrCode, Archive } from 'lucide-react';
+import { exportDatabaseToJSON, importDatabaseFromJSON, initializeDatabaseIfEmpty, db, archiveOldSales, exportFiscalYearArchiveJSON, getStorageStats } from '../../db';
 import { useLanguage } from '../../context/LanguageContext';
 import { syncService } from '../../services/syncService';
 import { SubscriptionModal } from '../Subscription/SubscriptionModal';
@@ -34,7 +34,35 @@ export const BackupRestore: React.FC = () => {
   const [canInstallPwa, setCanInstallPwa] = useState(pwaService.canInstall());
   const [isStandalone, setIsStandalone] = useState(false);
 
+  // Storage and Cold Archiving stats
+  const [storageStats, setStorageStats] = useState<{
+    activeSalesCount: number;
+    archivedSalesCount: number;
+    customersCount: number;
+    productsCount: number;
+    transactionsCount: number;
+    estimatedSizeKB: number;
+  }>({
+    activeSalesCount: 0,
+    archivedSalesCount: 0,
+    customersCount: 0,
+    productsCount: 0,
+    transactionsCount: 0,
+    estimatedSizeKB: 0,
+  });
+
+  const loadStats = async () => {
+    try {
+      const stats = await getStorageStats();
+      setStorageStats(stats);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
+    loadStats();
+
     const unsubPrinter = subscribePrinterStatus((connected, name) => {
       setPrinterConnected(connected);
       setPrinterName(name);
@@ -183,11 +211,62 @@ export const BackupRestore: React.FC = () => {
     await db.sales.clear();
     await db.spoilageLogs.clear();
     await initializeDatabaseIfEmpty();
+    await loadStats();
 
     setStatusMessage('✅ डिफ़ॉल्ट गाँव डाटा रीसेट हो गया!');
     setTimeout(() => {
       window.location.reload();
     }, 1000);
+  };
+
+  const handleArchiveOldSales = async () => {
+    const confirm = window.confirm(
+      language === 'hi'
+        ? 'क्या आप 180 दिन (6 माह) से पुराने बिलों को कोल्ड आर्काइव में स्थानांतरित करना चाहते हैं? इससे मुख्य बिलिंग सूची और ऐप तेज़ रहेंगे।'
+        : 'Do you want to archive sales older than 180 days (6 months) into cold storage? This will keep active billing superfast.'
+    );
+    if (!confirm) return;
+
+    try {
+      setIsProcessing(true);
+      const res = await archiveOldSales(180);
+      await loadStats();
+      if (res.archivedCount > 0) {
+        setStatusMessage(`✅ ${res.archivedCount} पुराने बिल सफलतापूर्वक कोल्ड आर्काइव में सुरक्षित कर दिए गए!`);
+      } else {
+        setStatusMessage('ℹ️ 180 दिन से पुराना कोई बिल नहीं मिला। सभी बिल हाल के हैं।');
+      }
+    } catch (err: any) {
+      setStatusMessage('❌ आर्काइव करने में त्रुटि: ' + (err.message || 'Error'));
+    } finally {
+      setIsProcessing(false);
+      setTimeout(() => setStatusMessage(''), 4000);
+    }
+  };
+
+  const handleExportArchive = async () => {
+    try {
+      setIsProcessing(true);
+      const jsonStr = await exportFiscalYearArchiveJSON();
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const dateStr = new Date().toISOString().split('T')[0];
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GraminKirana_ColdArchive_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setStatusMessage('✅ आर्काइव डेटा फ़ाइल सफलतापूर्वक डाउनलोड हो गई!');
+    } catch (err) {
+      setStatusMessage('❌ आर्काइव डाउनलोड करने में त्रुटि हुई।');
+    } finally {
+      setIsProcessing(false);
+      setTimeout(() => setStatusMessage(''), 3500);
+    }
   };
 
   return (
@@ -331,6 +410,63 @@ export const BackupRestore: React.FC = () => {
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>डेटा रीसेट</span>
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* Fiscal Year Archiving & Local Storage Management Card */}
+    {syncService.isLoggedIn() && !isCashier && (
+      <div className="village-card rounded-3xl p-5 sm:p-6 bg-white shadow-2xs space-y-4 border border-amber-300/70">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-2xl bg-amber-100 text-amber-900 shrink-0">
+            <Archive className="w-5 h-5 text-amber-800" />
+          </div>
+          <div>
+            <h3 className="font-black text-stone-950 text-base sm:text-lg m-0">
+              {t.backup.archiveTitle}
+            </h3>
+            <p className="text-xs text-stone-600 m-0 mt-0.5 font-medium">
+              {t.backup.archiveSubtitle}
+            </p>
+          </div>
+        </div>
+
+        {/* Storage stats badges */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+          <div className="bg-[#faf8f3] border border-amber-200/80 p-3 rounded-2xl">
+            <span className="text-[11px] font-bold text-stone-500 block">{t.backup.activeSales}</span>
+            <span className="text-base font-black text-stone-900">{storageStats.activeSalesCount}</span>
+          </div>
+          <div className="bg-[#faf8f3] border border-amber-200/80 p-3 rounded-2xl">
+            <span className="text-[11px] font-bold text-stone-500 block">{t.backup.archivedSales}</span>
+            <span className="text-base font-black text-stone-900">{storageStats.archivedSalesCount}</span>
+          </div>
+          <div className="bg-[#faf8f3] border border-amber-200/80 p-3 rounded-2xl col-span-2 sm:col-span-1">
+            <span className="text-[11px] font-bold text-stone-500 block">{t.backup.estimatedStorage}</span>
+            <span className="text-base font-black text-amber-900">~{storageStats.estimatedSizeKB} KB</span>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+          <button
+            type="button"
+            onClick={handleArchiveOldSales}
+            disabled={isProcessing || storageStats.activeSalesCount === 0}
+            className="flex-1 px-4 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition active:scale-95"
+          >
+            <Archive className="w-4 h-4" />
+            <span>{t.backup.archiveBtn}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleExportArchive}
+            disabled={isProcessing || storageStats.archivedSalesCount === 0}
+            className="px-4 py-2.5 rounded-2xl border border-stone-300 hover:border-amber-500 disabled:opacity-50 text-stone-800 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer bg-white transition active:scale-95"
+          >
+            <Download className="w-4 h-4" />
+            <span>{t.backup.exportArchiveBtn}</span>
           </button>
         </div>
       </div>

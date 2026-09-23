@@ -17,6 +17,7 @@ export interface Product {
   isLoose: boolean;
   expiryDate?: string; // YYYY-MM-DD
   barcode?: string; // EAN-13, UPC, or custom barcode string
+  updatedAt?: string;
 }
 
 export interface Customer {

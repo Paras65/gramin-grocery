@@ -114,7 +114,14 @@ export const translations = {
       subtitle: 'फोन खोने या खराब होने पर डेटा सुरक्षित रखने के लिए बैकअप फ़ाइल डाउनलोड करें',
       exportBtn: '📥 पूरा बैकअप डाउनलोड करें (JSON फ़ाइल)',
       importBtn: '📤 बैकअप फ़ाइल से डेटा पुनर्स्थापित करें',
-      clearNotice: 'यह ऐप आपके फोन के अंदर बिना इंटरनेट 100% सुरक्षित रूप से चलता है।'
+      clearNotice: 'यह ऐप आपके फोन के अंदर बिना इंटरनेट 100% सुरक्षित रूप से चलता है।',
+      archiveTitle: 'वित्तीय वर्ष डेटा आर्काइव व स्थानीय स्टोरेज सफाई',
+      archiveSubtitle: 'पुराने बिलों को सुरक्षित कोल्ड स्टोरेज में सहेजें ताकि ऐप हमेशा सुपरफ़ास्ट चले',
+      activeSales: 'सक्रिय बिल (POS)',
+      archivedSales: 'आर्काइव बिल',
+      estimatedStorage: 'अनुमानित डिवाइस स्टोरेज',
+      archiveBtn: '📦 180 दिन से पुराने बिल आर्काइव करें',
+      exportArchiveBtn: '📥 आर्काइव डेटा डाउनलोड करें (JSON)'
     },
     cloudSync: {
       syncNow: 'क्लाउड सिंक करें',
@@ -308,7 +315,14 @@ export const translations = {
       subtitle: 'मोबाइल बदले या बिगड़े म डेटा सुरक्षित रखे बर बैकअप फ़ाइल डाउनलोड करव',
       exportBtn: '📥 जम्मा बैकअप डाउनलोड करव (फ़ाइल)',
       importBtn: '📤 बैकअप फ़ाइल ले डेटा वापस लावव',
-      clearNotice: 'ये ऐप तोर मोबाइल के भीतर बिना नेट के 100% सुरक्षित चलथे।'
+      clearNotice: 'ये ऐप तोर मोबाइल के भीतर बिना नेट के 100% सुरक्षित चलथे।',
+      archiveTitle: 'वित्तीय बछर डेटा आर्काइव अउ मोबाइल स्टोरेज सफाई',
+      archiveSubtitle: 'पुरना बिल मन ला सुरक्षित कोल्ड स्टोरेज म सहेजव जेकर ले ऐप सुपरफ़ास्ट चले',
+      activeSales: 'चालू बिल (POS)',
+      archivedSales: 'आर्काइव बिल',
+      estimatedStorage: 'मोबाइल स्टोरेज नाप',
+      archiveBtn: '📦 180 दिन ले पुरना बिल आर्काइव करव',
+      exportArchiveBtn: '📥 आर्काइव डेटा डाउनलोड करव (JSON)'
     },
     cloudSync: {
       syncNow: 'क्लाउड सिंक करव',
@@ -502,7 +516,14 @@ export const translations = {
       subtitle: 'Download backup files to protect your data if your device changes',
       exportBtn: '📥 Download Full Backup (JSON file)',
       importBtn: '📤 Restore Data from Backup File',
-      clearNotice: 'This app runs 100% locally on this device without requiring internet.'
+      clearNotice: 'This app runs 100% locally on this device without requiring internet.',
+      archiveTitle: 'Fiscal Year Archiving & Local Storage Cleanup',
+      archiveSubtitle: 'Archive older sales into cold storage to keep your app superfast',
+      activeSales: 'Active Sales (POS)',
+      archivedSales: 'Archived Sales',
+      estimatedStorage: 'Estimated Local Storage',
+      archiveBtn: '📦 Archive Sales Older Than 180 Days',
+      exportArchiveBtn: '📥 Download Fiscal Archive (JSON)'
     },
     cloudSync: {
       syncNow: 'Cloud Sync Now',

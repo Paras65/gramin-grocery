@@ -166,7 +166,7 @@ class SyncService {
 
 
   /**
-   * Count how many sales/transactions are waiting to be pushed to cloud
+   * Count how many sales/transactions/spoilage are waiting to be pushed to cloud
    */
   public async getPendingSyncCount(): Promise<number> {
     try {
@@ -174,11 +174,13 @@ class SyncService {
       if (!lastSync) {
         const salesCount = await db.sales.count();
         const txnCount = await db.transactions.count();
-        return salesCount + txnCount;
+        const spoilageCount = await db.spoilageLogs.count();
+        return salesCount + txnCount + spoilageCount;
       }
       const pendingSales = await db.sales.where('timestamp').above(lastSync).count();
       const pendingTxns = await db.transactions.where('timestamp').above(lastSync).count();
-      return pendingSales + pendingTxns;
+      const pendingSpoilage = await db.spoilageLogs.where('timestamp').above(lastSync).count();
+      return pendingSales + pendingTxns + pendingSpoilage;
     } catch {
       return 0;
     }
@@ -290,12 +292,28 @@ class SyncService {
 
       const lastSyncTimestamp = localStorage.getItem('gk_last_sync') || undefined;
 
-      // 1. Gather all local records
-      const products = await db.products.toArray();
-      const customers = await db.customers.toArray();
-      const transactions = await db.transactions.toArray();
-      const sales = await db.sales.toArray();
-      const spoilageLogs = await db.spoilageLogs.toArray();
+      // 1. Gather local records (True Delta Sync to prevent storage and bandwidth explosion)
+      let products: Product[];
+      let customers: Customer[];
+      let transactions: Transaction[];
+      let sales: Sale[];
+      let spoilageLogs: SpoilageLog[];
+
+      if (lastSyncTimestamp) {
+        // Delta mode: only push records mutated/created after last sync
+        sales = await db.sales.where('timestamp').above(lastSyncTimestamp).toArray();
+        transactions = await db.transactions.where('timestamp').above(lastSyncTimestamp).toArray();
+        spoilageLogs = await db.spoilageLogs.where('timestamp').above(lastSyncTimestamp).toArray();
+        products = await db.products.filter((p: Product) => !p.updatedAt || p.updatedAt > lastSyncTimestamp).toArray();
+        customers = await db.customers.filter((c: Customer) => !c.updatedAt || c.updatedAt > lastSyncTimestamp).toArray();
+      } else {
+        // Full initial sync
+        sales = await db.sales.toArray();
+        transactions = await db.transactions.toArray();
+        spoilageLogs = await db.spoilageLogs.toArray();
+        products = await db.products.toArray();
+        customers = await db.customers.toArray();
+      }
 
       const payload = {
         lastSyncTimestamp,
@@ -389,6 +407,7 @@ class SyncService {
               isLoose: p.isLoose,
               barcode: p.barcode,
               expiryDate: p.expiryDate ? new Date(p.expiryDate).toISOString().split('T')[0] : undefined,
+              updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
             });
           }
         }
