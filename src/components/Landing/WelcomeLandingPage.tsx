@@ -26,11 +26,13 @@ import { lookupPincode } from '../../utils/pincodeService';
 interface WelcomeLandingPageProps {
   onExploreDemo: () => void;
   onLoginSuccess: () => void;
+  onOpenAdminLogin?: () => void;
 }
 
 export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
   onExploreDemo,
   onLoginSuccess,
+  onOpenAdminLogin,
 }) => {
   const { language, toggleLanguage, t } = useLanguage();
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -775,6 +777,16 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
         <p className="text-[11px] text-stone-500 mt-1 m-0">
           100% ऑफ़लाइन डेटा गारंटी • सुरक्षित मल्टी-टेनेंट क्लाउड आर्किटेक्चर
         </p>
+        {onOpenAdminLogin && (
+          <div className="pt-2">
+            <button
+              onClick={onOpenAdminLogin}
+              className="text-[11px] text-amber-500/70 hover:text-amber-400 font-semibold inline-flex items-center gap-1 cursor-pointer transition underline decoration-amber-500/40"
+            >
+              👑 सुपर एडमिन लॉगिन (Master Portal)
+            </button>
+          </div>
+        )}
       </footer>
     </div>
   );

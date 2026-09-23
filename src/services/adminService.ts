@@ -169,6 +169,27 @@ class AdminService {
 
     await this.parseResponse(res, 'Failed to toggle store status');
   }
+
+  public async resetStorePin(storeId: string, newPin: string): Promise<string> {
+    const res = await fetch(`${API_BASE}/admin/stores/${storeId}/reset-pin`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ newPin: newPin.trim() }),
+    });
+
+    const data = await this.parseResponse(res, 'Failed to reset store PIN');
+    return data.message || 'PIN रीसेट सफल';
+  }
+
+  public async deleteStore(storeId: string): Promise<string> {
+    const res = await fetch(`${API_BASE}/admin/stores/${storeId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    const data = await this.parseResponse(res, 'Failed to delete store');
+    return data.message || 'Store deleted successfully';
+  }
 }
 
 export const adminService = new AdminService();

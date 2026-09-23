@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Wifi, WifiOff, Globe, Mic, Store, Cloud, RefreshCw, ArrowRight, Sparkles, LogOut, Download, Printer, X } from 'lucide-react';
+import { Wifi, WifiOff, Globe, Mic, Store, Cloud, RefreshCw, ArrowRight, Sparkles, LogOut, Download, Printer, X, Crown } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { syncService } from '../services/syncService';
 import { SubscriptionModal } from './Subscription/SubscriptionModal';
@@ -17,6 +17,7 @@ interface HeaderProps {
   onOpenMunimLogin?: () => void;
   onBackToLanding?: () => void;
   onOpenWizard?: () => void;
+  onOpenAdminLogin?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -26,7 +27,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenStoreAuth, 
   onOpenMunimLogin, 
   onBackToLanding,
-  onOpenWizard
+  onOpenWizard,
+  onOpenAdminLogin
 }) => {
   const { language, toggleLanguage, t } = useLanguage();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -699,6 +701,28 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="text-xs font-black text-amber-950 bg-amber-400 px-2.5 py-1 rounded-xl">
                     इंस्टॉल
                   </span>
+                </button>
+              )}
+
+              {/* Super Admin Login Entry Point */}
+              {onOpenAdminLogin && (
+                <button
+                  onClick={() => {
+                    setIsMobileStoreSheetOpen(false);
+                    onOpenAdminLogin();
+                  }}
+                  className="w-full p-2.5 rounded-xl bg-stone-900 hover:bg-stone-850 border border-amber-600/40 text-left flex items-center justify-between cursor-pointer transition active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                      <Crown className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-amber-300 block">सुपर एडमिन नियंत्रण</span>
+                      <span className="text-[10px] text-stone-400 block">प्लेटफॉर्म व सभी दुकानें</span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-amber-400/80">प्रवेश &gt;</span>
                 </button>
               )}
 

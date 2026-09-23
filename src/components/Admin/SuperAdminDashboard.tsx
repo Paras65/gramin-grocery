@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Building2, Users, IndianRupee, ShieldAlert, 
   Search, RefreshCw, LogOut, AlertTriangle, 
-  Phone, MessageSquare, MapPin, Crown
+  Phone, MessageSquare, MapPin, Crown,
+  Download, KeyRound, Trash2
 } from 'lucide-react';
 import { adminService, type PlatformOverviewResponse } from '../../services/adminService';
 import type { AdminStoreSummary } from '../../types';
@@ -99,6 +100,112 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
       setStores(prev => prev.map(s => s.id === store.id ? { ...s, isActive: nextStatus } : s));
     } catch (err: any) {
       alert(`त्रुटि: ${err.message}`);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (stores.length === 0) {
+      alert('डाउनलोड के लिए कोई स्टोर उपलब्ध नहीं है।');
+      return;
+    }
+
+    const headers = [
+      'Store Name',
+      'Owner Name',
+      'Phone',
+      'Village',
+      'District',
+      'Plan',
+      'Status',
+      'Plan Expiry Date',
+      'Customers',
+      'Total Debt (INR)',
+      'Account Status',
+      'Created At'
+    ];
+
+    const rows = stores.map(s => [
+      `"${(s.storeName || '').replace(/"/g, '""')}"`,
+      `"${(s.ownerName || '').replace(/"/g, '""')}"`,
+      `"${s.phone || ''}"`,
+      `"${(s.address?.village || '').replace(/"/g, '""')}"`,
+      `"${(s.address?.district || '').replace(/"/g, '""')}"`,
+      `"${s.subscription?.plan || 'FREE'}"`,
+      `"${s.subscription?.status || 'ACTIVE'}"`,
+      `"${s.subscription?.planExpiryDate ? new Date(s.subscription.planExpiryDate).toLocaleDateString('hi-IN') : 'N/A'}"`,
+      s.customerCount || 0,
+      s.totalDebt || 0,
+      s.isActive ? 'Active' : 'Suspended',
+      `"${new Date(s.createdAt).toLocaleDateString('hi-IN')}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `gramin_stores_registry_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleResetPin = async (store: AdminStoreSummary) => {
+    const defaultPin = Math.floor(1000 + Math.random() * 9000).toString();
+    const newPin = window.prompt(
+      `'${store.storeName}' (${store.ownerName}) के लिए नया 4-अंकों का गुप्त PIN दर्ज करें:\n\n(सुझाव: ${defaultPin})`,
+      defaultPin
+    );
+
+    if (!newPin) return;
+
+    if (!/^\d{4}$/.test(newPin.trim())) {
+      alert('कृपया ठीक 4 अंकों की संख्या दर्ज करें (उदा. 1234)।');
+      return;
+    }
+
+    try {
+      await adminService.resetStorePin(store.id, newPin.trim());
+
+      const whatsappMsg =
+        `नमस्ते ${store.ownerName} जी 🙏\n\n` +
+        `🏪 *${store.storeName}* के लिए आपका नया ग्रामिन किराना 4-अंकों का गुप्त PIN सफलतापूर्वक रीसेट कर दिया गया है:\n\n` +
+        `📱 मोबाइल: *${store.phone}*\n` +
+        `🔑 नया PIN: *${newPin.trim()}*\n\n` +
+        `🌐 ऐप में लॉगिन करें: https://gramin-grocery.web.app/\n\n` +
+        `सुरक्षा हेतु कृपया यह PIN किसी अनजान व्यक्ति से साझा न करें।\n` +
+        `— ग्रामिन किराना सुपर एडमिन सहायता दल 🤝`;
+
+      const sendWhatsApp = window.confirm(
+        `PIN सफलतापूर्वक रीसेट हो गया है!\n\nनया PIN: ${newPin.trim()}\n\nक्या आप अभी दुकानदार (${store.phone}) को यह नया PIN व्हाट्सएप पर भेजना चाहते हैं?`
+      );
+
+      if (sendWhatsApp) {
+        window.open(buildWhatsAppUrl(store.phone, whatsappMsg), '_blank', 'noopener,noreferrer');
+      }
+    } catch (err: any) {
+      alert(`PIN रीसेट विफल: ${err.message}`);
+    }
+  };
+
+  const handleDeleteStore = async (store: AdminStoreSummary) => {
+    const confirmName = window.prompt(
+      `⚠️ अति संवेदनशील चेतावनी (Delete Store)!\n\n` +
+      `क्या आप सच में '${store.storeName}' (${store.phone}) और उसका संपूर्ण डेटा (खाता, ग्राहक, स्टॉक, बिक्री) स्थायी रूप से हटाना चाहते हैं?\n\n` +
+      `पुष्टि करने के लिए नीचे दुकान का नाम टाइप करें:`
+    );
+
+    if (confirmName?.trim() !== store.storeName.trim()) {
+      if (confirmName !== null) alert('दुकान का नाम मेल नहीं खाया। निरस्त किया गया।');
+      return;
+    }
+
+    try {
+      await adminService.deleteStore(store.id);
+      setStores(prev => prev.filter(s => s.id !== store.id));
+      alert(`'${store.storeName}' सफलतापूर्वक हटा दी गई।`);
+      adminService.getOverview().then(setOverview).catch(console.error);
+    } catch (err: any) {
+      alert(`दुकान हटाने में विफल: ${err.message}`);
     }
   };
 
@@ -303,25 +410,38 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
               </p>
             </div>
 
-            {/* Filter Tabs: All, Pro, Free */}
-            <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
-              {[
-                { id: 'ALL', label: 'सभी' },
-                { id: 'PRO', label: '🚀 प्रो प्लान' },
-                { id: 'FREE', label: '🌾 स्टार्टर' },
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setSelectedPlan(tab.id)}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all ${
-                    selectedPlan === tab.id
-                      ? 'bg-white text-stone-900 shadow-2xs'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* CSV Export Button */}
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer shadow-2xs flex items-center gap-1.5 active:scale-95 transition-all"
+                title="सभी पंजीकृत दुकानों की सूची CSV फॉर्मेट में डाउनलोड करें"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>CSV डाउनलोड</span>
+              </button>
+
+              {/* Filter Tabs: All, Pro, Free */}
+              <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
+                {[
+                  { id: 'ALL', label: 'सभी' },
+                  { id: 'PRO', label: '🚀 प्रो प्लान' },
+                  { id: 'FREE', label: '🌾 स्टार्टर' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedPlan(tab.id)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all ${
+                      selectedPlan === tab.id
+                        ? 'bg-white text-stone-900 shadow-2xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -468,6 +588,24 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                           title={store.isActive ? 'खाता निलंबित करें' : 'खाता पुनः सक्रिय करें'}
                         >
                           {store.isActive ? 'निलंबित करें' : 'सक्रिय करें'}
+                        </button>
+
+                        {/* PIN Reset Helpline Button */}
+                        <button
+                          onClick={() => handleResetPin(store)}
+                          className="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 cursor-pointer active:scale-95 transition-all"
+                          title="दुकानदार का गुप्त 4-अंकों का PIN रीसेट करें"
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </button>
+
+                        {/* Safe Store Delete Button */}
+                        <button
+                          onClick={() => handleDeleteStore(store)}
+                          className="p-2 rounded-xl bg-stone-50 hover:bg-rose-50 text-stone-400 hover:text-rose-700 border border-stone-200 hover:border-rose-300 cursor-pointer active:scale-95 transition-all"
+                          title="टेस्ट / निष्क्रिय दुकान हटाएं"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>

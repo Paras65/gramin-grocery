@@ -221,6 +221,7 @@ const MainApp: React.FC = () => {
               sessionStorage.removeItem('gk_exploring_demo');
             }
           }}
+          onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
         />
         <AdminLoginModal
           isOpen={isAdminLoginOpen}
@@ -249,6 +250,7 @@ const MainApp: React.FC = () => {
           }
           setIsDemoExploring(false);
         }}
+        onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
       />
 
       {/* Low Stock Morning Alert Banner — shows once per session when logged in */}

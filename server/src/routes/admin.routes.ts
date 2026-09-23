@@ -8,6 +8,8 @@ import { User } from '../models/User.js';
 import { Customer } from '../models/Customer.js';
 import { Sale } from '../models/Sale.js';
 import { Product } from '../models/Product.js';
+import { Transaction } from '../models/Transaction.js';
+import { SpoilageLog } from '../models/SpoilageLog.js';
 import { adminAuthLimiter, requireAuth, requireRole } from '../middleware/security.js';
 import { runWithTenantContext } from '../middleware/tenantContext.js';
 
@@ -266,6 +268,68 @@ router.patch('/stores/:id/status', requireAuth, requireRole('SUPER_ADMIN'), asyn
     res.json({
       message: isActive ? 'दुकान खाता पुनः सक्रिय किया गया (Store re-activated)' : 'दुकान खाता निलंबित किया गया (Store suspended)',
       isActive,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6. Reset Merchant 4-Digit Secret PIN
+router.post('/stores/:id/reset-pin', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { newPin } = req.body;
+
+    if (!newPin || typeof newPin !== 'string' || !/^\d{4}$/.test(newPin.trim())) {
+      return res.status(400).json({ error: 'PIN 4 अंकों की संख्या होनी चाहिए (PIN must be 4 digits).' });
+    }
+
+    const pinHash = await bcrypt.hash(newPin.trim(), 10);
+
+    const updatedUser = await User.findOneAndUpdate(
+      { tenantId: id, role: 'OWNER' },
+      { $set: { pinHash, updatedAt: new Date() } },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: 'दुकानदार खाता नहीं मिला (Store owner not found).' });
+    }
+
+    res.json({
+      message: 'दुकानदार का PIN सफलतापूर्वक रीसेट कर दिया गया (Store owner PIN reset successfully).',
+      storeId: id,
+      newPin: newPin.trim(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 7. Safe Store Deletion (Purge Test / Inactive Store Records)
+router.delete('/stores/:id', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const tenant = await Tenant.findById(id);
+    if (!tenant) {
+      return res.status(404).json({ error: 'दुकान नहीं मिली (Store not found).' });
+    }
+
+    // Cascade delete tenant records
+    await Promise.all([
+      Tenant.findByIdAndDelete(id),
+      User.deleteMany({ tenantId: id }),
+      Customer.deleteMany({ tenantId: id }),
+      Sale.deleteMany({ tenantId: id }),
+      Product.deleteMany({ tenantId: id }),
+      Transaction.deleteMany({ tenantId: id }),
+      SpoilageLog.deleteMany({ tenantId: id }),
+    ]);
+
+    res.json({
+      message: `'${tenant.storeName}' और उसका समस्त डेटा सफलतापूर्वक हटा दिया गया (Store deleted successfully).`,
+      deletedStoreId: id,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
