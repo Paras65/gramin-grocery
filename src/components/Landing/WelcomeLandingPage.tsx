@@ -12,13 +12,16 @@ import {
   Lock,
   Phone,
   Building,
-  User,
   Flame,
   Layers,
-  Clock
+  Clock,
+  MapPin,
+  RefreshCw,
+  Check
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { syncService } from '../../services/syncService';
+import { lookupPincode } from '../../utils/pincodeService';
 
 interface WelcomeLandingPageProps {
   onExploreDemo: () => void;
@@ -41,11 +44,39 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
   const [ownerName, setOwnerName] = useState('');
   const [regMobile, setRegMobile] = useState('');
   const [regPin, setRegPin] = useState('');
+  const [regPincode, setRegPincode] = useState('493441');
   const [village, setVillage] = useState('आरंग');
-  const [district, setDistrict] = useState('रायपुर');
+  const [block, setBlock] = useState('आरंग');
+  const [district, setDistrict] = useState('रायपुर (Raipur)');
+  const [isLookingUpPin, setIsLookingUpPin] = useState(false);
+  const [detectedVillages, setDetectedVillages] = useState<string[]>(['आरंग', 'भानसोज', 'लखोली', 'गुल्लू', 'रसनी']);
+  const [showAdvancedFields, setShowAdvancedFields] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handlePincodeChange = async (val: string) => {
+    const clean = val.replace(/\D/g, '').slice(0, 6);
+    setRegPincode(clean);
+    if (clean.length === 6) {
+      setIsLookingUpPin(true);
+      try {
+        const res = await lookupPincode(clean);
+        if (res) {
+          if (res.district) setDistrict(res.district);
+          if (res.block) setBlock(res.block);
+          if (res.villages && res.villages.length > 0) {
+            setDetectedVillages(res.villages);
+            setVillage(res.villages[0]);
+          }
+        }
+      } catch (err) {
+        console.warn('Pincode fetch error:', err);
+      } finally {
+        setIsLookingUpPin(false);
+      }
+    }
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,14 +97,19 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
     setErrorMessage('');
     setIsSubmitting(true);
     try {
+      const cleanStore = storeName.trim();
+      const derivedOwner = ownerName.trim() || 
+        cleanStore.replace(/(किराना|स्टोर|दुकान|जनरल|डेली नीड्स|daily needs)/gi, '').trim() || 
+        cleanStore;
+
       await syncService.registerStore({
-        storeName,
-        ownerName,
-        phone: regMobile,
-        pin: regPin,
-        village,
-        block: village,
-        district,
+        storeName: cleanStore,
+        ownerName: derivedOwner,
+        phone: regMobile.trim(),
+        pin: regPin.trim(),
+        village: village.trim() || 'गाँव',
+        block: block.trim() || village.trim() || 'ब्लॉक',
+        district: district.trim() || 'रायपुर',
       });
       onLoginSuccess();
     } catch (err: any) {
@@ -285,11 +321,105 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
                   </button>
                 </form>
               ) : (
-                /* Register Form */
+                /* Register Form — Super-Easy 4-Field Onboarding with Dynamic Pincode Detection */
                 <form onSubmit={handleRegisterSubmit} className="space-y-3">
+                  {/* Field 1: Mobile Number */}
+                  <div>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <label className="text-[11px] font-black text-stone-700">
+                        📱 मोबाइल नंबर (10 अंक): *
+                      </label>
+                      {regMobile.length === 10 && (
+                        <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-0.5">
+                          <Check className="w-3 h-3" /> सही नंबर
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 absolute left-3 top-2.5 text-stone-400 pointer-events-none" />
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        required
+                        maxLength={10}
+                        value={regMobile}
+                        onChange={(e) => setRegMobile(e.target.value.replace(/\D/g, ''))}
+                        placeholder="उदा. 98261XXXXX"
+                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 focus:border-amber-500 outline-none text-xs font-bold text-stone-900 bg-stone-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Field 2: Dynamic Postal Pincode & Village Picker */}
+                  <div className="bg-amber-50/60 p-2.5 rounded-2xl border border-amber-200/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-black text-amber-950 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-amber-700" />
+                        डाक पिनकोड (Pincode - 6 अंक): *
+                      </label>
+                      {isLookingUpPin && (
+                        <span className="text-[10px] font-bold text-amber-800 flex items-center gap-1 animate-pulse">
+                          <RefreshCw className="w-2.5 h-2.5 animate-spin" /> खोज रहे हैं...
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        required
+                        maxLength={6}
+                        value={regPincode}
+                        onChange={(e) => handlePincodeChange(e.target.value)}
+                        placeholder="उदा. 493441"
+                        className="w-28 px-3 py-1.5 rounded-xl border border-amber-300 bg-white text-xs font-black text-stone-900 tracking-wider text-center focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                      <div className="text-[11px] text-stone-600 font-medium truncate flex-1">
+                        📍 <span className="font-bold text-stone-900">{district}</span> • {block}
+                      </div>
+                    </div>
+
+                    {/* Quick Village Chips from Pincode Directory */}
+                    <div>
+                      <span className="text-[10px] font-bold text-amber-900 block mb-1">
+                        गाँव चुनें (1-टैप चयन):
+                      </span>
+                      <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-0.5">
+                        {detectedVillages.map((v) => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setVillage(v)}
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer flex items-center gap-1 border ${
+                              village === v
+                                ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                                : 'bg-white hover:bg-amber-100 text-stone-800 border-amber-200'
+                            }`}
+                          >
+                            {village === v && <Check className="w-2.5 h-2.5 text-white" />}
+                            <span>{v}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Custom Village text if needed */}
+                    <div className="pt-1 border-t border-amber-200/50">
+                      <input
+                        type="text"
+                        value={village}
+                        onChange={(e) => setVillage(e.target.value)}
+                        placeholder="या अपने गाँव का नाम यहाँ लिखें"
+                        className="w-full px-2.5 py-1 rounded-lg border border-amber-300 bg-white text-xs font-semibold text-stone-900 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Field 3: Store Name */}
                   <div>
                     <label className="block text-[11px] font-black text-stone-700 mb-0.5">
-                      दुकान का नाम (Store Name)
+                      🏪 दुकान का नाम (Store Name): *
                     </label>
                     <div className="relative">
                       <Building className="w-4 h-4 absolute left-3 top-2.5 text-stone-400 pointer-events-none" />
@@ -304,89 +434,97 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
                     </div>
                   </div>
 
+                  {/* Field 4: 4-digit PIN */}
                   <div>
                     <label className="block text-[11px] font-black text-stone-700 mb-0.5">
-                      दुकानदार का नाम (Owner Name)
+                      🔒 नया 4-अंकों का गुप्त पिन (Secret PIN): *
                     </label>
                     <div className="relative">
-                      <User className="w-4 h-4 absolute left-3 top-2.5 text-stone-400 pointer-events-none" />
-                      <input
-                        type="text"
-                        required
-                        value={ownerName}
-                        onChange={(e) => setOwnerName(e.target.value)}
-                        placeholder="जैसे: रामेश्वर साहू"
-                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 focus:border-amber-500 outline-none text-xs font-bold text-stone-900 bg-stone-50/50"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[11px] font-black text-stone-700 mb-0.5">
-                        गाँव / कस्बा (Village)
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={village}
-                        onChange={(e) => setVillage(e.target.value)}
-                        placeholder="गाँव का नाम"
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-amber-500 outline-none text-xs font-bold text-stone-900 bg-stone-50/50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-black text-stone-700 mb-0.5">
-                        ज़िला (District)
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={district}
-                        onChange={(e) => setDistrict(e.target.value)}
-                        placeholder="ज़िला"
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-amber-500 outline-none text-xs font-bold text-stone-900 bg-stone-50/50"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[11px] font-black text-stone-700 mb-0.5">
-                        मोबाइल (10 अंक)
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        maxLength={10}
-                        value={regMobile}
-                        onChange={(e) => setRegMobile(e.target.value.replace(/\D/g, ''))}
-                        placeholder="9876543210"
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-amber-500 outline-none text-xs font-bold text-stone-900 bg-stone-50/50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-black text-stone-700 mb-0.5">
-                        4-अंक पिन (PIN)
-                      </label>
+                      <Lock className="w-4 h-4 absolute left-3 top-2.5 text-stone-400 pointer-events-none" />
                       <input
                         type="password"
+                        inputMode="numeric"
                         required
                         maxLength={4}
                         value={regPin}
                         onChange={(e) => setRegPin(e.target.value.replace(/\D/g, ''))}
                         placeholder="••••"
-                        className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-amber-500 outline-none text-xs font-bold text-stone-900 tracking-widest bg-stone-50/50"
+                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-300 focus:border-amber-500 outline-none text-xs font-bold text-stone-900 tracking-widest bg-stone-50/50"
                       />
                     </div>
+                    <span className="text-[10px] text-stone-500 mt-0.5 block">
+                      रोज़ाना दुकान खोलने के लिए 4 अंकों का पिन
+                    </span>
+                  </div>
+
+                  {/* Optional Advanced Details Expander */}
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedFields(!showAdvancedFields)}
+                      className="text-[10px] font-bold text-stone-500 hover:text-stone-800 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>{showAdvancedFields ? '▲ कम विवरण दिखाएं' : '▼ दुकानदार का नाम या ब्लॉक बदलें (वैकल्पिक)'}</span>
+                    </button>
+
+                    {showAdvancedFields && (
+                      <div className="mt-2 p-2.5 bg-stone-50 rounded-xl border border-stone-200 space-y-2 text-left animate-in fade-in duration-200">
+                        <div>
+                          <label className="text-[10px] font-bold text-stone-600 block mb-0.5">
+                            दुकानदार का नाम (Owner Name):
+                          </label>
+                          <input
+                            type="text"
+                            value={ownerName}
+                            onChange={(e) => setOwnerName(e.target.value)}
+                            placeholder="खाली छोड़ने पर दुकान के नाम से स्वतः सेट होगा"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 text-xs bg-white"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-stone-600 block mb-0.5">
+                              ब्लॉक/तहसील:
+                            </label>
+                            <input
+                              type="text"
+                              value={block}
+                              onChange={(e) => setBlock(e.target.value)}
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 text-xs bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-stone-600 block mb-0.5">
+                              ज़िला:
+                            </label>
+                            <input
+                              type="text"
+                              value={district}
+                              onChange={(e) => setDistrict(e.target.value)}
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 text-xs bg-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <button
                     type="submit"
                     disabled={isSubmitting || !storeName || regMobile.length < 10 || regPin.length < 4}
-                    className="w-full py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md active:scale-98 mt-2"
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-lg shadow-emerald-700/20 active:scale-98 mt-2"
                   >
-                    {isSubmitting ? 'पंजीकरण हो रहा है...' : '+ दुकान बनाएं व मुफ़्त चालू करें ➔'}
+                    {isSubmitting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        पंजीकरण हो रहा है...
+                      </>
+                    ) : (
+                      <>
+                        <span>🚀 15 सेकंड में दुकान बनाएं व चालू करें</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
                   </button>
                 </form>
               )}

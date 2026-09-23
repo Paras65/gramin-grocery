@@ -46,7 +46,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Fiscal Year Archiving & Local Storage Cleanup (वित्तीय वर्ष डेटा आर्काइव व स्थानीय स्टोरेज सफाई)](#fiscal-year-archiving--local-storage-cleanup-वित्तीय-वर्ष-डेटा-आर्काइव-व-स्थानीय-स्टोरेज-सफाई)
    - [Installing App on Phone or PC (PWA होमस्क्रीन ऐप)](#installing-app-on-phone-or-pc-pwa-होमस्क्रीन-ऐप)
 9. [Store Login & Multi-Staff Access (दुकानदार लॉगिन व मुनीम खाता)](#9-store-login--multi-staff-access-दुकानदार-लॉगिन-व-मुनीम-खाता)
-   - [Registering Your Store & PIN Recovery Helpline](#registering-your-store--pin-recovery-helpline)
+   - [Registering Your Store & PIN Recovery Helpline (15 सेकंड में सुपर-फास्ट दुकान पंजीकरण)](#registering-your-store--pin-recovery-helpline-15-सेकंड-में-सुपर-फास्ट-दुकान-पंजीकरण)
    - [1-Click Store Onboarding Wizard & 52 Rural Kirana Essentials (दुकान सेटअप विज़ार्ड व 52 किराना सामान)](#1-click-store-onboarding-wizard--52-rural-kirana-essentials-दुकान-सेटअप-विज़ार्ड-व-52-किराना-सामान)
    - [Roles & Sensitive Data Privacy Guardrails](#roles--sensitive-data-privacy-guardrails)
    - [1-Click Logout & Safe Munim Shift Exit (1-क्लिक लॉगआउट व मुनीम सत्र समाप्ति)](#1-click-logout--safe-munim-shift-exit-1-क्लिक-लॉगआउट-व-मुनीम-सत्र-समाप्ति)
@@ -343,9 +343,18 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 
 Gramin Kirana supports distinct operational roles and multi-store privacy to ensure counter convenience and shop secrecy:
 
-### Registering Your Store & PIN Recovery Helpline
-- **स्वागत स्क्रीन (Welcome Landing Screen):** Unauthenticated users first see the Welcome Landing Page with features, pricing, and side-by-side tabs for **"दुकानदार लॉगिन"** and **"+ नई दुकान जोड़ें"**.
-- Fill in your store name, owner name, village, district, 10-digit mobile number, and a 4-digit secret PIN.
+### Registering Your Store & PIN Recovery Helpline (15 सेकंड में सुपर-फास्ट दुकान पंजीकरण)
+- **स्वागत स्क्रीन (Welcome Landing Screen):** Unauthenticated users first see the Welcome Landing Page with features, pricing, and side-by-side tabs for **"दुकानदार लॉगिन"** and **"+ नई दुकान जोड़ें"** (also accessible anytime via the **स्टोर लॉगिन / स्विच** modal).
+- **15 सेकंड में सुपर-फास्ट 4-फील्ड ऑनबोर्डिंग:** ग्रामीण दुकानदारों की सुविधा के लिए पंजीकरण को बेहद आसान बनाया गया है—केवल 4 आवश्यक विवरण दर्ज करने होते हैं:
+  1. **📱 10-अंकों का मोबाइल नंबर:** दुकान का प्राथमिक संपर्क नंबर।
+  2. **📮 6-अंकों का डाक पिनकोड (Dynamic Pincode Auto-Fill):**
+     - जैसे ही दुकानदार 6 अंकों का पिनकोड (उदा. `493441`) दर्ज करते हैं, सिस्टम स्वतः डाक विभाग निर्देशिका से ज़िला व ब्लॉक पहचान लेता है।
+     - पिनकोड के अंतर्गत आने वाले सभी प्रमुख गाँवों के नाम **1-टैप बटन (Village Chips)** के रूप में तुरंत दिख जाते हैं (उदा. `[आरंग] [लखोली] [भानसोज] [गुल्लू] [रसनी]...`)।
+     - दुकानदार केवल 1 टैप से अपना गाँव चुन सकते हैं। यदि गाँव का नाम सूची में न हो तो नीचे आसानी से टाइप भी कर सकते हैं।
+  3. **🏪 दुकान का नाम:** जैसे *"जय माँ बम्लेश्वरी किराना स्टोर"*। दुकानदार का नाम दुकान के नाम से स्वतः सेट हो जाता है, जिससे अलग से टाइप करने की ज़रूरत नहीं पड़ती।
+  4. **🔒 4-अंकों का गुप्त पिन (Secret PIN):** रोज़ाना दुकान खोलने और काउंटर पर सुरक्षित लॉगिन के लिए 4 अंकों का गुप्त पिन।
+- **वैकल्पिक विवरण विस्तार (Optional Advanced Customization):** यदि कोई दुकानदार अपनी दुकान के नाम से अलग व्यक्तिगत नाम, ब्लॉक या ज़िला मैन्युअल रूप से बदलना चाहें, तो वे *"▼ दुकानदार का नाम या ब्लॉक बदलें (वैकल्पिक)"* पर क्लिक करके आसानी से कस्टमाइज़ कर सकते हैं।
+- **ऑफ़लाइन व कमजोर नेटवर्क सुरक्षा:** ग्रामीण क्षेत्रों में धीमे या अनुपलब्ध इंटरनेट के दौरान भी पिनकोड डायरेक्टरी तुरंत काम करती है, जिससे दुकान पंजीकरण कभी नहीं रुकता।
 - **पिन भूल गए? (Forgot PIN Helpline):** If you ever forget your 4-digit PIN, click the **"पिन भूल गए? सहायता पाएं"** link on the login screen. It directly opens a pre-composed WhatsApp message to our support desk with your shop's mobile number for verified, rapid reset assistance.
 - **सीधे काउंटर पर प्रवेश (Immediate Counter Access):** As soon as you register or log in, the welcome landing screen closes and your shop's **तुरंत बिलिंग (POS)** counter opens instantly—no distracting ads or extra clicks.
 - Once logged in, your shop identity is clearly visible at the top of every screen:
