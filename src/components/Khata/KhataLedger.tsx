@@ -13,12 +13,14 @@ import { syncService } from '../../services/syncService';
 import { openWhatsApp } from '../../utils/whatsapp';
 import { formatINR } from '../../utils/formatters';
 import { CustomerPassbookModal } from './CustomerPassbookModal';
+import { SubscriptionModal } from '../Subscription/SubscriptionModal';
 
 export const KhataLedger: React.FC = () => {
   const { t } = useLanguage();
   const customers = useLiveQuery(() => db.customers.toArray()) || [];
   const transactions = useLiveQuery(() => db.transactions.toArray()) || [];
   const isPro = syncService.isPro();
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPara, setSelectedPara] = useState<string>('all');
@@ -432,12 +434,12 @@ export const KhataLedger: React.FC = () => {
           </button>
         ) : (
           <button
-            disabled
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-stone-200 text-stone-500 font-bold text-xs cursor-not-allowed"
-            title="यह सुविधा ग्रामीण PRO (₹99/माह) में है"
+            onClick={() => setIsSubModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold text-xs cursor-pointer transition active:scale-98"
+            title="यह सुविधा ग्रामीण PRO (₹99/माह) में है — प्लान देखें व एक्टिव करें"
           >
-            <Lock className="w-3.5 h-3.5" />
-            🔒 सभी को WhatsApp तगादा (PRO)
+            <Lock className="w-3.5 h-3.5 text-amber-700" />
+            <span>🔒 सभी को WhatsApp तगादा (PRO देखें)</span>
           </button>
         )}
       </div>
@@ -1081,6 +1083,12 @@ export const KhataLedger: React.FC = () => {
           onClose={() => setPassbookCustomer(null)}
         />
       )}
+
+      {/* Village Pro Subscription Modal */}
+      <SubscriptionModal
+        isOpen={isSubModalOpen}
+        onClose={() => setIsSubModalOpen(false)}
+      />
     </div>
   );
 };

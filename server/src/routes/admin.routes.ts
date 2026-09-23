@@ -211,10 +211,16 @@ router.get('/stores', requireAuth, requireRole('SUPER_ADMIN'), async (req: Reque
 router.patch('/stores/:id/subscription', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { plan, status } = req.body;
+    const { plan, status, durationMonths } = req.body;
 
     if (!['FREE', 'PRO'].includes(plan)) {
       return res.status(400).json({ error: 'Invalid plan: must be FREE or PRO' });
+    }
+
+    let planExpiryDate: Date | undefined;
+    if (plan === 'PRO') {
+      const months = Number(durationMonths) || 1;
+      planExpiryDate = new Date(Date.now() + months * 30 * 86400000);
     }
 
     const tenant = await Tenant.findByIdAndUpdate(
@@ -223,6 +229,7 @@ router.patch('/stores/:id/subscription', requireAuth, requireRole('SUPER_ADMIN')
         $set: {
           'subscription.plan': plan,
           'subscription.status': status || 'ACTIVE',
+          ...(planExpiryDate && { 'subscription.planExpiryDate': planExpiryDate }),
         },
       },
       { new: true }

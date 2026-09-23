@@ -69,17 +69,81 @@ class SyncService {
     return data ? JSON.parse(data) : null;
   }
 
-  public getSubscriptionStatus(): { plan: 'FREE' | 'PRO'; planExpiryDate?: string; isPro: boolean; isExpired: boolean } {
+  public getSubscriptionStatus(): {
+    plan: 'FREE' | 'PRO';
+    planExpiryDate?: string;
+    isPro: boolean;
+    isExpired: boolean;
+    daysRemaining?: number;
+  } {
     const store = this.getStoreInfo();
     const rawPlan = store?.plan || 'FREE';
     const hasExpiry = !!store?.planExpiryDate;
-    const isExpired = hasExpiry ? new Date(store!.planExpiryDate!) < new Date() : false;
+    let daysRemaining: number | undefined;
+    let isExpired = false;
+
+    if (hasExpiry) {
+      const expiry = new Date(store!.planExpiryDate!).getTime();
+      const now = new Date().getTime();
+      const diffMs = expiry - now;
+      daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      isExpired = diffMs <= 0;
+    }
+
     const isPro = rawPlan === 'PRO' && !isExpired;
     return {
       plan: isPro ? 'PRO' : 'FREE',
       planExpiryDate: store?.planExpiryDate,
       isPro,
       isExpired: isExpired && (rawPlan === 'PRO' || hasExpiry),
+      daysRemaining,
+    };
+  }
+
+  /**
+   * Redeem an offline promo code or voucher activation key for Pro plan
+   */
+  public activateProWithKey(rawKey: string): { success: boolean; message: string; days?: number } {
+    const key = (rawKey || '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!key) {
+      return { success: false, message: 'कृपया कूपन या एक्टिवेशन कोड दर्ज करें।' };
+    }
+
+    let days = 30; // default 30 days
+    if (['KIRANA365', 'KIRANA-PRO-365', 'GRAMIN-PRO-365', 'KIRANA-PRO-2026', 'GRAMIN-VIP', 'ANNUAL365'].includes(key)) {
+      days = 365;
+    } else if (['KIRANA90', 'KIRANA-PRO-90', 'GRAMIN-PRO-90', 'QUARTERLY90'].includes(key)) {
+      days = 90;
+    } else if (['KIRANA30', 'KIRANA-PRO-30', 'GRAMIN-PRO-30', 'GRAMIN99', 'CHHATTISGARH30', 'VILLAGE30'].includes(key)) {
+      days = 30;
+    } else if (/^(GK|PRO)-[A-Z0-9]{4,10}$/.test(key)) {
+      days = 30;
+    } else {
+      return {
+        success: false,
+        message: 'अमान्य कोड! कृपया सही 6 या 8 अंकों का कोड दर्ज करें (जैसे: GRAMIN99, KIRANA-PRO-30, KIRANA-PRO-2026) या WhatsApp पर संपर्क करें।'
+      };
+    }
+
+    const store = this.getStoreInfo();
+    const expiryDate = new Date(Date.now() + days * 86400000).toISOString();
+
+    const updatedStore: TenantInfo = {
+      ...(store || {
+        storeName: 'गाँव किराना स्टोर',
+        village: 'गाँव'
+      }),
+      plan: 'PRO',
+      planExpiryDate: expiryDate,
+    };
+
+    localStorage.setItem('gk_store_info', JSON.stringify(updatedStore));
+    this.notifyAuth();
+
+    return {
+      success: true,
+      message: `बधाई! आपकी दुकान के लिए "ग्रामिन प्रो" प्लान (${days} दिन) सक्रिय हो गया है।`,
+      days,
     };
   }
 

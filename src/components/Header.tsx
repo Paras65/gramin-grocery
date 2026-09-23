@@ -342,7 +342,13 @@ export const Header: React.FC<HeaderProps> = ({
                 title="प्लान व सुविधाएं देखें"
               >
                 <Sparkles className="w-2.5 h-2.5" />
-                <span>{subStatus.isPro ? 'प्रो' : subStatus.isExpired ? 'योजना समाप्त' : 'मुफ़्त प्लान'}</span>
+                <span>
+                  {subStatus.isPro
+                    ? `प्रो ${subStatus.daysRemaining !== undefined ? `(${subStatus.daysRemaining} दिन)` : ''}`
+                    : subStatus.isExpired
+                    ? 'योजना समाप्त'
+                    : 'मुफ़्त प्लान'}
+                </span>
               </button>
 
               {onOpenWizard && (
@@ -550,11 +556,23 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-xs text-stone-400">दुकान प्लान:</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                    subStatus.isPro ? 'bg-amber-400/20 text-amber-300 border-amber-400/50' : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
-                  }`}>
-                    {subStatus.isPro ? '👑 ग्रामिन प्रो' : '🌾 गाँव स्टार्टर (मुफ़्त)'}
-                  </span>
+                  <button
+                    onClick={() => {
+                      setIsMobileStoreSheetOpen(false);
+                      setIsSubModalOpen(true);
+                    }}
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded-full border cursor-pointer active:scale-95 transition flex items-center gap-1 ${
+                      subStatus.isPro
+                        ? 'bg-amber-400/20 text-amber-300 border-amber-400/50'
+                        : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                    }`}
+                  >
+                    <span>
+                      {subStatus.isPro
+                        ? `👑 ग्रामिन प्रो ${subStatus.daysRemaining !== undefined ? `(${subStatus.daysRemaining} दिन)` : ''}`
+                        : '🌾 गाँव स्टार्टर (मुफ़्त) • प्लान देखें'}
+                    </span>
+                  </button>
                 </div>
               </div>
             ) : (

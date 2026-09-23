@@ -6,6 +6,7 @@ import type { Sale, SpoilageLog, Product } from '../../types';
 import { syncService } from '../../services/syncService';
 import { formatINR } from '../../utils/formatters';
 import { openWhatsApp } from '../../utils/whatsapp';
+import { SubscriptionModal } from '../Subscription/SubscriptionModal';
 
 const MONTHS_HI = [
   'जनवरी','फरवरी','मार्च','अप्रैल','मई','जून',
@@ -15,6 +16,7 @@ const MONTHS_HI = [
 export const ProfitLossReport: React.FC = () => {
   const isPro = syncService.isPro();
   const isLoggedIn = syncService.isLoggedIn();
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
 
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
@@ -119,10 +121,13 @@ export const ProfitLossReport: React.FC = () => {
             असली मुनाफा जानने के लिए यह रिपोर्ट सिर्फ <strong>ग्रामीण PRO (₹99/माह)</strong> में उपलब्ध है।<br />
             लागत, बिक्री, खराबी, और शुद्ध लाभ — सब एक जगह।
           </p>
-          <div className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold">
+          <button
+            onClick={() => setIsSubModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+          >
             <Sparkles className="w-3.5 h-3.5" />
-            PRO में अपग्रेड करें
-          </div>
+            <span>PRO में अपग्रेड करें / कूपन दर्ज करें</span>
+          </button>
         </div>
       )}
 
@@ -231,6 +236,12 @@ export const ProfitLossReport: React.FC = () => {
           )}
         </>
       )}
+
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        isOpen={isSubModalOpen}
+        onClose={() => setIsSubModalOpen(false)}
+      />
     </div>
   );
 };

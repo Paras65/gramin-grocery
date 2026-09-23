@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Check, Sparkles, Shield, Cloud, Smartphone, Printer, Store, MessageCircle, HelpCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Check, Sparkles, Shield, Cloud, Smartphone, Printer, Store, MessageCircle, HelpCircle, Ticket, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { syncService } from '../../services/syncService';
 
@@ -15,6 +15,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   onOpenStoreAuth,
 }) => {
   const { t } = useLanguage();
+  const [couponCode, setCouponCode] = useState('');
+  const [couponFeedback, setCouponFeedback] = useState<{ success: boolean; message: string } | null>(null);
 
   if (!isOpen) return null;
 
@@ -36,6 +38,16 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     onClose();
     if (onOpenStoreAuth) {
       onOpenStoreAuth();
+    }
+  };
+
+  const handleRedeemCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!couponCode.trim()) return;
+    const result = syncService.activateProWithKey(couponCode);
+    setCouponFeedback({ success: result.success, message: result.message });
+    if (result.success) {
+      setCouponCode('');
     }
   };
 
@@ -259,8 +271,21 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
               <div className="mt-5 pt-3">
                 {subStatus.isPro && isLoggedIn ? (
-                  <div className="w-full text-center py-2.5 rounded-2xl bg-amber-600 text-white font-bold text-xs shadow-2xs">
-                    ✓ सक्रिय प्रो प्लान
+                  <div className="w-full text-center py-2.5 px-3 rounded-2xl bg-amber-600 text-white font-bold text-xs shadow-2xs space-y-1">
+                    <div className="flex items-center justify-center gap-1.5 font-black">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>✓ सक्रिय प्रो प्लान</span>
+                      {subStatus.daysRemaining !== undefined && (
+                        <span className="bg-amber-700/90 px-2 py-0.5 rounded-full text-[10px]">
+                          {subStatus.daysRemaining} दिन शेष
+                        </span>
+                      )}
+                    </div>
+                    {subStatus.planExpiryDate && (
+                      <div className="text-[10px] text-amber-100 font-medium">
+                        वैधता: {new Date(subStatus.planExpiryDate).toLocaleDateString('hi-IN')}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <button
@@ -273,6 +298,56 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Offline Activation Code & Coupon Redemption */}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 rounded-3xl p-4 sm:p-5 border border-amber-300/80 shadow-xs space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-700">
+                <Ticket className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-black text-amber-950 m-0">
+                  कूपन या एक्टिवेशन कोड है? (Offline Voucher)
+                </h4>
+                <p className="text-[11px] text-stone-600 m-0 font-medium">
+                  डिस्ट्रीब्यूटर या टीम द्वारा दिया गया कोड (जैसे: GRAMIN99, KIRANA-PRO-30) दर्ज कर तुरंत प्रो सक्रिय करें
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleRedeemCoupon} className="flex gap-2">
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                placeholder="जैसे: GRAMIN99 या KIRANA365"
+                className="flex-1 px-3 py-2 text-xs font-bold uppercase rounded-xl border border-stone-300 focus:outline-none focus:border-amber-500 bg-white tracking-wider"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-amber-300 font-black text-xs rounded-xl transition cursor-pointer shadow-xs active:scale-95 shrink-0"
+              >
+                लागू करें
+              </button>
+            </form>
+
+            {couponFeedback && (
+              <div
+                className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                  couponFeedback.success
+                    ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                    : 'bg-rose-100 text-rose-900 border border-rose-300'
+                }`}
+              >
+                {couponFeedback.success ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                )}
+                <span>{couponFeedback.message}</span>
+              </div>
+            )}
           </div>
 
           {/* Feature Highlights Banner */}

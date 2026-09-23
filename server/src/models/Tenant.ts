@@ -20,6 +20,7 @@ export interface ITenant extends Document {
   subscription: {
     plan: 'FREE' | 'BASIC' | 'PRO';
     status: 'ACTIVE' | 'EXPIRED';
+    planExpiryDate?: Date;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -46,6 +47,7 @@ const TenantSchema = new Schema<ITenant>(
     subscription: {
       plan: { type: String, enum: ['FREE', 'BASIC', 'PRO'], default: 'FREE' },
       status: { type: String, enum: ['ACTIVE', 'EXPIRED'], default: 'ACTIVE' },
+      planExpiryDate: { type: Date },
     },
   },
   { timestamps: true }
