@@ -88,9 +88,13 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
     - [Top Bar Quick Connection Indicator (शीर्ष प्रिंटर स्थिति)](#top-bar-quick-connection-indicator-शीर्ष-प्रिंटर-स्थिति)
     - [1-Click POS Bill Receipt Print (तुरंत बिल पर्ची प्रिंट)](#1-click-pos-bill-receipt-print-तुरंत-बिल-पर्ची-प्रिंट)
     - [Daily Cash Close Summary Slip (दैनिक गल्ला बंद पर्ची)](#daily-cash-close-summary-slip-दैनिक-गल्ला-बंद-पर्ची)
-14. [Camera Barcode Scanner (कैमरा बारकोड स्कैनर)](#14-camera-barcode-scanner-कैमरा-बारकोड-स्कैनर)
+14. [Camera Barcode Scanner & Night Counter Mode (कैमरा बारकोड स्कैनर व नाइट टॉर्च)](#14-camera-barcode-scanner--night-counter-mode-कैमरा-बारकोड-स्कैनर-व-नाइट-टॉर्च)
    - [1-Second Camera Item Scan (कैमरा से तुरंत बिलिंग)](#1-second-camera-item-scan-कैमरा-से-तुरंत-बिलिंग)
-   - [Torch Light & Night Counter Usability (टॉर्च लाइट)](#torch-light--night-counter-usability-टॉर्च-लाइट)
+   - [Unregistered Barcode Quick-Registration (नया सामान तुरंत दर्ज करें)](#unregistered-barcode-quick-registration-नया-सामान-तुरंत-दर्ज-करें)
+   - [Multi-Camera & Lens Switcher (कैमरा लेंस बदलें)](#multi-camera--lens-switcher-कैमरा-लेंस-बदलें)
+   - [Running Scanned Item Tray & Audio Mute (स्कैन ट्रे व आवाज़ नियंत्रण)](#running-scanned-item-tray--audio-mute-स्कैन-ट्रे-व-आवाज़-नियंत्रण)
+   - [Torch Light & Night Counter Usability (टॉर्च लाइट व रात की बिलिंग)](#torch-light--night-counter-usability-टॉर्च-लाइट-व-रात-की-बिलिंग)
+   - [Camera Permission Guide & Quick Retry (कैमरा अनुमति व सुधार)](#camera-permission-guide--quick-retry-कैमरा-अनुमति-व-सुधार)
    - [USB Handheld Barcode Reader Compatibility (USB स्कैनर सपोर्ट)](#usb-handheld-barcode-reader-compatibility-usb-स्कैनर-सपोर्ट)
 15. [Customer Khata Statement Slip (ग्राहक खाता पर्ची प्रिंट व व्हाट्सएप)](#15-customer-khata-statement-slip-ग्राहक-खाता-पर्ची-प्रिंट-व-व्हाट्सएप)
    - [Date-Wise Udhaar & Jama Statement (तारीखवार बही-खाता पर्ची)](#date-wise-udhaar--jama-statement-तारीखवार-बही-खाता-पर्ची)
@@ -624,7 +628,7 @@ Gramin Kirana connects seamlessly with affordable Bluetooth and USB thermal rece
 
 ---
 
-## 14. Camera Barcode Scanner (कैमरा बारकोड स्कैनर)
+## 14. Camera Barcode Scanner & Night Counter Mode (कैमरा बारकोड स्कैनर व नाइट टॉर्च)
 
 Gramin Kirana turns any standard Android phone, iPhone, or laptop webcam into a rapid point-of-sale laser barcode scanner for packaged products:
 
@@ -635,7 +639,20 @@ Gramin Kirana turns any standard Android phone, iPhone, or laptop webcam into a 
 - As soon as the barcode enters the frame, the app emits a crisp cashier beep sound, identifies the item, and **adds it directly to the customer’s bill cart in 1 second**.
 - Scan the same package again to automatically increase quantity (`1, 2, 3...`).
 
-### Torch Light & Night Counter Usability (टॉर्च लाइट)
+### Unregistered Barcode Quick-Registration (नया सामान तुरंत दर्ज करें)
+- When scanning a brand new FMCG packet or festive offer pack whose barcode is not yet registered in your shop catalog, the app displays a 1-tap quick registration card directly inside the camera window.
+- Type the item name (e.g. *लक्स रोज़ साबुन*) and selling price (e.g. *₹35*), then tap **"💾 स्टॉक में जोड़ें व तुरंत बिल करें"**.
+- The item is saved directly into your shop inventory with its barcode pre-filled, and immediately added to the current cart without exiting the POS billing screen.
+
+### Multi-Camera & Lens Switcher (कैमरा लेंस बदलें)
+- Many modern smartphones have multiple rear cameras (wide, ultra-wide, macro).
+- If your phone has multiple lenses, a **🔄 कैमरा बदलें** icon appears in the top header, allowing you to cycle through lenses to pick the crispest focus for tiny barcodes.
+
+### Running Scanned Item Tray & Audio Mute (स्कैन ट्रे व आवाज़ नियंत्रण)
+- **स्कैन ट्रे (Tray):** A floating chip tray at the top of the camera viewfinder displays the last 3 items scanned along with their quantity multipliers (*उदा. पारले-जी ×3*), giving counter staff immediate visual confirmation without closing the scanner.
+- **🔊 / 🔇 आवाज़ नियंत्रण:** Tap the speaker icon to mute or unmute checkout beep sounds during quiet village night hours.
+
+### Torch Light & Night Counter Usability (टॉर्च लाइट व रात की बिलिंग)
 - For dimly lit village counters or evening power cuts, tap the **टॉर्च (Flashlight)** icon inside the camera window to illuminate the package barcode instantly.
 
 ### Camera Permission Guide & Quick Retry (कैमरा अनुमति व सुधार)

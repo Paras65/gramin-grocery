@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Camera, X, Flashlight, FlashlightOff, AlertCircle, CheckCircle, Keyboard } from 'lucide-react';
+import { 
+  Camera, X, Flashlight, FlashlightOff, AlertCircle, CheckCircle, 
+  Keyboard, SwitchCamera, Volume2, VolumeX, PlusCircle, ShoppingBag 
+} from 'lucide-react';
 import { db } from '../../db';
 import type { Product } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
@@ -69,6 +72,26 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   const [lastScannedMsg, setLastScannedMsg] = useState<{ name: string; price: number } | null>(null);
   const [isBarcodeDetectorSupported, setIsBarcodeDetectorSupported] = useState<boolean>(true);
 
+  // Multi-camera switcher
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [currentDeviceIndex, setCurrentDeviceIndex] = useState<number>(0);
+
+  // Audio beep mute toggle
+  const [isMuted, setIsMuted] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && localStorage.getItem('gk_scanner_sound') === 'muted';
+  });
+
+  // Recent scanned tray (last 3 items)
+  const [recentScanned, setRecentScanned] = useState<Array<{ id: string; name: string; price: number; qty: number }>>([]);
+
+  // Unregistered barcode inline quick-add form
+  const [unregisteredCode, setUnregisteredCode] = useState<string | null>(null);
+  const [newProdName, setNewProdName] = useState<string>('');
+  const [newProdPrice, setNewProdPrice] = useState<string>('');
+  const [newProdUnit, setNewProdUnit] = useState<'piece' | 'packet' | 'pouch' | 'kg'>('packet');
+  const [newProdCategory, setNewProdCategory] = useState<'snacks' | 'hygiene' | 'spices' | 'staples'>('snacks');
+  const [isSavingProduct, setIsSavingProduct] = useState<boolean>(false);
+
   // Stop camera helper
   const stopCamera = () => {
     if (animationFrameIdRef.current) {
@@ -83,6 +106,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     setTorchOn(false);
   };
 
+  const toggleSound = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    localStorage.setItem('gk_scanner_sound', next ? 'muted' : 'enabled');
+  };
+
   // Find product and trigger callback
   const handleBarcodeMatched = useCallback(async (code: string) => {
     // Look up by barcode first, then by id if matches format
@@ -92,18 +121,42 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     }
 
     if (matched) {
-      playBeep();
+      if (!isMuted) playBeep();
       onProductScanned(matched);
+      const displayName = language === 'hi' ? matched.hindiName : matched.name;
       setLastScannedMsg({
-        name: language === 'hi' ? matched.hindiName : matched.name,
+        name: displayName,
         price: matched.sellingPrice,
       });
+
+      // Update recent scanned tray
+      setRecentScanned(prev => {
+        const existingIdx = prev.findIndex(item => item.id === matched?.id);
+        if (existingIdx > -1) {
+          const updated = [...prev];
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            qty: updated[existingIdx].qty + 1
+          };
+          return updated;
+        }
+        return [
+          { id: matched?.id || String(Date.now()), name: displayName, price: matched?.sellingPrice || 0, qty: 1 },
+          ...prev
+        ].slice(0, 3);
+      });
+
+      setUnregisteredCode(null);
+      setCameraError('');
       setTimeout(() => setLastScannedMsg(null), 2500);
     } else {
-      setCameraError(`बारकोड "${code}" से कोई सामान नहीं मिला। कृपया स्टॉक लिस्ट में जोड़ें।`);
-      setTimeout(() => setCameraError(''), 3500);
+      // Prompt for inline quick registration
+      setUnregisteredCode(code);
+      setNewProdName('');
+      setNewProdPrice('');
+      setCameraError(`अपरिचित बारकोड "${code}" — तुरंत नया सामान जोड़ें या नीचे जांचें।`);
     }
-  }, [language, onProductScanned]);
+  }, [language, onProductScanned, isMuted]);
 
   // Continuous frame analysis
   const startScanLoop = useCallback((detector: BarcodeDetectorShim) => {
@@ -134,16 +187,31 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     animationFrameIdRef.current = requestAnimationFrame(scanFrame);
   }, [handleBarcodeMatched]);
 
-  const initCamera = useCallback(async () => {
+  const initCamera = useCallback(async (preferredDeviceId?: string) => {
     try {
+      stopCamera();
       setCameraError('');
       setHasCamera(true);
+
+      // Enumerate available video inputs
+      if (navigator.mediaDevices?.enumerateDevices) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoInputs = devices.filter(d => d.kind === 'videoinput');
+          setVideoDevices(videoInputs);
+        } catch {
+          // Ignore enumeration failure
+        }
+      }
+
       const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+        video: preferredDeviceId
+          ? { deviceId: { exact: preferredDeviceId } }
+          : {
+              facingMode: { ideal: 'environment' },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
         audio: false,
       };
 
@@ -159,6 +227,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       const capabilities = track.getCapabilities ? (track.getCapabilities() as { torch?: boolean }) : {};
       if (capabilities.torch) {
         setCanTorch(true);
+      } else {
+        setCanTorch(false);
       }
 
       // Initialize BarcodeDetector loop
@@ -180,12 +250,21 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     }
   }, [startScanLoop]);
 
+  // Switch to next available camera
+  const handleSwitchCamera = () => {
+    if (videoDevices.length <= 1) return;
+    const nextIndex = (currentDeviceIndex + 1) % videoDevices.length;
+    setCurrentDeviceIndex(nextIndex);
+    initCamera(videoDevices[nextIndex].deviceId);
+  };
+
   // Start camera when modal opens
   useEffect(() => {
     if (!isOpen) {
       stopCamera();
       setLastScannedMsg(null);
       setCameraError('');
+      setUnregisteredCode(null);
       return;
     }
 
@@ -221,26 +300,104 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     }
   };
 
+  // Quick-Add Unregistered Product to Catalog & Bill
+  const handleQuickAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unregisteredCode || !newProdName.trim()) return;
+    const price = parseFloat(newProdPrice);
+    if (isNaN(price) || price <= 0) return;
+
+    setIsSavingProduct(true);
+    try {
+      const newProduct: Product = {
+        id: 'p_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        name: newProdName.trim(),
+        hindiName: newProdName.trim(),
+        barcode: unregisteredCode,
+        sellingPrice: price,
+        purchasePrice: Math.round(price * 0.85),
+        stockQty: 50,
+        minStockThreshold: 5,
+        unit: newProdUnit,
+        category: newProdCategory,
+        isLoose: false,
+        updatedAt: new Date().toISOString()
+      };
+
+      await db.products.add(newProduct);
+      if (!isMuted) playBeep();
+      onProductScanned(newProduct);
+
+      setLastScannedMsg({
+        name: newProduct.hindiName,
+        price: newProduct.sellingPrice,
+      });
+
+      setRecentScanned(prev => [
+        { id: newProduct.id!, name: newProduct.hindiName, price: newProduct.sellingPrice, qty: 1 },
+        ...prev
+      ].slice(0, 3));
+
+      setUnregisteredCode(null);
+      setNewProdName('');
+      setNewProdPrice('');
+      setCameraError('');
+      setTimeout(() => setLastScannedMsg(null), 2500);
+    } catch (err) {
+      console.error('Failed to quick add product:', err);
+    } finally {
+      setIsSavingProduct(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/80 backdrop-blur-xs">
-      <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-stone-200 flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-stone-200 flex flex-col max-h-[92vh]">
         {/* Modal Header */}
-        <div className="village-header-gradient text-white px-4 py-3.5 flex items-center justify-between">
+        <div className="village-header-gradient text-white px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Camera className="w-5 h-5 text-amber-400" />
-            <h3 className="font-black text-sm sm:text-base tracking-tight m-0">
-              बारकोड स्कैनर (POS Scanner)
-            </h3>
+            <div>
+              <h3 className="font-black text-sm sm:text-base tracking-tight m-0">
+                बारकोड स्कैनर (POS Scanner)
+              </h3>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-stone-300 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
-            title="बंद करें"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {/* Audio Mute/Unmute */}
+            <button
+              type="button"
+              onClick={toggleSound}
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                isMuted ? 'text-rose-400 hover:bg-stone-800' : 'text-amber-400 hover:bg-stone-800'
+              }`}
+              title={isMuted ? 'आवाज़ बंद (Muted)' : 'आवाज़ चालू (Sound On)'}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+
+            {/* Switch Camera Button (if multiple cameras available) */}
+            {videoDevices.length > 1 && (
+              <button
+                type="button"
+                onClick={handleSwitchCamera}
+                className="p-1.5 rounded-lg text-stone-300 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
+                title="कैमरा बदलें (Switch Lens)"
+              >
+                <SwitchCamera className="w-4 h-4" />
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="p-1 rounded-lg text-stone-300 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
+              title="बंद करें"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Viewfinder Viewport */}
@@ -273,16 +430,33 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             </div>
           </div>
 
-          {/* Flashlight button */}
-          {canTorch && (
-            <button
-              onClick={toggleTorch}
-              className="absolute top-3 right-3 p-2.5 rounded-full bg-stone-900/70 text-white hover:bg-stone-800 cursor-pointer backdrop-blur-xs transition-colors"
-              title={torchOn ? 'टॉर्च बंद' : 'टॉर्च चालू'}
-            >
-              {torchOn ? <Flashlight className="w-4 h-4 text-amber-400" /> : <FlashlightOff className="w-4 h-4" />}
-            </button>
-          )}
+          {/* Top Controls on Viewfinder */}
+          <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+            {/* Recent Scanned Mini Tray */}
+            {recentScanned.length > 0 ? (
+              <div className="flex items-center gap-1.5 pointer-events-auto bg-stone-900/80 backdrop-blur-xs px-2 py-1 rounded-full border border-stone-700/60 max-w-[80%] overflow-x-auto scrollbar-none">
+                <ShoppingBag className="w-3 h-3 text-amber-400 shrink-0" />
+                <div className="flex items-center gap-1 text-[10px] text-white font-bold whitespace-nowrap">
+                  {recentScanned.map((it, i) => (
+                    <span key={i} className="bg-stone-800 px-1.5 py-0.5 rounded text-stone-200">
+                      {it.name} {it.qty > 1 && <span className="text-amber-400 font-black">×{it.qty}</span>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : <div />}
+
+            {/* Flashlight button */}
+            {canTorch && (
+              <button
+                onClick={toggleTorch}
+                className="p-2 rounded-full bg-stone-900/80 text-white hover:bg-stone-800 cursor-pointer pointer-events-auto backdrop-blur-xs transition-colors border border-stone-700"
+                title={torchOn ? 'टॉर्च बंद' : 'टॉर्च चालू'}
+              >
+                {torchOn ? <Flashlight className="w-4 h-4 text-amber-400" /> : <FlashlightOff className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
 
           {/* Success Overlay Pill */}
           {lastScannedMsg && (
@@ -296,9 +470,88 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           )}
         </div>
 
-        {/* Error / Warning Notice */}
+        {/* Inline Unregistered Barcode Quick-Registration Card */}
+        {unregisteredCode && (
+          <div className="bg-amber-50 border-y border-amber-300 p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <PlusCircle className="w-4 h-4 text-amber-700" />
+                <span className="text-xs font-black text-amber-950">
+                  नया सामान दर्ज करें: <span className="font-mono text-amber-800">[{unregisteredCode}]</span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUnregisteredCode(null)}
+                className="text-[11px] font-bold text-stone-500 hover:text-stone-800 cursor-pointer"
+              >
+                रद्द करें
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickAddProduct} className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  required
+                  value={newProdName}
+                  onChange={e => setNewProdName(e.target.value)}
+                  placeholder="सामान का नाम (उदा. लक्स साबुन)"
+                  className="col-span-2 px-3 py-1.5 text-xs bg-white border border-amber-300 rounded-xl focus:border-amber-600 focus:ring-1 focus:ring-amber-500 font-bold text-stone-900"
+                />
+                <div>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={newProdPrice}
+                    onChange={e => setNewProdPrice(e.target.value)}
+                    placeholder="बिक्री भाव ₹"
+                    className="w-full px-3 py-1.5 text-xs bg-white border border-amber-300 rounded-xl focus:border-amber-600 focus:ring-1 focus:ring-amber-500 font-black text-stone-900"
+                  />
+                </div>
+                <div>
+                  <select
+                    value={newProdUnit}
+                    onChange={e => setNewProdUnit(e.target.value as any)}
+                    className="w-full px-2 py-1.5 text-xs bg-white border border-amber-300 rounded-xl font-bold text-stone-800"
+                  >
+                    <option value="packet">पैकेट (packet)</option>
+                    <option value="piece">पीस (piece)</option>
+                    <option value="pouch">पाउच (pouch)</option>
+                    <option value="kg">किलो (kg)</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <select
+                    value={newProdCategory}
+                    onChange={e => setNewProdCategory(e.target.value as any)}
+                    className="w-full px-2 py-1.5 text-xs bg-white border border-amber-300 rounded-xl font-bold text-stone-800"
+                  >
+                    <option value="snacks">नाश्ता व बिस्कुट (Snacks)</option>
+                    <option value="hygiene">साबुन व डिटर्जेंट (Hygiene)</option>
+                    <option value="spices">मसाले व तेल (Spices & Oils)</option>
+                    <option value="staples">अनाज व दालें (Staples)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={isSavingProduct}
+                  className="w-full py-2 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>{isSavingProduct ? 'सुरक्षित हो रहा है...' : '💾 स्टॉक में जोड़ें व तुरंत बिल करें'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {/* Error / Warning Notice with Visual Permission Guide */}
-        {cameraError && (
+        {cameraError && !unregisteredCode && (
           <div className="bg-rose-50 border-y border-rose-200 px-4 py-3 text-xs text-rose-900 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 font-bold">
@@ -306,7 +559,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 <span className="leading-tight">{cameraError}</span>
               </div>
               <button
-                onClick={initCamera}
+                onClick={() => initCamera()}
                 className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer shrink-0"
               >
                 पुनः प्रयास करें
@@ -373,4 +626,3 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     </div>
   );
 };
-
