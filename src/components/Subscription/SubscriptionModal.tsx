@@ -397,11 +397,11 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     level="H"
                     includeMargin={true}
                     imageSettings={{
-                      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d97706'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/%3E%3C/svg%3E",
+                      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Crect width='36' height='36' rx='9' fill='%231c1917' stroke='%23f59e0b' stroke-width='2'/%3E%3Cpath d='M11 10h14M11 15h14M11 20h7a4.5 4.5 0 0 0 4.5-4.5M15 20l7 9' stroke='%23fbbf24' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E",
                       x: undefined,
                       y: undefined,
-                      height: 28,
-                      width: 28,
+                      height: 32,
+                      width: 32,
                       excavate: true,
                     }}
                   />
