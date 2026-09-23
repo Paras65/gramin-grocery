@@ -10,6 +10,7 @@ import { Sale } from '../models/Sale.js';
 import { Product } from '../models/Product.js';
 import { Transaction } from '../models/Transaction.js';
 import { SpoilageLog } from '../models/SpoilageLog.js';
+import { Announcement } from '../models/Announcement.js';
 import { adminAuthLimiter, requireAuth, requireRole } from '../middleware/security.js';
 import { runWithTenantContext } from '../middleware/tenantContext.js';
 
@@ -331,6 +332,100 @@ router.delete('/stores/:id', requireAuth, requireRole('SUPER_ADMIN'), async (req
       message: `'${tenant.storeName}' और उसका समस्त डेटा सफलतापूर्वक हटा दिया गया (Store deleted successfully).`,
       deletedStoreId: id,
     });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 8. List All Platform Announcements
+router.get('/announcements', requireAuth, requireRole('SUPER_ADMIN'), async (_req: Request, res: Response) => {
+  try {
+    const announcements = await Announcement.find()
+      .populate('targetStoreIds', 'storeName ownerName phone address.district')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ announcements });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 9. Create New Platform Announcement (All or Selected Stores)
+router.post('/announcements', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const {
+      title,
+      message,
+      type = 'INFO',
+      targetMode = 'ALL',
+      targetStoreIds = [],
+      targetPlan = 'ALL',
+      targetDistrict = 'ALL',
+      durationDays = 7,
+    } = req.body;
+
+    if (!title || !message) {
+      return res.status(400).json({ error: 'शीर्षक और संदेश अनिवार्य हैं (Title and message are required).' });
+    }
+
+    let expiresAt: Date | undefined;
+    if (durationDays && Number(durationDays) > 0) {
+      expiresAt = new Date(Date.now() + Number(durationDays) * 86400000);
+    }
+
+    const announcement = await Announcement.create({
+      title: title.trim(),
+      message: message.trim(),
+      type,
+      targetMode,
+      targetStoreIds: targetMode === 'SELECTED' ? targetStoreIds : [],
+      targetPlan,
+      targetDistrict,
+      expiresAt,
+      createdBy: (req as any).user?.name || 'SUPER_ADMIN',
+    });
+
+    res.status(201).json({
+      message: 'घोषणा सफलतापूर्वक प्रसारित की गई (Announcement broadcasted successfully)',
+      announcement,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 10. Toggle Announcement Status (Active / Inactive)
+router.patch('/announcements/:id/toggle', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const announcement = await Announcement.findById(id);
+    if (!announcement) {
+      return res.status(404).json({ error: 'घोषणा नहीं मिली (Announcement not found)' });
+    }
+
+    announcement.isActive = !announcement.isActive;
+    await announcement.save();
+
+    res.json({
+      message: announcement.isActive ? 'घोषणा सक्रिय की गई' : 'घोषणा निष्क्रिय की गई',
+      announcement,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 11. Delete Announcement
+router.delete('/announcements/:id', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Announcement.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'घोषणा नहीं मिली (Announcement not found)' });
+    }
+
+    res.json({ message: 'घोषणा सफलतापूर्वक हटा दी गई (Announcement deleted)' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

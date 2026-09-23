@@ -1,4 +1,4 @@
-import type { PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan } from '../types';
+import type { PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan, PlatformAnnouncement } from '../types';
 import { API_BASE } from '../utils/apiConfig';
 
 export interface AdminUser {
@@ -189,6 +189,77 @@ class AdminService {
 
     const data = await this.parseResponse(res, 'Failed to delete store');
     return data.message || 'Store deleted successfully';
+  }
+
+  public async getAnnouncements(): Promise<PlatformAnnouncement[]> {
+    const res = await fetch(`${API_BASE}/admin/announcements`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    try {
+      const data = await this.parseResponse(res, 'Failed to fetch announcements');
+      return data.announcements || [];
+    } catch (err: any) {
+      if (res.status === 401 || res.status === 403) {
+        this.logout();
+      }
+      throw err;
+    }
+  }
+
+  public async createAnnouncement(payload: {
+    title: string;
+    message: string;
+    type: string;
+    targetMode: string;
+    targetStoreIds?: string[];
+    targetPlan?: string;
+    targetDistrict?: string;
+    durationDays?: number;
+  }): Promise<PlatformAnnouncement> {
+    const res = await fetch(`${API_BASE}/admin/announcements`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    const data = await this.parseResponse(res, 'Failed to create announcement');
+    return data.announcement;
+  }
+
+  public async toggleAnnouncement(id: string): Promise<PlatformAnnouncement> {
+    const res = await fetch(`${API_BASE}/admin/announcements/${id}/toggle`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders(),
+    });
+
+    const data = await this.parseResponse(res, 'Failed to toggle announcement');
+    return data.announcement;
+  }
+
+  public async deleteAnnouncement(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/admin/announcements/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    await this.parseResponse(res, 'Failed to delete announcement');
+  }
+
+  public async getActiveAnnouncement(): Promise<PlatformAnnouncement | null> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('gk_auth_token') : null;
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+    try {
+      const res = await fetch(`${API_BASE}/tenant/announcement/active`, {
+        headers,
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.announcement || null;
+    } catch {
+      return null;
+    }
   }
 }
 

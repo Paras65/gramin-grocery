@@ -184,3 +184,21 @@ export interface AdminStoreSummary {
   createdAt: string;
   updatedAt: string;
 }
+
+export type AnnouncementType = 'INFO' | 'WARNING' | 'ALERT' | 'SUCCESS';
+export type AnnouncementTargetMode = 'ALL' | 'SELECTED';
+
+export interface PlatformAnnouncement {
+  _id: string;
+  id?: string;
+  title: string;
+  message: string;
+  type: AnnouncementType;
+  targetMode: AnnouncementTargetMode;
+  targetStoreIds?: Array<{ _id: string; storeName: string; ownerName?: string; phone?: string; address?: { district?: string } } | string>;
+  targetPlan: 'ALL' | 'FREE' | 'PRO';
+  targetDistrict: string;
+  isActive: boolean;
+  expiresAt?: string;
+  createdAt: string;
+}

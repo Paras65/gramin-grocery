@@ -3,10 +3,11 @@ import {
   Building2, Users, IndianRupee, ShieldAlert, 
   Search, RefreshCw, LogOut, AlertTriangle, 
   Phone, MessageSquare, MapPin, Crown,
-  Download, KeyRound, Trash2
+  Download, KeyRound, Trash2, Megaphone,
+  Eye, Clock, Plus, X, Send
 } from 'lucide-react';
 import { adminService, type PlatformOverviewResponse } from '../../services/adminService';
-import type { AdminStoreSummary } from '../../types';
+import type { AdminStoreSummary, PlatformAnnouncement, AnnouncementType, AnnouncementTargetMode } from '../../types';
 import { formatINR } from '../../utils/formatters';
 import { buildWhatsAppUrl } from '../../utils/whatsapp';
 
@@ -25,7 +26,106 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
   const [selectedPlan, setSelectedPlan] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
 
+  // Broadcast & Announcement States
+  const [adminTab, setAdminTab] = useState<'STORES' | 'BROADCASTS'>('STORES');
+  const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState<boolean>(false);
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState<boolean>(false);
+
+  // New broadcast form states
+  const [newTitle, setNewTitle] = useState<string>('');
+  const [newMessage, setNewMessage] = useState<string>('');
+  const [newType, setNewType] = useState<AnnouncementType>('INFO');
+  const [newTargetMode, setNewTargetMode] = useState<AnnouncementTargetMode>('ALL');
+  const [newTargetStoreIds, setNewTargetStoreIds] = useState<string[]>([]);
+  const [newTargetPlan, setNewTargetPlan] = useState<'ALL' | 'FREE' | 'PRO'>('ALL');
+  const [newTargetDistrict, setNewTargetDistrict] = useState<string>('ALL');
+  const [newDurationDays, setNewDurationDays] = useState<number>(7);
+  const [storeFilterInModal, setStoreFilterInModal] = useState<string>('');
+  const [creatingBroadcast, setCreatingBroadcast] = useState<boolean>(false);
+
   const adminInfo = adminService.getAdminInfo();
+
+  const loadAnnouncements = async () => {
+    try {
+      setLoadingAnnouncements(true);
+      const list = await adminService.getAnnouncements();
+      setAnnouncements(list);
+    } catch (err: any) {
+      console.error('Failed to load announcements:', err);
+    } finally {
+      setLoadingAnnouncements(false);
+    }
+  };
+
+  const handleToggleAnnouncement = async (announcement: PlatformAnnouncement) => {
+    const id = announcement._id || announcement.id;
+    if (!id) return;
+    try {
+      await adminService.toggleAnnouncement(id);
+      setAnnouncements(prev => prev.map(a => (a._id === id || a.id === id) ? { ...a, isActive: !a.isActive } : a));
+    } catch (err: any) {
+      alert(`स्थिति बदलने में विफल: ${err.message}`);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (announcement: PlatformAnnouncement) => {
+    const id = announcement._id || announcement.id;
+    if (!id) return;
+    if (!window.confirm(`क्या आप इस घोषणा को हटाना चाहते हैं: "${announcement.title}"?`)) return;
+
+    try {
+      await adminService.deleteAnnouncement(id);
+      setAnnouncements(prev => prev.filter(a => a._id !== id && a.id !== id));
+    } catch (err: any) {
+      alert(`घोषणा हटाने में विफल: ${err.message}`);
+    }
+  };
+
+  const handleCreateBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newMessage.trim()) {
+      alert('कृपया घोषणा का शीर्षक और संदेश दर्ज करें।');
+      return;
+    }
+    if (newTargetMode === 'SELECTED' && newTargetStoreIds.length === 0) {
+      alert('कृपया कम से कम एक लक्षित दुकान चुनें।');
+      return;
+    }
+
+    try {
+      setCreatingBroadcast(true);
+      const created = await adminService.createAnnouncement({
+        title: newTitle.trim(),
+        message: newMessage.trim(),
+        type: newType,
+        targetMode: newTargetMode,
+        targetStoreIds: newTargetMode === 'SELECTED' ? newTargetStoreIds : [],
+        targetPlan: newTargetPlan,
+        targetDistrict: newTargetDistrict,
+        durationDays: newDurationDays,
+      });
+
+      setAnnouncements(prev => [created, ...prev]);
+      setIsBroadcastModalOpen(false);
+
+      // Reset form
+      setNewTitle('');
+      setNewMessage('');
+      setNewType('INFO');
+      setNewTargetMode('ALL');
+      setNewTargetStoreIds([]);
+      setNewTargetPlan('ALL');
+      setNewTargetDistrict('ALL');
+      setNewDurationDays(7);
+      setStoreFilterInModal('');
+      alert('🎉 लाइव घोषणा सफलतापूर्वक प्रसारित कर दी गई!');
+    } catch (err: any) {
+      alert(`घोषणा प्रसारित करने में विफल: ${err.message}`);
+    } finally {
+      setCreatingBroadcast(false);
+    }
+  };
 
   const loadData = async (isManualRefresh = false) => {
     try {
@@ -33,13 +133,15 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
       else setLoading(true);
       setError('');
 
-      const [overviewData, storesData] = await Promise.all([
+      const [overviewData, storesData, announcementsData] = await Promise.all([
         adminService.getOverview(),
-        adminService.getStores(searchQuery, selectedPlan, selectedDistrict)
+        adminService.getStores(searchQuery, selectedPlan, selectedDistrict),
+        adminService.getAnnouncements().catch(() => [])
       ]);
 
       setOverview(overviewData);
       setStores(storesData);
+      setAnnouncements(announcementsData);
     } catch (err: any) {
       setError(err.message || 'डेटा लोड करने में असमर्थ');
     } finally {
@@ -99,89 +201,76 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
       await adminService.toggleStoreStatus(store.id, nextStatus);
       setStores(prev => prev.map(s => s.id === store.id ? { ...s, isActive: nextStatus } : s));
     } catch (err: any) {
-      alert(`त्रुटि: ${err.message}`);
+      alert(`स्थिति बदलने में त्रुटि: ${err.message}`);
     }
   };
 
   const handleExportCSV = () => {
     if (stores.length === 0) {
-      alert('डाउनलोड के लिए कोई स्टोर उपलब्ध नहीं है।');
+      alert('डाउनलोड करने के लिए कोई दुकान उपलब्ध नहीं है।');
       return;
     }
 
     const headers = [
-      'Store Name',
-      'Owner Name',
-      'Phone',
-      'Village',
-      'District',
-      'Plan',
-      'Status',
-      'Plan Expiry Date',
-      'Customers',
-      'Total Debt (INR)',
-      'Account Status',
-      'Created At'
+      'दुकान ID',
+      'दुकान का नाम',
+      'संचालक (Owner)',
+      'मोबाइल नंबर',
+      'जिला (District)',
+      'राज्य (State)',
+      'प्लान (Subscription)',
+      'प्लान स्थिति (Status)',
+      'पंजीकरण तारीख',
+      'कुल ग्राहक',
+      'कुल उधारी (₹)',
+      'खाता सक्रिय (Active)'
     ];
 
-    const rows = stores.map(s => [
-      `"${(s.storeName || '').replace(/"/g, '""')}"`,
-      `"${(s.ownerName || '').replace(/"/g, '""')}"`,
-      `"${s.phone || ''}"`,
-      `"${(s.address?.village || '').replace(/"/g, '""')}"`,
-      `"${(s.address?.district || '').replace(/"/g, '""')}"`,
-      `"${s.subscription?.plan || 'FREE'}"`,
-      `"${s.subscription?.status || 'ACTIVE'}"`,
-      `"${s.subscription?.planExpiryDate ? new Date(s.subscription.planExpiryDate).toLocaleDateString('hi-IN') : 'N/A'}"`,
-      s.customerCount || 0,
-      s.totalDebt || 0,
-      s.isActive ? 'Active' : 'Suspended',
-      `"${new Date(s.createdAt).toLocaleDateString('hi-IN')}"`
+    const rows = stores.map(store => [
+      `"${store.id}"`,
+      `"${store.storeName.replace(/"/g, '""')}"`,
+      `"${store.ownerName.replace(/"/g, '""')}"`,
+      `"${store.phone}"`,
+      `"${(store.address?.district || '').replace(/"/g, '""')}"`,
+      `"${(store.address?.state || 'Chhattisgarh').replace(/"/g, '""')}"`,
+      `"${store.subscription.plan}"`,
+      `"${store.subscription.status}"`,
+      `"${new Date(store.createdAt).toLocaleDateString('hi-IN')}"`,
+      store.customerCount,
+      store.totalDebt,
+      store.isActive ? 'हाँ' : 'नहीं'
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `gramin_stores_registry_${new Date().toISOString().split('T')[0]}.csv`);
+    link.href = url;
+    link.setAttribute('download', `gramin_kirana_stores_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleResetPin = async (store: AdminStoreSummary) => {
-    const defaultPin = Math.floor(1000 + Math.random() * 9000).toString();
-    const newPin = window.prompt(
-      `'${store.storeName}' (${store.ownerName}) के लिए नया 4-अंकों का गुप्त PIN दर्ज करें:\n\n(सुझाव: ${defaultPin})`,
+    const defaultPin = '1234';
+    const input = window.prompt(
+      `🔐 हेल्पलाइन PIN रीसेट — '${store.storeName}' (${store.ownerName}, ${store.phone})\n\n` +
+      `दुकानदार अपना PIN भूल गया है? नया 4-अंकों का गुप्त PIN दर्ज करें:`,
       defaultPin
     );
 
-    if (!newPin) return;
-
-    if (!/^\d{4}$/.test(newPin.trim())) {
-      alert('कृपया ठीक 4 अंकों की संख्या दर्ज करें (उदा. 1234)।');
+    if (input === null) return;
+    const pin = input.trim();
+    if (!/^\d{4}$/.test(pin)) {
+      alert('त्रुटि: PIN ठीक 4 अंकों का होना चाहिए (उदा: 1234 या 5678)');
       return;
     }
 
     try {
-      await adminService.resetStorePin(store.id, newPin.trim());
-
-      const whatsappMsg =
-        `नमस्ते ${store.ownerName} जी 🙏\n\n` +
-        `🏪 *${store.storeName}* के लिए आपका नया ग्रामिन किराना 4-अंकों का गुप्त PIN सफलतापूर्वक रीसेट कर दिया गया है:\n\n` +
-        `📱 मोबाइल: *${store.phone}*\n` +
-        `🔑 नया PIN: *${newPin.trim()}*\n\n` +
-        `🌐 ऐप में लॉगिन करें: https://gramin-grocery.web.app/\n\n` +
-        `सुरक्षा हेतु कृपया यह PIN किसी अनजान व्यक्ति से साझा न करें।\n` +
-        `— ग्रामिन किराना सुपर एडमिन सहायता दल 🤝`;
-
-      const sendWhatsApp = window.confirm(
-        `PIN सफलतापूर्वक रीसेट हो गया है!\n\nनया PIN: ${newPin.trim()}\n\nक्या आप अभी दुकानदार (${store.phone}) को यह नया PIN व्हाट्सएप पर भेजना चाहते हैं?`
-      );
-
-      if (sendWhatsApp) {
-        window.open(buildWhatsAppUrl(store.phone, whatsappMsg), '_blank', 'noopener,noreferrer');
-      }
+      const msg = await adminService.resetStorePin(store.id, pin);
+      alert(`सफलता: ${msg}\n\nनया PIN '${pin}' सेट हो गया है। कृपया दुकानदार को सूचित करें।`);
     } catch (err: any) {
       alert(`PIN रीसेट विफल: ${err.message}`);
     }
@@ -321,39 +410,41 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                   <IndianRupee className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-800">
-                {formatINR(overview.metrics.totalGMV, { round: true })}
+              <div className="text-2xl sm:text-3xl font-black text-emerald-900">
+                {formatINR(overview.metrics.totalGMV)}
               </div>
               <div className="mt-2 text-[11px] text-stone-500 font-medium">
-                कुल बिलिंग संख्या: <b className="text-stone-800">{overview.metrics.totalSalesCount}</b> बिल
+                {overview.metrics.totalSalesCount} डिजिटल बिल बनाए गए
               </div>
             </div>
 
-            {/* Card 3: Platform Khata Debt */}
+            {/* Card 3: Pro Active Licenses */}
             <div className="village-card p-4 rounded-2xl bg-white border border-amber-200 shadow-2xs">
               <div className="flex items-center justify-between text-stone-500 mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider">कुल दर्ज ग्रामीण उधारी</span>
-                <div className="p-1.5 rounded-xl bg-rose-100 text-rose-900">
+                <span className="text-xs font-bold uppercase tracking-wider">प्रो लाइसेंस दर (Adoption)</span>
+                <div className="p-1.5 rounded-xl bg-indigo-100 text-indigo-900">
+                  <Crown className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-indigo-950">
+                {overview.metrics.totalStores > 0 
+                  ? Math.round((overview.metrics.proStores / overview.metrics.totalStores) * 100) 
+                  : 0}%
+              </div>
+              <div className="mt-2 text-[11px] text-stone-500 font-medium">
+                ₹99/माह सदस्यता मॉडल
+              </div>
+            </div>
+
+            {/* Card 4: Active Products */}
+            <div className="village-card p-4 rounded-2xl bg-white border border-amber-200 shadow-2xs">
+              <div className="flex items-center justify-between text-stone-500 mb-2">
+                <span className="text-xs font-bold uppercase tracking-wider">सक्रिय किराना उत्पाद</span>
+                <div className="p-1.5 rounded-xl bg-orange-100 text-orange-900">
                   <ShieldAlert className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-rose-700">
-                {formatINR(overview.metrics.totalVillageDebt, { round: true })}
-              </div>
-              <div className="mt-2 text-[11px] text-stone-500 font-medium">
-                पंजीकृत ग्राहक: <b className="text-stone-800">{overview.metrics.totalCustomers}</b> परिवार
-              </div>
-            </div>
-
-            {/* Card 4: Cataloged Products */}
-            <div className="village-card p-4 rounded-2xl bg-white border border-amber-200 shadow-2xs">
-              <div className="flex items-center justify-between text-stone-500 mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider">प्लेटफ़ॉर्म स्टॉक इन्वेंट्री</span>
-                <div className="p-1.5 rounded-xl bg-indigo-100 text-indigo-900">
-                  <Users className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-stone-900">
+              <div className="text-2xl sm:text-3xl font-black text-stone-950">
                 {overview.metrics.totalProducts}
               </div>
               <div className="mt-2 text-[11px] text-stone-500 font-medium">
@@ -363,260 +454,822 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
           </div>
         ) : null}
 
-        {/* District Breakdown Quick Bar */}
-        {overview && overview.districtBreakdown.length > 0 && (
-          <div className="bg-white p-3 sm:p-4 rounded-2xl border border-amber-200/80 shadow-2xs">
-            <div className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-amber-700" />
-              <span>छत्तीसगढ़ जिलावार दुकानें (District Distribution):</span>
-            </div>
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              <button
-                onClick={() => setSelectedDistrict('ALL')}
-                className={`text-xs px-3 py-1 rounded-xl font-bold cursor-pointer transition-all shrink-0 ${
-                  selectedDistrict === 'ALL'
-                    ? 'bg-amber-700 text-white shadow-2xs'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                }`}
-              >
-                सभी जिले ({overview.metrics.totalStores})
-              </button>
-              {overview.districtBreakdown.map(d => (
+        {/* Navigation Tabs: Stores Directory vs Platform Broadcasts */}
+        <div className="flex items-center gap-2 border-b border-amber-200/80 pb-2">
+          <button
+            type="button"
+            onClick={() => setAdminTab('STORES')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm cursor-pointer transition-all ${
+              adminTab === 'STORES'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            <span>🏪 किराना दुकानें ({stores.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('BROADCASTS');
+              if (announcements.length === 0) loadAnnouncements();
+            }}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm cursor-pointer transition-all ${
+              adminTab === 'BROADCASTS'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
+            }`}
+          >
+            <Megaphone className="w-4 h-4" />
+            <span>📢 मंच घोषणाएं व ब्रॉडकास्ट ({announcements.length})</span>
+          </button>
+        </div>
+
+        {adminTab === 'STORES' ? (
+          <>
+            {/* District Breakdown Quick Bar */}
+            {overview && overview.districtBreakdown.length > 0 && (
+              <div className="bg-white p-3 sm:p-4 rounded-2xl border border-amber-200/80 shadow-2xs">
+                <div className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-amber-700" />
+                  <span>छत्तीसगढ़ जिलावार दुकानें (District Distribution):</span>
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  <button
+                    onClick={() => setSelectedDistrict('ALL')}
+                    className={`text-xs px-3 py-1 rounded-xl font-bold cursor-pointer transition-all shrink-0 ${
+                      selectedDistrict === 'ALL'
+                        ? 'bg-amber-700 text-white shadow-2xs'
+                        : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                    }`}
+                  >
+                    सभी जिले ({overview.metrics.totalStores})
+                  </button>
+                  {overview.districtBreakdown.map(d => (
+                    <button
+                      key={d.district}
+                      onClick={() => setSelectedDistrict(d.district)}
+                      className={`text-xs px-3 py-1 rounded-xl font-bold cursor-pointer transition-all shrink-0 ${
+                        selectedDistrict === d.district
+                          ? 'bg-amber-700 text-white shadow-2xs'
+                          : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                      }`}
+                    >
+                      📍 {d.district} ({d.storesCount})
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Stores Directory & Controls */}
+            <div className="village-card p-4 rounded-3xl bg-white border border-amber-200 shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-stone-950 m-0">
+                    पंजीकृत किराना दुकानें ({stores.length})
+                  </h2>
+                  <p className="text-xs text-stone-500 m-0 font-medium">
+                    दुकान संचालक, प्लान अपग्रेड व रिमोट खाता प्रबंधन
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* CSV Export Button */}
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer shadow-2xs flex items-center gap-1.5 active:scale-95 transition-all"
+                    title="सभी पंजीकृत दुकानों की सूची CSV फॉर्मेट में डाउनलोड करें"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>CSV डाउनलोड</span>
+                  </button>
+
+                  {/* Filter Tabs: All, Pro, Free */}
+                  <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
+                    {[
+                      { id: 'ALL', label: 'सभी' },
+                      { id: 'PRO', label: '🚀 प्रो प्लान' },
+                      { id: 'FREE', label: '🌾 स्टार्टर' },
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setSelectedPlan(tab.id)}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all ${
+                          selectedPlan === tab.id
+                            ? 'bg-white text-stone-900 shadow-2xs'
+                            : 'text-stone-600 hover:text-stone-900'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Search Box */}
+              <form onSubmit={handleSearchSubmit} className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="दुकान का नाम, संचालक, मोबाइल नंबर या जिला खोजें..."
+                    className="w-full pl-9 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
                 <button
-                  key={d.district}
-                  onClick={() => setSelectedDistrict(d.district)}
-                  className={`text-xs px-3 py-1 rounded-xl font-bold cursor-pointer transition-all shrink-0 ${
-                    selectedDistrict === d.district
-                      ? 'bg-amber-700 text-white shadow-2xs'
-                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                  }`}
+                  type="submit"
+                  className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer shadow-2xs active:scale-95 transition-all"
                 >
-                  📍 {d.district} ({d.storesCount})
+                  खोजें
                 </button>
-              ))}
+              </form>
+
+              {/* Stores List */}
+              {loading && stores.length === 0 ? (
+                <div className="space-y-3 animate-pulse">
+                  {[1, 2, 3].map(n => (
+                    <div key={n} className="h-24 bg-stone-100 rounded-2xl" />
+                  ))}
+                </div>
+              ) : stores.length === 0 ? (
+                <div className="text-center py-12 text-stone-400">
+                  <Building2 className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-bold">कोई दुकान नहीं मिली</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {stores.map(store => {
+                    const isPro = store.subscription.plan === 'PRO';
+                    return (
+                      <div
+                        key={store.id}
+                        className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                          store.isActive
+                            ? 'bg-[#faf8f3] border-amber-200/80 hover:border-amber-300'
+                            : 'bg-stone-100 border-stone-300 opacity-75'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-base font-black text-stone-950 m-0">
+                                {store.storeName}
+                              </h3>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                                isPro
+                                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                  : 'bg-amber-100 text-amber-900 border-amber-300'
+                              }`}>
+                                {isPro ? '🚀 ग्रामिन प्रो (PRO)' : '🌾 गाँव स्टार्टर (FREE)'}
+                              </span>
+                              {!store.isActive && (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300">
+                                  ⛔ निलंबित (Suspended)
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-600 font-medium">
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3.5 h-3.5 text-stone-400" />
+                                {store.ownerName}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Phone className="w-3.5 h-3.5 text-stone-400" />
+                                {store.phone}
+                              </span>
+                              {store.address?.district && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3.5 h-3.5 text-stone-400" />
+                                  {store.address.district}
+                                </span>
+                              )}
+                              <span className="text-[11px] text-stone-400">
+                                पंजीकृत: {new Date(store.createdAt).toLocaleDateString('hi-IN')}
+                              </span>
+                            </div>
+
+                            {/* Store Business Metrics Preview */}
+                            <div className="mt-2.5 flex items-center gap-3 flex-wrap text-xs">
+                              <div className="bg-white px-2.5 py-1 rounded-lg border border-stone-200">
+                                <span className="text-stone-500 text-[11px]">कुल ग्राहक: </span>
+                                <span className="font-bold text-stone-900">{store.customerCount}</span>
+                              </div>
+                              <div className="bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                                <span className="text-rose-700 text-[11px]">कुल उधारी: </span>
+                                <span className="font-black text-rose-900">{formatINR(store.totalDebt)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Quick Admin Actions */}
+                          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200">
+                            {/* WhatsApp Direct Contact Button */}
+                            <a
+                              href={buildWhatsAppUrl(
+                                store.phone, 
+                                `नमस्कार ${store.ownerName} जी, मैं ग्रामीण किराना एडमिन टीम से संपर्क कर रहा हूँ। आपकी दुकान '${store.storeName}' के संदर्भ में सहायता हेतु उपलब्ध हूँ।`
+                              )}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer active:scale-95 transition-all shadow-xs"
+                              title="व्हाट्सएप पर सहायता संदेश भेजें"
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                            </a>
+
+                            {/* Plan Upgrade / Downgrade Button */}
+                            <button
+                              onClick={() => handleSubscriptionToggle(store)}
+                              className={`text-xs font-bold px-3 py-2 rounded-xl cursor-pointer active:scale-95 transition-all shadow-xs border ${
+                                isPro
+                                  ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
+                                  : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-700'
+                              }`}
+                              title={isPro ? 'प्लान डाउनग्रेड या नवीनीकरण करें' : 'प्रो प्लान में अपग्रेड करें'}
+                            >
+                              {isPro ? 'नवीनीकरण / बदलें' : 'प्रो में अपग्रेड'}
+                            </button>
+
+                            {/* Suspend / Re-activate Button */}
+                            <button
+                              onClick={() => handleToggleStoreStatus(store)}
+                              className={`text-xs font-bold px-2.5 py-2 rounded-xl cursor-pointer active:scale-95 transition-all border ${
+                                store.isActive
+                                  ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                              }`}
+                              title={store.isActive ? 'खाता निलंबित करें' : 'खाता पुनः सक्रिय करें'}
+                            >
+                              {store.isActive ? 'निलंबित करें' : 'सक्रिय करें'}
+                            </button>
+
+                            {/* PIN Reset Helpline Button */}
+                            <button
+                              onClick={() => handleResetPin(store)}
+                              className="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 cursor-pointer active:scale-95 transition-all"
+                              title="दुकानदार का गुप्त 4-अंकों का PIN रीसेट करें"
+                            >
+                              <KeyRound className="w-4 h-4" />
+                            </button>
+
+                            {/* Safe Store Delete Button */}
+                            <button
+                              onClick={() => handleDeleteStore(store)}
+                              className="p-2 rounded-xl bg-stone-50 hover:bg-rose-50 text-stone-400 hover:text-rose-700 border border-stone-200 hover:border-rose-300 cursor-pointer active:scale-95 transition-all"
+                              title="टेस्ट / निष्क्रिय दुकान हटाएं"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+          </>
+        ) : (
+          /* PLATFORM BROADCASTS & ANNOUNCEMENTS MANAGER */
+          <div className="village-card p-4 sm:p-6 rounded-3xl bg-white border border-amber-200 shadow-2xs space-y-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-stone-200">
+              <div>
+                <h2 className="text-base sm:text-lg font-black text-stone-950 m-0 flex items-center gap-2">
+                  <Megaphone className="w-5 h-5 text-amber-600" />
+                  <span>प्लेटफ़ॉर्म लाइव घोषणाएं व ब्रॉडकास्ट ({announcements.length})</span>
+                </h2>
+                <p className="text-xs text-stone-500 m-0 font-medium">
+                  सभी दुकानों या चुनी गई विशिष्ट दुकानों के बिलिंग काउंटर पर तुरंत लाइव बैनर संदेश भेजें
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsBroadcastModalOpen(true)}
+                className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-2xl cursor-pointer shadow-sm flex items-center gap-2 active:scale-95 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>नई घोषणा प्रसारित करें</span>
+              </button>
+            </div>
+
+            {/* Announcements List */}
+            {loadingAnnouncements ? (
+              <div className="space-y-3 animate-pulse">
+                {[1, 2, 3].map(n => (
+                  <div key={n} className="h-28 bg-stone-100 rounded-2xl" />
+                ))}
+              </div>
+            ) : announcements.length === 0 ? (
+              <div className="text-center py-14 bg-stone-50 rounded-2xl border border-dashed border-stone-200 p-6">
+                <Megaphone className="w-12 h-12 text-stone-400 mx-auto mb-3 opacity-60" />
+                <h3 className="text-sm font-bold text-stone-800">फिलहाल कोई ब्रॉडकास्ट सक्रिय नहीं है</h3>
+                <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+                  आप किसी भी समय पूरे प्लेटफ़ॉर्म की सभी दुकानों या चुनी गई दुकानों के लिए नया बैनर संदेश जारी कर सकते हैं।
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsBroadcastModalOpen(true)}
+                  className="mt-4 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>पहला ब्रॉडकास्ट बनाएं</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {announcements.map(ann => {
+                  const annId = ann._id || ann.id || '';
+                  const typeColors = {
+                    INFO: { badge: 'bg-blue-100 text-blue-900 border-blue-300', label: 'ℹ️ सूचना' },
+                    WARNING: { badge: 'bg-amber-100 text-amber-900 border-amber-300', label: '⚠️ चेतावनी' },
+                    ALERT: { badge: 'bg-rose-100 text-rose-900 border-rose-300', label: '🚨 महत्वपूर्ण अलर्ट' },
+                    SUCCESS: { badge: 'bg-emerald-100 text-emerald-900 border-emerald-300', label: '🎉 खुशखबरी / ऑफ़र' },
+                  }[ann.type || 'INFO'];
+
+                  return (
+                    <div
+                      key={annId}
+                      className={`p-4 rounded-2xl border transition-all ${
+                        ann.isActive
+                          ? 'bg-white border-amber-200 shadow-2xs'
+                          : 'bg-stone-50 border-stone-200 opacity-60'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="space-y-2 flex-1 min-w-0">
+                          {/* Badges Row */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${typeColors.badge}`}>
+                              {typeColors.label}
+                            </span>
+
+                            {/* Audience Target Badge */}
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              ann.targetMode === 'ALL'
+                                ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
+                                : 'bg-purple-50 text-purple-900 border-purple-200'
+                            }`}>
+                              {ann.targetMode === 'ALL'
+                                ? '📢 सभी दुकानें (Universal)'
+                                : `🎯 चुनी गई दुकानें (${ann.targetStoreIds?.length || 0} दुकानें)`}
+                            </span>
+
+                            {/* Plan Filter Badge */}
+                            {ann.targetPlan && ann.targetPlan !== 'ALL' && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+                                प्लान: {ann.targetPlan}
+                              </span>
+                            )}
+
+                            {/* District Filter Badge */}
+                            {ann.targetDistrict && ann.targetDistrict !== 'ALL' && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+                                📍 {ann.targetDistrict}
+                              </span>
+                            )}
+
+                            {/* Active Status Badge */}
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                              ann.isActive
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-stone-200 text-stone-600'
+                            }`}>
+                              {ann.isActive ? '🟢 लाइव' : '⚪ बंद'}
+                            </span>
+                          </div>
+
+                          {/* Title & Message */}
+                          <h3 className="text-base font-black text-stone-950 m-0">
+                            {ann.title}
+                          </h3>
+                          <p className="text-xs sm:text-sm text-stone-700 whitespace-pre-wrap leading-relaxed m-0">
+                            {ann.message}
+                          </p>
+
+                          {/* Selected Stores Popover/List if Targeted */}
+                          {ann.targetMode === 'SELECTED' && ann.targetStoreIds && ann.targetStoreIds.length > 0 && (
+                            <div className="p-2.5 rounded-xl bg-purple-50/60 border border-purple-200 text-xs text-purple-950">
+                              <span className="font-bold">लक्षित दुकानें: </span>
+                              <span className="text-stone-700 font-medium">
+                                {ann.targetStoreIds.map((store: any) => 
+                                  typeof store === 'object' ? `${store.storeName} (${store.ownerName || store.phone})` : store
+                                ).join(', ')}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Meta: Expiry */}
+                          <div className="flex items-center gap-1.5 text-[11px] text-stone-400 font-medium">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>
+                              समाप्ति तारीख: {ann.expiresAt ? new Date(ann.expiresAt).toLocaleDateString('hi-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              }) : 'स्थायी (असीमित)'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleAnnouncement(ann)}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer active:scale-95 transition-all border ${
+                              ann.isActive
+                                ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
+                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                            }`}
+                            title={ann.isActive ? 'घोषणा को रोकें' : 'घोषणा को पुनः लाइव करें'}
+                          >
+                            {ann.isActive ? 'रोकें (Pause)' : 'लाइव करें'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAnnouncement(ann)}
+                            className="p-1.5 text-stone-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
+                            title="घोषणा हटाएं"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Stores Directory & Controls */}
-        <div className="village-card p-4 rounded-3xl bg-white border border-amber-200 shadow-2xs space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
-            <div>
-              <h2 className="text-base sm:text-lg font-black text-stone-950 m-0">
-                पंजीकृत किराना दुकानें ({stores.length})
-              </h2>
-              <p className="text-xs text-stone-500 m-0 font-medium">
-                दुकान संचालक, प्लान अपग्रेड व रिमोट खाता प्रबंधन
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* CSV Export Button */}
-              <button
-                type="button"
-                onClick={handleExportCSV}
-                className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer shadow-2xs flex items-center gap-1.5 active:scale-95 transition-all"
-                title="सभी पंजीकृत दुकानों की सूची CSV फॉर्मेट में डाउनलोड करें"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>CSV डाउनलोड</span>
-              </button>
-
-              {/* Filter Tabs: All, Pro, Free */}
-              <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
-                {[
-                  { id: 'ALL', label: 'सभी' },
-                  { id: 'PRO', label: '🚀 प्रो प्लान' },
-                  { id: 'FREE', label: '🌾 स्टार्टर' },
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setSelectedPlan(tab.id)}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all ${
-                      selectedPlan === tab.id
-                        ? 'bg-white text-stone-900 shadow-2xs'
-                        : 'text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+        {/* CREATE LIVE BROADCAST MODAL */}
+        {isBroadcastModalOpen && (
+          <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-amber-300 animate-slide-down my-auto">
+              {/* Modal Header */}
+              <div className="p-4 sm:p-5 border-b border-stone-200 bg-[#faf8f3] flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-amber-500 text-stone-950 font-black">
+                    <Megaphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-stone-950 m-0">
+                      नई लाइव घोषणा प्रसारित करें
+                    </h3>
+                    <p className="text-xs text-stone-500 m-0 font-medium">
+                      दुकानों के बिलिंग स्क्रीन पर तुरंत लाइव बैनर सूचना भेजें
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsBroadcastModalOpen(false)}
+                  className="p-1.5 text-stone-400 hover:text-stone-700 rounded-xl hover:bg-stone-100 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-            </div>
-          </div>
 
-          {/* Search Box */}
-          <form onSubmit={handleSearchSubmit} className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="दुकान का नाम, संचालक, मोबाइल या गाँव से खोजें..."
-                className="w-full pl-9 pr-3 py-2 bg-[#faf8f3] border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 font-semibold outline-hidden focus:border-amber-600"
-              />
-            </div>
-            <button
-              type="submit"
-              className="bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs px-4 py-2 rounded-xl cursor-pointer"
-            >
-              खोजें
-            </button>
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  loadData(true);
-                }}
-                className="bg-stone-100 text-stone-700 text-xs px-3 py-2 rounded-xl font-bold cursor-pointer"
-              >
-                हटाएं
-              </button>
-            )}
-          </form>
+              {/* Modal Form */}
+              <form onSubmit={handleCreateBroadcast} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                {/* 1. Title */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    घोषणा का शीर्षक (Title) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="उदा: 📢 आज रात 11 बजे सर्वर मेंटेनेंस / ₹99 प्रो प्लान ऑफर"
+                    className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                  />
+                </div>
 
-          {/* Stores List (Responsive Table on Desktop, Cards on Mobile) */}
-          {loading ? (
-            <div className="text-center py-12 text-stone-500 text-xs">
-              <div className="w-8 h-8 border-3 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              दुकानों की जानकारी लोड हो रही है...
-            </div>
-          ) : stores.length === 0 ? (
-            <div className="text-center py-12 bg-[#faf8f3] rounded-2xl border border-dashed border-amber-300">
-              <p className="text-sm font-bold text-stone-800 m-0">कोई दुकान नहीं मिली</p>
-              <p className="text-xs text-stone-500 mt-1">खोज शब्द बदलें या अन्य फ़िल्टर चुनें</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {stores.map(store => {
-                const isPro = store.subscription.plan === 'PRO';
-                return (
-                  <div
-                    key={store.id}
-                    className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
-                      store.isActive
-                        ? 'bg-[#faf8f3] border-amber-200/80 hover:border-amber-300'
-                        : 'bg-stone-100 border-stone-300 opacity-75'
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* 2. Message */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    घोषणा का संदेश (Detailed Message) *
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="दुकानदार को दिखने वाला पूरा विवरण लिखें..."
+                    className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                  />
+                </div>
+
+                {/* 3. Announcement Type */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                    प्रकार (Announcement Type)
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'INFO', label: 'ℹ️ सूचना', color: 'border-blue-300 bg-blue-50 text-blue-900' },
+                      { id: 'WARNING', label: '⚠️ चेतावनी', color: 'border-amber-300 bg-amber-50 text-amber-900' },
+                      { id: 'ALERT', label: '🚨 महत्वपूर्ण', color: 'border-rose-300 bg-rose-50 text-rose-900' },
+                      { id: 'SUCCESS', label: '🎉 खुशखबरी', color: 'border-emerald-300 bg-emerald-50 text-emerald-900' },
+                    ].map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setNewType(t.id as AnnouncementType)}
+                        className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                          newType === t.id
+                            ? `${t.color} ring-2 ring-amber-500 font-black shadow-xs`
+                            : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Target Mode: ALL vs SELECTED STORES */}
+                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-3">
+                  <label className="block text-xs font-black text-stone-900 uppercase tracking-wider">
+                    🎯 लक्षित दुकानें (Target Stores) *
+                  </label>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Option ALL */}
+                    <div
+                      onClick={() => setNewTargetMode('ALL')}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
+                        newTargetMode === 'ALL'
+                          ? 'bg-white border-amber-500 ring-2 ring-amber-500 shadow-xs'
+                          : 'bg-white/70 border-stone-200 hover:border-amber-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="targetMode"
+                        checked={newTargetMode === 'ALL'}
+                        onChange={() => setNewTargetMode('ALL')}
+                        className="mt-0.5 text-amber-600"
+                      />
                       <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-base font-black text-stone-950 m-0">
-                            {store.storeName}
-                          </h3>
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
-                            isPro
-                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                              : 'bg-amber-100 text-amber-900 border-amber-300'
-                          }`}>
-                            {isPro ? '🚀 ग्रामिन प्रो (PRO)' : '🌾 गाँव स्टार्टर (FREE)'}
-                          </span>
-                          {!store.isActive && (
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300">
-                              ⛔ निलंबित (Suspended)
-                            </span>
-                          )}
+                        <div className="text-xs font-black text-stone-900">
+                          📢 सभी दुकानें (All Stores)
                         </div>
-
-                        <div className="mt-1 text-xs text-stone-600 space-x-2">
-                          <span>👤 संचालक: <b>{store.ownerName}</b></span>
-                          <span>•</span>
-                          <span>📍 {store.address.village}, {store.address.block}, {store.address.district}</span>
-                        </div>
-
-                        <div className="mt-1 text-[11px] text-stone-500 flex items-center gap-3 flex-wrap">
-                          <span>पंजीकरण: {new Date(store.createdAt).toLocaleDateString('hi-IN')}</span>
-                          <span>खातेदार: <b className="text-stone-800">{store.customerCount}</b></span>
-                          <span>कुल उधारी: <b className="text-rose-700">{formatINR(store.totalDebt)}</b></span>
-                          {isPro && store.subscription.planExpiryDate && (
-                            <span className="text-emerald-800 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                              📅 वैधता: {new Date(store.subscription.planExpiryDate).toLocaleDateString('hi-IN')}
-                            </span>
-                          )}
+                        <div className="text-[11px] text-stone-500">
+                          प्लेटफ़ॉर्म की प्रत्येक किराना दुकान को दिखेगा
                         </div>
                       </div>
+                    </div>
 
-                      {/* Contact & Control Actions */}
-                      <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
-                        {/* Direct Phone Call */}
-                        {store.phone && (
-                          <a
-                            href={`tel:${store.phone}`}
-                            className="p-2 rounded-xl bg-white border border-stone-200 text-blue-700 hover:bg-blue-50 cursor-pointer active:scale-95 transition-all"
-                            title={`कॉल करें (${store.phone})`}
-                          >
-                            <Phone className="w-4 h-4" />
-                          </a>
-                        )}
-
-                        {/* Direct WhatsApp */}
-                        {store.phone && (
-                          <a
-                            href={buildWhatsAppUrl(store.phone, `नमस्ते ${store.ownerName} जी, ग्रामीण किराना सहायता केंद्र से संपर्क किया जा रहा है।`)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 rounded-xl bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50 cursor-pointer active:scale-95 transition-all"
-                            title="व्हाट्सएप सहायता भेजें"
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                          </a>
-                        )}
-
-                        {/* Plan Upgrade / Downgrade Button */}
-                        <button
-                          onClick={() => handleSubscriptionToggle(store)}
-                          className={`text-xs font-black px-3 py-2 rounded-xl cursor-pointer active:scale-95 transition-all shadow-2xs ${
-                            isPro
-                              ? 'bg-stone-200 hover:bg-stone-300 text-stone-800'
-                              : 'bg-emerald-700 hover:bg-emerald-600 text-white'
-                          }`}
-                        >
-                          {isPro ? 'डाउनग्रेड (FREE)' : '1-क्लिक PRO अपग्रेड'}
-                        </button>
-
-                        {/* Suspend / Re-activate Button */}
-                        <button
-                          onClick={() => handleToggleStoreStatus(store)}
-                          className={`text-xs font-bold px-2.5 py-2 rounded-xl cursor-pointer active:scale-95 transition-all border ${
-                            store.isActive
-                              ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                          }`}
-                          title={store.isActive ? 'खाता निलंबित करें' : 'खाता पुनः सक्रिय करें'}
-                        >
-                          {store.isActive ? 'निलंबित करें' : 'सक्रिय करें'}
-                        </button>
-
-                        {/* PIN Reset Helpline Button */}
-                        <button
-                          onClick={() => handleResetPin(store)}
-                          className="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 cursor-pointer active:scale-95 transition-all"
-                          title="दुकानदार का गुप्त 4-अंकों का PIN रीसेट करें"
-                        >
-                          <KeyRound className="w-4 h-4" />
-                        </button>
-
-                        {/* Safe Store Delete Button */}
-                        <button
-                          onClick={() => handleDeleteStore(store)}
-                          className="p-2 rounded-xl bg-stone-50 hover:bg-rose-50 text-stone-400 hover:text-rose-700 border border-stone-200 hover:border-rose-300 cursor-pointer active:scale-95 transition-all"
-                          title="टेस्ट / निष्क्रिय दुकान हटाएं"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                    {/* Option SELECTED */}
+                    <div
+                      onClick={() => setNewTargetMode('SELECTED')}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
+                        newTargetMode === 'SELECTED'
+                          ? 'bg-white border-purple-500 ring-2 ring-purple-500 shadow-xs'
+                          : 'bg-white/70 border-stone-200 hover:border-purple-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="targetMode"
+                        checked={newTargetMode === 'SELECTED'}
+                        onChange={() => setNewTargetMode('SELECTED')}
+                        className="mt-0.5 text-purple-600"
+                      />
+                      <div>
+                        <div className="text-xs font-black text-stone-900">
+                          🎯 चुनी गई दुकानें (Selected Stores)
+                        </div>
+                        <div className="text-[11px] text-stone-500">
+                          केवल आपकी चुनी हुई विशिष्ट दुकानों को दिखेगा
+                        </div>
                       </div>
                     </div>
                   </div>
-                );
-              })}
+
+                  {/* If SELECTED mode: Store selector checklist */}
+                  {newTargetMode === 'SELECTED' && (
+                    <div className="mt-3 pt-3 border-t border-amber-200/60 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-stone-800">
+                          दुकानें चुनें ({newTargetStoreIds.length} चुनी गईं):
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setNewTargetStoreIds(stores.map(s => s.id))}
+                            className="text-[11px] font-bold text-purple-700 hover:underline cursor-pointer"
+                          >
+                            सभी चुनें ({stores.length})
+                          </button>
+                          <span className="text-stone-300">|</span>
+                          <button
+                            type="button"
+                            onClick={() => setNewTargetStoreIds([])}
+                            className="text-[11px] font-bold text-stone-500 hover:underline cursor-pointer"
+                          >
+                            साफ करें
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Store Filter Input */}
+                      <input
+                        type="text"
+                        value={storeFilterInModal}
+                        onChange={(e) => setStoreFilterInModal(e.target.value)}
+                        placeholder="दुकान या संचालक का नाम खोजें..."
+                        className="w-full px-3 py-1.5 bg-white border border-stone-200 rounded-lg text-xs"
+                      />
+
+                      {/* Scrollable list of stores */}
+                      <div className="max-h-44 overflow-y-auto bg-white rounded-xl border border-stone-200 divide-y divide-stone-100 p-1">
+                        {stores
+                          .filter(s => {
+                            if (!storeFilterInModal.trim()) return true;
+                            const q = storeFilterInModal.toLowerCase();
+                            return (
+                              s.storeName.toLowerCase().includes(q) ||
+                              s.ownerName.toLowerCase().includes(q) ||
+                              s.phone.includes(q) ||
+                              (s.address?.district && s.address.district.toLowerCase().includes(q))
+                            );
+                          })
+                          .map(store => {
+                            const isChecked = newTargetStoreIds.includes(store.id);
+                            return (
+                              <label
+                                key={store.id}
+                                className="flex items-center gap-2.5 p-2 hover:bg-stone-50 rounded-lg cursor-pointer text-xs"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    setNewTargetStoreIds(prev =>
+                                      isChecked
+                                        ? prev.filter(id => id !== store.id)
+                                        : [...prev, store.id]
+                                    );
+                                  }}
+                                  className="rounded-sm text-purple-600 focus:ring-purple-500"
+                                />
+                                <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
+                                  <div className="truncate">
+                                    <span className="font-bold text-stone-900">{store.storeName}</span>
+                                    <span className="text-stone-500 text-[11px] ml-1.5 font-normal">
+                                      ({store.ownerName} • {store.phone})
+                                    </span>
+                                  </div>
+                                  {store.address?.district && (
+                                    <span className="text-[10px] bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded-sm shrink-0">
+                                      {store.address.district}
+                                    </span>
+                                  )}
+                                </div>
+                              </label>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Optional Plan & District Filters */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      प्लान फ़िल्टर (Plan Filter)
+                    </label>
+                    <select
+                      value={newTargetPlan}
+                      onChange={(e) => setNewTargetPlan(e.target.value as any)}
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-medium"
+                    >
+                      <option value="ALL">सभी प्लान (FREE + PRO)</option>
+                      <option value="FREE">केवल गाँव स्टार्टर (FREE)</option>
+                      <option value="PRO">केवल प्रो लाइसेंस (PRO)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      जिला फ़िल्टर (District Filter)
+                    </label>
+                    <select
+                      value={newTargetDistrict}
+                      onChange={(e) => setNewTargetDistrict(e.target.value)}
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-medium"
+                    >
+                      <option value="ALL">सभी जिले (Universal)</option>
+                      {overview?.districtBreakdown.map(d => (
+                        <option key={d.district} value={d.district}>
+                          {d.district}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 6. Expiry / Duration */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    घोषणा की अवधि (Duration)
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {[
+                      { days: 1, label: '1 दिन' },
+                      { days: 3, label: '3 दिन' },
+                      { days: 7, label: '7 दिन' },
+                      { days: 15, label: '15 दिन' },
+                      { days: 30, label: '30 दिन (1 माह)' },
+                    ].map(d => (
+                      <button
+                        key={d.days}
+                        type="button"
+                        onClick={() => setNewDurationDays(d.days)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all border ${
+                          newDurationDays === d.days
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                            : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                        }`}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 7. Live Preview Card */}
+                <div className="pt-2">
+                  <div className="text-xs font-black text-stone-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    <Eye className="w-3.5 h-3.5 text-amber-600" />
+                    <span>दुकान काउंटर प्रीव्यू (Store Counter Preview):</span>
+                  </div>
+                  <div className={`p-3.5 rounded-xl border shadow-sm ${
+                    newType === 'INFO'
+                      ? 'bg-gradient-to-r from-blue-900 to-indigo-950 text-blue-100 border-blue-500/60'
+                      : newType === 'WARNING'
+                      ? 'bg-gradient-to-r from-amber-950 to-orange-950 text-amber-100 border-amber-500/60'
+                      : newType === 'ALERT'
+                      ? 'bg-gradient-to-r from-rose-950 to-red-950 text-rose-100 border-rose-500/70'
+                      : 'bg-gradient-to-r from-emerald-950 to-teal-950 text-emerald-100 border-emerald-500/60'
+                  }`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/20 text-white">
+                            {newType}
+                          </span>
+                          <h4 className="text-sm font-black text-white m-0 truncate">
+                            {newTitle || 'शीर्षक यहाँ दिखेगा...'}
+                          </h4>
+                        </div>
+                        <p className="text-xs text-stone-200 leading-relaxed m-0 break-words">
+                          {newMessage || 'दुकानदार को दिखने वाला संदेश यहाँ प्रदर्शित होगा...'}
+                        </p>
+                      </div>
+                      <span className="text-xs text-stone-400 p-1">✕</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modal Footer Actions */}
+                <div className="pt-4 border-t border-stone-200 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsBroadcastModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-50 cursor-pointer"
+                  >
+                    रद्द करें
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={creatingBroadcast}
+                    className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black shadow-md cursor-pointer active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>{creatingBroadcast ? 'प्रसारित किया जा रहा है...' : '🚀 घोषणा प्रसारित करें'}</span>
+                  </button>
+                </div>
+              </form>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );
 };
-

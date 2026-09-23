@@ -17,6 +17,7 @@ import { WelcomeLandingPage } from './components/Landing/WelcomeLandingPage';
 import { LowStockAlertBanner } from './components/Inventory/LowStockAlertBanner';
 import { ProfitLossReport } from './components/Reports/ProfitLossReport';
 import { UpdateNotificationBanner } from './components/Common/UpdateNotificationBanner';
+import { AnnouncementBanner } from './components/Common/AnnouncementBanner';
 import { SuperAdminDashboard } from './components/Admin/SuperAdminDashboard';
 import { AdminLoginModal } from './components/Admin/AdminLoginModal';
 import { StoreSetupWizardModal } from './components/Auth/StoreSetupWizardModal';
@@ -236,6 +237,9 @@ const MainApp: React.FC = () => {
     <div className="min-h-screen bg-[#fbf9f4] flex flex-col text-stone-900 selection:bg-amber-600 selection:text-white">
       {/* PWA Update Prompt Banner (1-Tap Refresh) */}
       <UpdateNotificationBanner />
+
+      {/* Global / Targeted Platform Announcement Banner */}
+      <AnnouncementBanner />
 
       <Header
         activeTab={activeTab}
