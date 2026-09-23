@@ -302,10 +302,14 @@ router.get('/subscription/config', async (_req: Request, res: Response) => {
     const isDummyPlaceholder = ['graminkirana@upi', 'yourname@okaxis', 'test@upi', 'admin@upi'].includes(rawUpiId.toLowerCase());
     const isConfigured = Boolean(rawUpiId && isValidFormat && !isDummyPlaceholder);
 
+    const rawWhatsApp = (process.env.PLATFORM_SUPPORT_WHATSAPP || '').replace(/[^0-9]/g, '');
+    const supportWhatsApp = rawWhatsApp.length === 10 ? `91${rawWhatsApp}` : (rawWhatsApp.length > 10 ? rawWhatsApp : null);
+
     res.json({
       isConfigured,
       upiId: isConfigured ? rawUpiId : null,
       upiName: isConfigured ? upiName : null,
+      supportWhatsApp,
       pricing: {
         1: { months: 1, price: 99, label: '1 महीना', rate: '₹99/माह' },
         3: { months: 3, price: 269, label: '3 महीने', rate: '₹89/माह', discount: '10% बचत' },

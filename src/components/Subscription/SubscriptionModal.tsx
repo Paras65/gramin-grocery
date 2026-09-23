@@ -62,6 +62,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     (import.meta as any).env?.VITE_PLATFORM_UPI_ID || null
   );
   const [platformUpiName, setPlatformUpiName] = useState<string>('GraminKirana');
+  const [supportWhatsApp, setSupportWhatsApp] = useState<string | null>(null);
 
   // Load server-side configuration and existing claim status when modal opens
   useEffect(() => {
@@ -74,6 +75,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           }
         } else {
           setPlatformUpiId(null);
+        }
+        if (cfg?.supportWhatsApp) {
+          setSupportWhatsApp(cfg.supportWhatsApp);
         }
       }).catch(console.warn);
 
@@ -117,13 +121,16 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     setTimeout(() => setCopiedUpi(false), 2500);
   };
 
-  const handleUpgradeWhatsApp = () => {
+  const handleUpgradeWhatsApp = (customMessage?: string | React.MouseEvent) => {
+    const msgString = typeof customMessage === 'string' ? customMessage : undefined;
     const shopName = storeInfo?.storeName || 'गाँव किराना स्टोर';
     const village = storeInfo?.village || 'गाँव';
-    const message = encodeURIComponent(
-      `नमस्ते Gramin Kirana टीम, मैं अपनी दुकान "${shopName}" (${village}) के लिए ग्रामिन प्रो (${currentPlanConfig.label} - ₹${currentPlanConfig.price}) अपग्रेड करना चाहता हूँ। कृपया सहायता करें।`
-    );
-    window.open(`https://wa.me/?text=${message}`, '_blank');
+    const defaultMsg = `नमस्ते Gramin Kirana टीम, मैं अपनी दुकान "${shopName}" (${village}) के लिए ग्रामिन प्रो (${currentPlanConfig.label} - ₹${currentPlanConfig.price}) अपग्रेड / कूपन सहायता चाहता हूँ। कृपया सहायता करें।`;
+    const message = encodeURIComponent(msgString || defaultMsg);
+    const targetUrl = supportWhatsApp
+      ? `https://wa.me/${supportWhatsApp}?text=${message}`
+      : `https://wa.me/?text=${message}`;
+    window.open(targetUrl, '_blank');
   };
 
   const handleRegisterClick = () => {
@@ -588,6 +595,24 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   <span>{couponFeedback.message}</span>
                 </div>
               )}
+
+              <div className="pt-2 flex items-center justify-between text-[11px] text-stone-600 border-t border-amber-200/80">
+                <span>कूपन कोड नहीं मिला?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const shopName = storeInfo?.storeName || 'गाँव किराना स्टोर';
+                    const village = storeInfo?.village || 'गाँव';
+                    handleUpgradeWhatsApp(
+                      `नमस्ते Gramin Kirana टीम, मैं अपनी दुकान "${shopName}" (${village}) के लिए ऑफ़लाइन प्रो कूपन कोड प्राप्त करना चाहता हूँ। कृपया कूपन कोड भेजें।`
+                    );
+                  }}
+                  className="text-emerald-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>WhatsApp पर कूपन मांगें</span>
+                </button>
+              </div>
             </div>
           )}
 

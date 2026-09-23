@@ -634,6 +634,7 @@ class SyncService {
     isConfigured: boolean;
     upiId: string | null;
     upiName: string | null;
+    supportWhatsApp: string | null;
     pricing?: Record<number, any>;
   } | null> {
     try {
