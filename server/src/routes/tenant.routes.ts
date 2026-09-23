@@ -294,17 +294,18 @@ router.get('/subscription/claim', requireAuth, async (_req: Request, res: Respon
 // 7. Get Platform UPI Gateway Public Configuration (Safe, Server-Enforced)
 router.get('/subscription/config', async (_req: Request, res: Response) => {
   try {
-    const rawUpiId = (process.env.PLATFORM_UPI_ID || 'graminkirana@upi').trim();
+    const rawUpiId = (process.env.PLATFORM_UPI_ID || '').trim();
     const upiName = (process.env.PLATFORM_UPI_NAME || 'Gramin Kirana').trim();
 
-    // Sanitization: Ensure VPA matches standard format
-    const sanitizedUpiId = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(rawUpiId)
-      ? rawUpiId
-      : 'graminkirana@upi';
+    // Valid VPA check: non-empty, standard format, not dummy/placeholder
+    const isValidFormat = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(rawUpiId);
+    const isDummyPlaceholder = ['graminkirana@upi', 'yourname@okaxis', 'test@upi', 'admin@upi'].includes(rawUpiId.toLowerCase());
+    const isConfigured = Boolean(rawUpiId && isValidFormat && !isDummyPlaceholder);
 
     res.json({
-      upiId: sanitizedUpiId,
-      upiName,
+      isConfigured,
+      upiId: isConfigured ? rawUpiId : null,
+      upiName: isConfigured ? upiName : null,
       pricing: {
         1: { months: 1, price: 99, label: '1 महीना', rate: '₹99/माह' },
         3: { months: 3, price: 269, label: '3 महीने', rate: '₹89/माह', discount: '10% बचत' },

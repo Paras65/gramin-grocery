@@ -58,8 +58,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const sub = t.subscription;
 
   // Platform UPI ID & Name (Server-Enforced with local fallback)
-  const [platformUpiId, setPlatformUpiId] = useState<string>(
-    (import.meta as any).env?.VITE_PLATFORM_UPI_ID || 'graminkirana@upi'
+  const [platformUpiId, setPlatformUpiId] = useState<string | null>(
+    (import.meta as any).env?.VITE_PLATFORM_UPI_ID || null
   );
   const [platformUpiName, setPlatformUpiName] = useState<string>('GraminKirana');
 
@@ -67,11 +67,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       syncService.getSubscriptionConfig().then((cfg) => {
-        if (cfg?.upiId) {
+        if (cfg?.isConfigured && cfg.upiId) {
           setPlatformUpiId(cfg.upiId);
           if (cfg.upiName) {
             setPlatformUpiName(cfg.upiName.replace(/[^a-zA-Z0-9]/g, ''));
           }
+        } else {
+          setPlatformUpiId(null);
         }
       }).catch(console.warn);
 
@@ -104,9 +106,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   // Dynamic UPI URL payload: NPCI compliant (alphanumeric, max 25 chars without special symbols)
   const cleanStoreName = (storeInfo?.storeName || 'Shop').replace(/[^a-zA-Z0-9]/g, '').slice(0, 15);
   const upiNote = `Pro${currentPlanConfig.months}M${cleanStoreName}`;
-  const upiUri = `upi://pay?pa=${platformUpiId}&pn=${encodeURIComponent(platformUpiName)}&am=${currentPlanConfig.price}&cu=INR&tn=${upiNote}`;
+  const upiUri = platformUpiId
+    ? `upi://pay?pa=${platformUpiId}&pn=${encodeURIComponent(platformUpiName)}&am=${currentPlanConfig.price}&cu=INR&tn=${upiNote}`
+    : '';
 
   const handleCopyUpiId = () => {
+    if (!platformUpiId) return;
     navigator.clipboard.writeText(platformUpiId);
     setCopiedUpi(true);
     setTimeout(() => setCopiedUpi(false), 2500);
@@ -336,148 +341,190 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             </div>
           </div>
 
-          {/* Dynamic UPI Payment Card */}
-          <div className="bg-gradient-to-b from-stone-900 to-stone-950 text-white rounded-3xl p-4 sm:p-5 shadow-lg border border-amber-500/40 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500 text-stone-950 font-black">
-                  <QrCode className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm sm:text-base font-black text-stone-100 m-0">
-                    २. UPI QR स्कैन करें (Direct Dynamic Gateway)
-                  </h3>
-                  <p className="text-[11px] text-amber-300 m-0 font-medium">
-                    कुल देय राशि: <strong className="text-white text-xs">₹{currentPlanConfig.price}</strong> ({currentPlanConfig.label})
-                  </p>
-                </div>
-              </div>
-
-              {/* UPI ID Badge with Copy */}
-              <button
-                type="button"
-                onClick={handleCopyUpiId}
-                className="px-2.5 py-1 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border border-stone-700"
-                title="UPI ID कॉपी करें"
-              >
-                {copiedUpi ? (
-                  <>
-                    <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-400">कॉपी हो गई!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{platformUpiId}</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* QR Code & Mobile 1-Tap CTA Box */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 bg-stone-900/90 p-4 rounded-2xl border border-stone-800">
-              {/* High Contrast QR Code */}
-              <div className="bg-white p-3 rounded-2xl shadow-md shrink-0 flex items-center justify-center">
-                <QRCodeSVG
-                  value={upiUri}
-                  size={160}
-                  level="H"
-                  includeMargin={true}
-                  imageSettings={{
-                    src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d97706'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/%3E%3C/svg%3E",
-                    x: undefined,
-                    y: undefined,
-                    height: 28,
-                    width: 28,
-                    excavate: true,
-                  }}
-                />
-              </div>
-
-              {/* Instructions & 1-Tap Mobile Button */}
-              <div className="space-y-3 flex-1 text-center sm:text-left w-full">
-                <div className="text-xs text-stone-300 space-y-1 font-medium leading-relaxed">
-                  <div className="flex items-center gap-1.5 justify-center sm:justify-start text-amber-300 font-bold">
-                    <span>📱 किसी भी UPI ऐप से स्कैन करें:</span>
+          {/* Dynamic UPI Payment Card OR Graceful Fallback Notice */}
+          {platformUpiId ? (
+            <div className="bg-gradient-to-b from-stone-900 to-stone-950 text-white rounded-3xl p-4 sm:p-5 shadow-lg border border-amber-500/40 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-amber-500 text-stone-950 font-black">
+                    <QrCode className="w-5 h-5" />
                   </div>
-                  <p className="m-0 text-stone-400 text-[11px]">
-                    PhonePe, Google Pay, Paytm, BHIM, CRED या कोई भी बैंक ऐप खोलें और यह QR स्कैन करें।
-                  </p>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black text-stone-100 m-0">
+                      २. UPI QR स्कैन करें (Direct Dynamic Gateway)
+                    </h3>
+                    <p className="text-[11px] text-amber-300 m-0 font-medium">
+                      कुल देय राशि: <strong className="text-white text-xs">₹{currentPlanConfig.price}</strong> ({currentPlanConfig.label})
+                    </p>
+                  </div>
                 </div>
 
-                {/* Mobile Deep Link Button */}
-                <a
-                  href={upiUri}
-                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-md active:scale-98 no-underline"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>📲 1-टैप UPI ऐप खोलें (Mobile App)</span>
-                </a>
-
-                <div className="text-[10px] text-stone-500 text-center sm:text-left">
-                  भुगतान पूरा होने पर बैंक SMS या ऐप रसीद में <strong>12-अंकों का UTR / रेफरेंस नंबर</strong> देखें।
-                </div>
-              </div>
-            </div>
-
-            {/* Step 3: Enter 12-Digit UTR */}
-            <form onSubmit={handleSubmitClaim} className="space-y-2.5 pt-2 border-t border-stone-800">
-              <label className="text-xs font-black text-stone-200 block">
-                ३. भुगतान के बाद 12-अंकों का UTR / UPI Ref नंबर दर्ज करें:
-              </label>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={utrNumber}
-                  onChange={(e) => setUtrNumber(e.target.value.replace(/[^0-9A-Za-z]/g, '').slice(0, 18).toUpperCase())}
-                  placeholder="उदा: 425689123456 (12 अंक)"
-                  disabled={isSubmittingClaim || isMunim}
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-stone-950 border border-stone-700 text-amber-300 font-mono text-sm tracking-wider focus:outline-none focus:border-amber-500 placeholder:text-stone-600"
-                />
-
+                {/* UPI ID Badge with Copy */}
                 <button
-                  type="submit"
-                  disabled={isSubmittingClaim || isMunim || utrNumber.trim().length < 10}
-                  className={`px-5 py-2.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs shrink-0 ${
-                    isSubmittingClaim || isMunim || utrNumber.trim().length < 10
-                      ? 'bg-stone-800 text-stone-500 cursor-not-allowed'
-                      : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95'
-                  }`}
+                  type="button"
+                  onClick={handleCopyUpiId}
+                  className="px-2.5 py-1 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border border-stone-700"
+                  title="UPI ID कॉपी करें"
                 >
-                  {isSubmittingClaim ? (
+                  {copiedUpi ? (
                     <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>सत्यापन हो रहा है...</span>
+                      <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">कॉपी हो गई!</span>
                     </>
                   ) : (
                     <>
-                      <Check className="w-4 h-4" />
-                      <span>भुगतान क्लेम सबमिट करें</span>
+                      <Copy className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{platformUpiId}</span>
                     </>
                   )}
                 </button>
               </div>
 
-              {claimFeedback && (
-                <div
-                  className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
-                    claimFeedback.success
-                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700'
-                      : 'bg-rose-950/80 text-rose-300 border border-rose-700'
-                  }`}
-                >
-                  {claimFeedback.success ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                  )}
-                  <span>{claimFeedback.message}</span>
+              {/* QR Code & Mobile 1-Tap CTA Box */}
+              <div className="flex flex-col sm:flex-row items-center gap-4 bg-stone-900/90 p-4 rounded-2xl border border-stone-800">
+                {/* High Contrast QR Code */}
+                <div className="bg-white p-3 rounded-2xl shadow-md shrink-0 flex items-center justify-center">
+                  <QRCodeSVG
+                    value={upiUri}
+                    size={160}
+                    level="H"
+                    includeMargin={true}
+                    imageSettings={{
+                      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d97706'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/%3E%3C/svg%3E",
+                      x: undefined,
+                      y: undefined,
+                      height: 28,
+                      width: 28,
+                      excavate: true,
+                    }}
+                  />
                 </div>
-              )}
-            </form>
-          </div>
+
+                {/* Instructions & 1-Tap Mobile Button */}
+                <div className="space-y-3 flex-1 text-center sm:text-left w-full">
+                  <div className="text-xs text-stone-300 space-y-1 font-medium leading-relaxed">
+                    <div className="flex items-center gap-1.5 justify-center sm:justify-start text-amber-300 font-bold">
+                      <span>📱 किसी भी UPI ऐप से स्कैन करें:</span>
+                    </div>
+                    <p className="m-0 text-stone-400 text-[11px]">
+                      PhonePe, Google Pay, Paytm, BHIM, CRED या कोई भी बैंक ऐप खोलें और यह QR स्कैन करें।
+                    </p>
+                  </div>
+
+                  {/* Mobile Deep Link Button */}
+                  <a
+                    href={upiUri}
+                    className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-md active:scale-98 no-underline"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>📲 1-टैप UPI ऐप खोलें (Mobile App)</span>
+                  </a>
+
+                  <div className="text-[10px] text-stone-500 text-center sm:text-left">
+                    भुगतान पूरा होने पर बैंक SMS या ऐप रसीद में <strong>12-अंकों का UTR / रेफरेंस नंबर</strong> देखें।
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3: Enter 12-Digit UTR */}
+              <form onSubmit={handleSubmitClaim} className="space-y-2.5 pt-2 border-t border-stone-800">
+                <label className="text-xs font-black text-stone-200 block">
+                  ३. भुगतान के बाद 12-अंकों का UTR / UPI Ref नंबर दर्ज करें:
+                </label>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={utrNumber}
+                    onChange={(e) => setUtrNumber(e.target.value.replace(/[^0-9A-Za-z]/g, '').slice(0, 18).toUpperCase())}
+                    placeholder="उदा: 425689123456 (12 अंक)"
+                    disabled={isSubmittingClaim || isMunim}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-stone-950 border border-stone-700 text-amber-300 font-mono text-sm tracking-wider focus:outline-none focus:border-amber-500 placeholder:text-stone-600"
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingClaim || isMunim || utrNumber.trim().length < 10}
+                    className={`px-5 py-2.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs shrink-0 ${
+                      isSubmittingClaim || isMunim || utrNumber.trim().length < 10
+                        ? 'bg-stone-800 text-stone-500 cursor-not-allowed'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95'
+                    }`}
+                  >
+                    {isSubmittingClaim ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>सत्यापन हो रहा है...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>भुगतान क्लेम सबमिट करें</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {claimFeedback && (
+                  <div
+                    className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                      claimFeedback.success
+                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700'
+                        : 'bg-rose-950/80 text-rose-300 border border-rose-700'
+                    }`}
+                  >
+                    {claimFeedback.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                    )}
+                    <span>{claimFeedback.message}</span>
+                  </div>
+                )}
+              </form>
+            </div>
+          ) : (
+            <div className="bg-stone-900 text-white rounded-3xl p-5 sm:p-6 shadow-lg border border-amber-500/30 space-y-4 text-center sm:text-left">
+              <div className="flex flex-col sm:flex-row items-center gap-3.5">
+                <div className="p-3 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 shrink-0">
+                  <Shield className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-stone-100 m-0">
+                    डायरेक्ट UPI QR गेटवे जल्द उपलब्ध होगा
+                  </h3>
+                  <p className="text-xs text-amber-200/90 m-0 mt-0.5">
+                    प्लेटफ़ॉर्म चालू खाता अभी सेटअप में है। आप अभी भी तुरंत प्रो प्लान सक्रिय कर सकते हैं!
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-stone-300 leading-relaxed m-0 bg-stone-950/60 p-3.5 rounded-2xl border border-stone-800">
+                अपनी दुकान के लिए <strong>ग्रामिन प्रो</strong> सक्रिय करने के लिए कृपया हमारे <strong>WhatsApp हेल्पलाइन</strong> पर संपर्क करें या अधिकृत डिस्ट्रीब्यूटर से प्राप्त <strong>ऑफ़लाइन वाउचर / कूपन कोड</strong> का उपयोग करें।
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={handleUpgradeWhatsApp}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-md active:scale-95"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>WhatsApp पर संपर्क करें (तुरंत एक्टिवेशन)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowVoucherBox(true)}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-400 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-700 active:scale-95"
+                >
+                  <Ticket className="w-4 h-4 text-amber-400" />
+                  <span>वाउचर कोड दर्ज करें</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Quick Support & Offline Voucher Dropdown */}
           <div className="flex items-center justify-between gap-2 flex-wrap pt-1">

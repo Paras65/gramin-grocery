@@ -630,7 +630,12 @@ class SyncService {
   /**
    * Get server-enforced platform UPI configuration
    */
-  public async getSubscriptionConfig(): Promise<{ upiId: string; upiName: string } | null> {
+  public async getSubscriptionConfig(): Promise<{
+    isConfigured: boolean;
+    upiId: string | null;
+    upiName: string | null;
+    pricing?: Record<number, any>;
+  } | null> {
     try {
       const res = await fetch(`${API_BASE}/tenant/subscription/config`);
       if (!res.ok) return null;
