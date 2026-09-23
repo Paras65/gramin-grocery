@@ -175,17 +175,35 @@ router.get('/stores', requireAuth, requireRole('SUPER_ADMIN'), async (req: Reque
         .sort({ createdAt: -1 })
         .lean();
 
-      // Enrich with live customer & sales counts per tenant
+      // Enrich with live customer & sales counts, daysRemaining, latestClaim per tenant
       const enrichedStores = await Promise.all(
         tenants.map(async (t) => {
-          const [customerCount, debtAgg, ownerUser] = await Promise.all([
+          const [customerCount, debtAgg, ownerUser, latestClaim] = await Promise.all([
             Customer.countDocuments({ tenantId: t._id, isDeleted: false }).setOptions({ bypassTenantCheck: true }),
             Customer.aggregate([
               { $match: { tenantId: t._id, isDeleted: false } },
               { $group: { _id: null, totalDebt: { $sum: '$balanceDue' } } }
             ]),
-            User.findOne({ tenantId: t._id, role: 'OWNER' }).select('isActive lastLoginAt').lean()
+            User.findOne({ tenantId: t._id, role: 'OWNER' }).select('isActive lastLoginAt').lean(),
+            PaymentClaim.findOne({ tenantId: t._id })
+              .sort({ createdAt: -1 })
+              .select('utrNumber amount status planDurationMonths createdAt rejectionReason')
+              .lean()
           ]);
+
+          const now = Date.now();
+          let daysRemaining = 0;
+          let isExpired = false;
+
+          if (t.subscription?.plan === 'PRO') {
+            if (t.subscription?.status === 'PAUSED') {
+              daysRemaining = Number(t.subscription.remainingDaysOnPause) || 0;
+            } else if (t.subscription?.planExpiryDate) {
+              const diffMs = new Date(t.subscription.planExpiryDate).getTime() - now;
+              daysRemaining = Math.max(0, Math.ceil(diffMs / 86400000));
+              isExpired = diffMs <= 0;
+            }
+          }
 
           return {
             id: t._id,
@@ -193,7 +211,20 @@ router.get('/stores', requireAuth, requireRole('SUPER_ADMIN'), async (req: Reque
             ownerName: t.ownerName,
             phone: t.phone,
             address: t.address,
-            subscription: t.subscription,
+            subscription: {
+              ...t.subscription,
+              startDate: t.subscription?.startDate || t.createdAt,
+              daysRemaining,
+              isExpired,
+            },
+            latestClaim: latestClaim ? {
+              utrNumber: latestClaim.utrNumber,
+              amount: latestClaim.amount,
+              status: latestClaim.status,
+              planDurationMonths: latestClaim.planDurationMonths,
+              createdAt: latestClaim.createdAt,
+              rejectionReason: latestClaim.rejectionReason,
+            } : null,
             customerCount,
             totalDebt: debtAgg[0]?.totalDebt || 0,
             isActive: ownerUser ? ownerUser.isActive : true,
@@ -222,13 +253,20 @@ router.patch('/stores/:id/subscription', requireAuth, requireRole('SUPER_ADMIN')
     }
 
     let planExpiryDate: Date | undefined;
+    const existingTenant = await Tenant.findById(id);
+    if (!existingTenant) {
+      return res.status(404).json({ error: 'Store not found' });
+    }
+
+    const now = Date.now();
+    let startDate = existingTenant.subscription?.startDate;
+
     if (plan === 'PRO') {
+      if (!startDate) startDate = new Date();
       const months = Number(durationMonths) || 1;
       const durationMs = months * 30 * 86400000;
-      const existingTenant = await Tenant.findById(id);
-      const now = Date.now();
       if (
-        existingTenant?.subscription?.plan === 'PRO' &&
+        existingTenant.subscription?.plan === 'PRO' &&
         existingTenant.subscription?.planExpiryDate &&
         new Date(existingTenant.subscription.planExpiryDate).getTime() > now
       ) {
@@ -238,25 +276,197 @@ router.patch('/stores/:id/subscription', requireAuth, requireRole('SUPER_ADMIN')
       }
     }
 
-    const tenant = await Tenant.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          'subscription.plan': plan,
-          'subscription.status': status || 'ACTIVE',
-          ...(planExpiryDate && { 'subscription.planExpiryDate': planExpiryDate }),
-        },
-      },
-      { new: true }
-    );
+    existingTenant.subscription.plan = plan;
+    existingTenant.subscription.status = status || 'ACTIVE';
+    if (planExpiryDate) existingTenant.subscription.planExpiryDate = planExpiryDate;
+    if (startDate) existingTenant.subscription.startDate = startDate;
+    if (plan === 'PRO' && status === 'ACTIVE') {
+      existingTenant.subscription.pausedAt = undefined;
+      existingTenant.subscription.remainingDaysOnPause = undefined;
+    }
 
+    await existingTenant.save();
+
+    res.json({
+      message: `Store subscription updated to ${plan} (${existingTenant.subscription.status})`,
+      subscription: existingTenant.subscription,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4b. Pause or Resume Store Pro Subscription (Zero-Day-Loss Pro Freeze)
+router.patch('/stores/:id/subscription/pause-resume', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { action, pauseReason } = req.body; // action: 'PAUSE' | 'RESUME'
+
+    if (!['PAUSE', 'RESUME'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be PAUSE or RESUME' });
+    }
+
+    const tenant = await Tenant.findById(id);
     if (!tenant) {
       return res.status(404).json({ error: 'Store not found' });
     }
 
-    res.json({
-      message: `Store subscription updated to ${plan} (${tenant.subscription.status})`,
-      subscription: tenant.subscription,
+    if (tenant.subscription?.plan !== 'PRO') {
+      return res.status(400).json({ error: 'केवल प्रो (PRO) स्टोर का सब्सक्रिप्शन रोका या चालू किया जा सकता है।' });
+    }
+
+    const now = Date.now();
+
+    if (action === 'PAUSE') {
+      if (tenant.subscription.status === 'PAUSED') {
+        return res.status(400).json({ error: 'स्टोर का प्रो सब्सक्रिप्शन पहले से ही रुका हुआ है।' });
+      }
+
+      // Calculate remaining days
+      let remainingDays = 0;
+      if (tenant.subscription.planExpiryDate) {
+        const diffMs = new Date(tenant.subscription.planExpiryDate).getTime() - now;
+        remainingDays = Math.max(0, Math.ceil(diffMs / 86400000));
+      }
+
+      tenant.subscription.status = 'PAUSED';
+      tenant.subscription.pausedAt = new Date();
+      tenant.subscription.remainingDaysOnPause = remainingDays;
+      if (pauseReason) tenant.subscription.pauseReason = String(pauseReason).trim();
+
+      await tenant.save();
+
+      return res.json({
+        message: `'${tenant.storeName}' का प्रो प्लान रोका गया (${remainingDays} दिन फ्रीज/सुरक्षित)।`,
+        subscription: tenant.subscription,
+        daysRemaining: remainingDays,
+      });
+    } else {
+      // RESUME
+      if (tenant.subscription.status === 'ACTIVE') {
+        return res.status(400).json({ error: 'स्टोर का प्रो प्लान पहले से सक्रिय है।' });
+      }
+
+      const preservedDays = Number(tenant.subscription.remainingDaysOnPause) || 0;
+      if (preservedDays <= 0) {
+        tenant.subscription.status = 'EXPIRED';
+        tenant.subscription.pausedAt = undefined;
+        tenant.subscription.remainingDaysOnPause = 0;
+        await tenant.save();
+        return res.status(400).json({ error: 'स्टोर के पास कोई शेष प्रो दिन नहीं हैं। कृपया नया प्लान सक्रिय करें।' });
+      }
+
+      // Project expiry forward from now
+      const newExpiry = new Date(now + preservedDays * 86400000);
+      tenant.subscription.status = 'ACTIVE';
+      tenant.subscription.planExpiryDate = newExpiry;
+      tenant.subscription.pausedAt = undefined;
+      tenant.subscription.remainingDaysOnPause = undefined;
+      tenant.subscription.pauseReason = undefined;
+
+      await tenant.save();
+
+      return res.json({
+        message: `'${tenant.storeName}' का प्रो प्लान पुनः सक्रिय हुआ (वैधता: ${newExpiry.toLocaleDateString('hi-IN')})।`,
+        subscription: tenant.subscription,
+        daysRemaining: preservedDays,
+      });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4c. Bulk Subscription Control (Pause/Resume All Pro Stores)
+router.post('/stores/bulk-subscription-control', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { action, pauseReason } = req.body; // 'PAUSE_ALL' | 'RESUME_ALL'
+
+    if (!['PAUSE_ALL', 'RESUME_ALL'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be PAUSE_ALL or RESUME_ALL' });
+    }
+
+    const now = Date.now();
+    let updatedCount = 0;
+
+    if (action === 'PAUSE_ALL') {
+      const activeProStores = await Tenant.find({
+        'subscription.plan': 'PRO',
+        'subscription.status': 'ACTIVE',
+      });
+
+      for (const t of activeProStores) {
+        let remainingDays = 0;
+        if (t.subscription.planExpiryDate) {
+          const diffMs = new Date(t.subscription.planExpiryDate).getTime() - now;
+          remainingDays = Math.max(0, Math.ceil(diffMs / 86400000));
+        }
+        t.subscription.status = 'PAUSED';
+        t.subscription.pausedAt = new Date();
+        t.subscription.remainingDaysOnPause = remainingDays;
+        if (pauseReason) t.subscription.pauseReason = String(pauseReason).trim();
+        await t.save();
+        updatedCount++;
+      }
+
+      return res.json({
+        message: `सफलतापूर्वक ${updatedCount} प्रो स्टोरों का प्लान रोका गया (दिन सुरक्षित फ्रीज)।`,
+        updatedCount,
+      });
+    } else {
+      // RESUME_ALL
+      const pausedProStores = await Tenant.find({
+        'subscription.plan': 'PRO',
+        'subscription.status': 'PAUSED',
+      });
+
+      for (const t of pausedProStores) {
+        const preservedDays = Number(t.subscription.remainingDaysOnPause) || 0;
+        if (preservedDays > 0) {
+          t.subscription.status = 'ACTIVE';
+          t.subscription.planExpiryDate = new Date(now + preservedDays * 86400000);
+          t.subscription.pausedAt = undefined;
+          t.subscription.remainingDaysOnPause = undefined;
+          t.subscription.pauseReason = undefined;
+          await t.save();
+          updatedCount++;
+        } else {
+          t.subscription.status = 'EXPIRED';
+          await t.save();
+        }
+      }
+
+      return res.json({
+        message: `सफलतापूर्वक ${updatedCount} प्रो स्टोरों का प्लान पुनः सक्रिय किया गया।`,
+        updatedCount,
+      });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4d. Bulk Store Status Control (Activate All / Suspend All Stores)
+router.post('/stores/bulk-status-control', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { action } = req.body; // 'ACTIVATE_ALL' | 'SUSPEND_ALL'
+
+    if (!['ACTIVATE_ALL', 'SUSPEND_ALL'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be ACTIVATE_ALL or SUSPEND_ALL' });
+    }
+
+    const isActive = action === 'ACTIVATE_ALL';
+    const result = await User.updateMany(
+      { role: 'OWNER' },
+      { $set: { isActive } }
+    );
+
+    return res.json({
+      message: isActive
+        ? `सभी स्टोर खाते (${result.modifiedCount}) पुनः सक्रिय किए गए।`
+        : `सभी स्टोर खाते (${result.modifiedCount}) निलंबित किए गए।`,
+      modifiedCount: result.modifiedCount,
+      isActive,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

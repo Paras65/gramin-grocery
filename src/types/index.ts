@@ -174,9 +174,25 @@ export interface AdminStoreSummary {
   };
   subscription: {
     plan: TenantPlan;
-    status: 'ACTIVE' | 'EXPIRED';
+    status: 'ACTIVE' | 'EXPIRED' | 'PAUSED';
     planExpiryDate?: string;
+    startDate?: string;
+    pausedAt?: string;
+    remainingDaysOnPause?: number;
+    pauseReason?: string;
+    daysRemaining?: number;
+    isExpired?: boolean;
   };
+  latestClaim?: {
+    utrNumber: string;
+    amount: number;
+    status: string;
+    planDurationMonths: number;
+    createdAt: string;
+    rejectionReason?: string;
+  } | null;
+  daysRemaining?: number;
+  isExpired?: boolean;
   customerCount: number;
   totalDebt: number;
   isActive: boolean;

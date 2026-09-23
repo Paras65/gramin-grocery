@@ -170,6 +170,45 @@ class AdminService {
     await this.parseResponse(res, 'Failed to toggle store status');
   }
 
+  public async toggleStoreSubscriptionPause(
+    storeId: string, 
+    action: 'PAUSE' | 'RESUME', 
+    pauseReason?: string
+  ): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/stores/${storeId}/subscription/pause-resume`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ action, pauseReason }),
+    });
+
+    return await this.parseResponse(res, 'प्रो प्लान स्थिति बदलने में विफल');
+  }
+
+  public async bulkSubscriptionControl(
+    action: 'PAUSE_ALL' | 'RESUME_ALL', 
+    pauseReason?: string
+  ): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/stores/bulk-subscription-control`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ action, pauseReason }),
+    });
+
+    return await this.parseResponse(res, 'बल्क प्रो नियंत्रण में विफल');
+  }
+
+  public async bulkStoreStatusControl(
+    action: 'ACTIVATE_ALL' | 'SUSPEND_ALL'
+  ): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/stores/bulk-status-control`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ action }),
+    });
+
+    return await this.parseResponse(res, 'बल्क स्टोर खाता नियंत्रण में विफल');
+  }
+
   public async resetStorePin(storeId: string, newPin: string): Promise<string> {
     const res = await fetch(`${API_BASE}/admin/stores/${storeId}/reset-pin`, {
       method: 'POST',

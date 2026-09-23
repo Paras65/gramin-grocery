@@ -5,7 +5,8 @@ import {
   Phone, MessageSquare, MapPin, Crown,
   Download, KeyRound, Trash2, Megaphone,
   Eye, Clock, Plus, X, Send, CreditCard,
-  CheckCircle2, XCircle, Copy, CheckCheck
+  CheckCircle2, XCircle, Copy, CheckCheck,
+  Pause, Play, Bell, Zap, Sliders
 } from 'lucide-react';
 import { adminService, type PlatformOverviewResponse } from '../../services/adminService';
 import type { AdminStoreSummary, PlatformAnnouncement, AnnouncementType, AnnouncementTargetMode, PaymentClaim } from '../../types';
@@ -24,11 +25,42 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
   const [error, setError] = useState<string>('');
 
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedPlan, setSelectedPlan] = useState<string>('ALL');
+  const [selectedPlan] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
 
   // Tabs: STORES | PAYMENTS | BROADCASTS
   const [adminTab, setAdminTab] = useState<'STORES' | 'PAYMENTS' | 'BROADCASTS'>('STORES');
+
+  // Expiry & Pro Status Filter: 'ALL' | 'PRO' | 'EXPIRING_SOON' | 'PAUSED' | 'FREE' | 'EXPIRED'
+  const [expiryFilter, setExpiryFilter] = useState<'ALL' | 'PRO' | 'EXPIRING_SOON' | 'PAUSED' | 'FREE' | 'EXPIRED'>('ALL');
+
+  // Pause Store Modal State
+  const [pauseModal, setPauseModal] = useState<{
+    isOpen: boolean;
+    store: AdminStoreSummary | null;
+    reason: string;
+  }>({
+    isOpen: false,
+    store: null,
+    reason: 'दुकानदार का अनुरोध',
+  });
+
+  // Bulk Actions Confirmation Modal State
+  const [bulkActionModal, setBulkActionModal] = useState<{
+    isOpen: boolean;
+    action: 'PAUSE_ALL' | 'RESUME_ALL' | 'SUSPEND_ALL' | 'ACTIVATE_ALL' | null;
+    title: string;
+    desc: string;
+    reason: string;
+    isProcessing: boolean;
+  }>({
+    isOpen: false,
+    action: null,
+    title: '',
+    desc: '',
+    reason: 'प्लेटफ़ॉर्म रखरखाव',
+    isProcessing: false,
+  });
 
   // Payment Claims States
   const [paymentClaims, setPaymentClaims] = useState<PaymentClaim[]>([]);
@@ -275,6 +307,102 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
     }
   };
 
+  const handleToggleStorePause = (store: AdminStoreSummary) => {
+    if (store.subscription.status === 'PAUSED') {
+      handleResumeStore(store);
+    } else {
+      setPauseModal({
+        isOpen: true,
+        store,
+        reason: 'दुकानदार का अनुरोध',
+      });
+    }
+  };
+
+  const handleConfirmPauseStore = async () => {
+    if (!pauseModal.store) return;
+    try {
+      const res = await adminService.toggleStoreSubscriptionPause(
+        pauseModal.store.id, 
+        'PAUSE', 
+        pauseModal.reason
+      );
+      alert(res.message || 'प्रो प्लान सफलतापूर्वक रोका गया (दिन फ्रीज/सुरक्षित)।');
+      setPauseModal({ isOpen: false, store: null, reason: '' });
+      await loadData(true);
+    } catch (err: any) {
+      alert(`रोकने में त्रुटि: ${err.message}`);
+    }
+  };
+
+  const handleResumeStore = async (store: AdminStoreSummary) => {
+    const ok = window.confirm(`क्या आप '${store.storeName}' का प्रो प्लान पुनः सक्रिय करना चाहते हैं? फ्रीज किए गए दिन आज से आगे जुड़ेंगे।`);
+    if (!ok) return;
+
+    try {
+      const res = await adminService.toggleStoreSubscriptionPause(store.id, 'RESUME');
+      alert(res.message || 'प्रो प्लान पुनः चालू कर दिया गया।');
+      await loadData(true);
+    } catch (err: any) {
+      alert(`चालू करने में त्रुटि: ${err.message}`);
+    }
+  };
+
+  const triggerBulkActionModal = (action: 'PAUSE_ALL' | 'RESUME_ALL' | 'SUSPEND_ALL' | 'ACTIVATE_ALL') => {
+    const titleMap = {
+      PAUSE_ALL: '⏸️ सभी प्रो स्टोर रोकें (Pause All Pro)',
+      RESUME_ALL: '▶️ सभी प्रो स्टोर पुनः चालू करें (Resume All Pro)',
+      SUSPEND_ALL: '⛔ सभी स्टोर खाते निलंबित करें (Suspend All Accounts)',
+      ACTIVATE_ALL: '✓ सभी स्टोर खाते पुनः सक्रिय करें (Activate All Accounts)',
+    };
+    const descMap = {
+      PAUSE_ALL: 'क्या आप सच में राज्य के सभी सक्रिय प्रो स्टोरों का प्लान रोकना चाहते हैं? सभी प्रो स्टोरों के शेष दिन फ्रीज हो जाएंगे और नुकसान नहीं होगा।',
+      RESUME_ALL: 'क्या आप सभी रुके हुए प्रो स्टोरों को पुनः सक्रिय करना चाहते हैं? उनके सुरक्षित शेष दिन आज से आगे बढ़ जाएंगे।',
+      SUSPEND_ALL: '⚠️ अत्यंत संवेदनशील: यह क्रिया सभी दुकानदारों के खातों को अस्थायी रूप से निलंबित कर देगी।',
+      ACTIVATE_ALL: 'यह क्रिया सभी दुकानदारों के खातों को पुनः सक्रिय कर देगी।',
+    };
+
+    setBulkActionModal({
+      isOpen: true,
+      action,
+      title: titleMap[action],
+      desc: descMap[action],
+      reason: 'प्लेटफ़ॉर्म रखरखाव',
+      isProcessing: false,
+    });
+  };
+
+  const handleExecuteBulkAction = async () => {
+    if (!bulkActionModal.action) return;
+
+    try {
+      setBulkActionModal(prev => ({ ...prev, isProcessing: true }));
+      let resMessage = '';
+
+      if (bulkActionModal.action === 'PAUSE_ALL' || bulkActionModal.action === 'RESUME_ALL') {
+        const res = await adminService.bulkSubscriptionControl(bulkActionModal.action, bulkActionModal.reason);
+        resMessage = res.message || 'बल्क प्रो नियंत्रण सफल।';
+      } else {
+        const res = await adminService.bulkStoreStatusControl(bulkActionModal.action);
+        resMessage = res.message || 'बल्क खाता नियंत्रण सफल।';
+      }
+
+      alert(resMessage);
+      setBulkActionModal({
+        isOpen: false,
+        action: null,
+        title: '',
+        desc: '',
+        reason: '',
+        isProcessing: false,
+      });
+      await loadData(true);
+    } catch (err: any) {
+      alert(`बल्क एक्शन में त्रुटि: ${err.message}`);
+      setBulkActionModal(prev => ({ ...prev, isProcessing: false }));
+    }
+  };
+
   const handleExportCSV = () => {
     if (stores.length === 0) {
       alert('डाउनलोड करने के लिए कोई दुकान उपलब्ध नहीं है।');
@@ -290,6 +418,10 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
       'राज्य (State)',
       'प्लान (Subscription)',
       'प्लान स्थिति (Status)',
+      'प्रो सक्रिय तारीख',
+      'वैधता समाप्ति तारीख',
+      'शेष दिन (Days Remaining)',
+      'पिछला UTR',
       'पंजीकरण तारीख',
       'कुल ग्राहक',
       'कुल उधारी (₹)',
@@ -305,6 +437,10 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
       `"${(store.address?.state || 'Chhattisgarh').replace(/"/g, '""')}"`,
       `"${store.subscription.plan}"`,
       `"${store.subscription.status}"`,
+      `"${store.subscription.startDate ? new Date(store.subscription.startDate).toLocaleDateString('hi-IN') : ''}"`,
+      `"${store.subscription.planExpiryDate ? new Date(store.subscription.planExpiryDate).toLocaleDateString('hi-IN') : ''}"`,
+      store.subscription.daysRemaining ?? '',
+      `"${store.latestClaim ? store.latestClaim.utrNumber : ''}"`,
       `"${new Date(store.createdAt).toLocaleDateString('hi-IN')}"`,
       store.customerCount,
       store.totalDebt,
@@ -618,6 +754,65 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
               </div>
             )}
 
+            {/* Universal Bulk Controls Bar */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-stone-900 via-stone-900 to-stone-950 text-white border border-amber-500/40 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500 text-stone-950 font-black shrink-0">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-stone-100 flex items-center gap-1.5">
+                    <span>मास्टर ऑपरेशन्स (Universal Store & Pro Controls)</span>
+                  </div>
+                  <div className="text-[11px] text-amber-300 font-medium">
+                    सभी दुकानों के प्रो प्लान व खाता स्थिति को 1-क्लिक में सुरक्षित रूप से नियंत्रित करें
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={() => triggerBulkActionModal('PAUSE_ALL')}
+                  className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/50 text-xs font-bold cursor-pointer active:scale-95 transition flex items-center gap-1.5"
+                  title="सभी सक्रिय प्रो दुकानों का प्लान रोकें (बचे दिन फ्रीज होंगे)"
+                >
+                  <Pause className="w-3.5 h-3.5 text-amber-400" />
+                  <span>सभी प्रो रोकें</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => triggerBulkActionModal('RESUME_ALL')}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold cursor-pointer active:scale-95 transition flex items-center gap-1.5 shadow-xs"
+                  title="सभी रुके हुए प्रो दुकानों का प्लान पुनः सक्रिय करें"
+                >
+                  <Play className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>सभी प्रो चालू करें</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => triggerBulkActionModal('SUSPEND_ALL')}
+                  className="px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-700/80 text-xs font-bold cursor-pointer active:scale-95 transition flex items-center gap-1.5"
+                  title="सभी स्टोर खातों को निलंबित करें"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                  <span>सभी निलंबित</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => triggerBulkActionModal('ACTIVATE_ALL')}
+                  className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-emerald-400 border border-emerald-600 text-xs font-bold cursor-pointer active:scale-95 transition flex items-center gap-1.5"
+                  title="सभी स्टोर खातों को पुनः सक्रिय करें"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>सभी सक्रिय</span>
+                </button>
+              </div>
+            </div>
+
             {/* Stores Directory & Controls */}
             <div className="village-card p-4 rounded-3xl bg-white border border-amber-200 shadow-2xs space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
@@ -626,7 +821,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                     पंजीकृत किराना दुकानें ({stores.length})
                   </h2>
                   <p className="text-xs text-stone-500 m-0 font-medium">
-                    दुकान संचालक, प्लान अपग्रेड व रिमोट खाता प्रबंधन
+                    दुकान संचालक, प्रो प्लान उलटी गिनती, UTR व रिमोट खाता प्रबंधन
                   </p>
                 </div>
 
@@ -642,18 +837,30 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                     <span>CSV डाउनलोड</span>
                   </button>
 
-                  {/* Filter Tabs: All, Pro, Free */}
-                  <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
+                  {/* Filter Tabs: All, Pro, Expiring Soon, Paused, Expired, Free */}
+                  <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl flex-wrap">
                     {[
-                      { id: 'ALL', label: 'सभी' },
-                      { id: 'PRO', label: '🚀 प्रो प्लान' },
-                      { id: 'FREE', label: '🌾 स्टार्टर' },
+                      { id: 'ALL', label: `सभी (${stores.length})` },
+                      { id: 'PRO', label: `🚀 प्रो (${stores.filter(s => s.subscription.plan === 'PRO').length})` },
+                      { 
+                        id: 'EXPIRING_SOON', 
+                        label: `🔥 7 दिन में समाप्त (${stores.filter(s => s.subscription.plan === 'PRO' && s.subscription.status === 'ACTIVE' && s.subscription.daysRemaining !== undefined && s.subscription.daysRemaining <= 7 && s.subscription.daysRemaining > 0).length})` 
+                      },
+                      { 
+                        id: 'PAUSED', 
+                        label: `⏸️ रुके हुए (${stores.filter(s => s.subscription.plan === 'PRO' && s.subscription.status === 'PAUSED').length})` 
+                      },
+                      { 
+                        id: 'EXPIRED', 
+                        label: `⌛ समाप्त (${stores.filter(s => s.subscription.plan === 'PRO' && (s.subscription.status === 'EXPIRED' || (s.subscription.daysRemaining !== undefined && s.subscription.daysRemaining <= 0))).length})` 
+                      },
+                      { id: 'FREE', label: `🌾 स्टार्टर (${stores.filter(s => s.subscription.plan === 'FREE').length})` },
                     ].map(tab => (
                       <button
                         key={tab.id}
-                        onClick={() => setSelectedPlan(tab.id)}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all ${
-                          selectedPlan === tab.id
+                        onClick={() => setExpiryFilter(tab.id as any)}
+                        className={`text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+                          expiryFilter === tab.id
                             ? 'bg-white text-stone-900 shadow-2xs'
                             : 'text-stone-600 hover:text-stone-900'
                         }`}
@@ -699,134 +906,262 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {stores.map(store => {
-                    const isPro = store.subscription.plan === 'PRO';
-                    return (
-                      <div
-                        key={store.id}
-                        className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
-                          store.isActive
-                            ? 'bg-[#faf8f3] border-amber-200/80 hover:border-amber-300'
-                            : 'bg-stone-100 border-stone-300 opacity-75'
-                        }`}
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-base font-black text-stone-950 m-0">
-                                {store.storeName}
-                              </h3>
-                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
-                                isPro
-                                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                                  : 'bg-amber-100 text-amber-900 border-amber-300'
-                              }`}>
-                                {isPro ? '🚀 ग्रामिन प्रो (PRO)' : '🌾 गाँव स्टार्टर (FREE)'}
-                              </span>
-                              {!store.isActive && (
-                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300">
-                                  ⛔ निलंबित (Suspended)
+                  {stores
+                    .filter(store => {
+                      if (expiryFilter === 'PRO') return store.subscription.plan === 'PRO';
+                      if (expiryFilter === 'EXPIRING_SOON') {
+                        return store.subscription.plan === 'PRO' && 
+                               store.subscription.status === 'ACTIVE' && 
+                               store.subscription.daysRemaining !== undefined && 
+                               store.subscription.daysRemaining <= 7 && 
+                               store.subscription.daysRemaining > 0;
+                      }
+                      if (expiryFilter === 'PAUSED') return store.subscription.plan === 'PRO' && store.subscription.status === 'PAUSED';
+                      if (expiryFilter === 'EXPIRED') {
+                        return store.subscription.plan === 'PRO' && 
+                               (store.subscription.status === 'EXPIRED' || (store.subscription.daysRemaining !== undefined && store.subscription.daysRemaining <= 0));
+                      }
+                      if (expiryFilter === 'FREE') return store.subscription.plan === 'FREE';
+                      return true;
+                    })
+                    .map(store => {
+                      const isPro = store.subscription.plan === 'PRO';
+                      return (
+                        <div
+                          key={store.id}
+                          className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                            store.isActive
+                              ? store.subscription.status === 'PAUSED'
+                                ? 'bg-blue-50/40 border-blue-200 hover:border-blue-300'
+                                : 'bg-[#faf8f3] border-amber-200/80 hover:border-amber-300'
+                              : 'bg-stone-100 border-stone-300 opacity-75'
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-base font-black text-stone-950 m-0">
+                                  {store.storeName}
+                                </h3>
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                                  isPro
+                                    ? store.subscription.status === 'PAUSED'
+                                      ? 'bg-blue-100 text-blue-900 border-blue-300'
+                                      : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                    : 'bg-amber-100 text-amber-900 border-amber-300'
+                                }`}>
+                                  {isPro 
+                                    ? store.subscription.status === 'PAUSED'
+                                      ? '⏸️ प्रो रुका हुआ (PAUSED)'
+                                      : '🚀 ग्रामिन प्रो (PRO)' 
+                                    : '🌾 गाँव स्टार्टर (FREE)'
+                                  }
                                 </span>
-                              )}
-                            </div>
+                                {!store.isActive && (
+                                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300">
+                                    ⛔ निलंबित (Suspended)
+                                  </span>
+                                )}
+                              </div>
 
-                            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-600 font-medium">
-                              <span className="flex items-center gap-1">
-                                <Users className="w-3.5 h-3.5 text-stone-400" />
-                                {store.ownerName}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Phone className="w-3.5 h-3.5 text-stone-400" />
-                                {store.phone}
-                              </span>
-                              {store.address?.district && (
+                              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-600 font-medium">
                                 <span className="flex items-center gap-1">
-                                  <MapPin className="w-3.5 h-3.5 text-stone-400" />
-                                  {store.address.district}
+                                  <Users className="w-3.5 h-3.5 text-stone-400" />
+                                  {store.ownerName}
                                 </span>
+                                <span className="flex items-center gap-1">
+                                  <Phone className="w-3.5 h-3.5 text-stone-400" />
+                                  {store.phone}
+                                </span>
+                                {store.address?.district && (
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="w-3.5 h-3.5 text-stone-400" />
+                                    {store.address.district}
+                                  </span>
+                                )}
+                                <span className="text-[11px] text-stone-400">
+                                  पंजीकृत: {new Date(store.createdAt).toLocaleDateString('hi-IN')}
+                                </span>
+                              </div>
+
+                              {/* Pro Subscription Details & Countdown */}
+                              {isPro && (
+                                <div className="mt-2.5 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/90 text-xs space-y-1.5">
+                                  <div className="flex items-center justify-between gap-2 flex-wrap font-bold">
+                                    <div className="flex items-center gap-1.5">
+                                      <Crown className="w-3.5 h-3.5 text-amber-600" />
+                                      <span className="text-amber-950 font-black">
+                                        सक्रिय तारीख: {store.subscription.startDate ? new Date(store.subscription.startDate).toLocaleDateString('hi-IN') : new Date(store.createdAt).toLocaleDateString('hi-IN')}
+                                      </span>
+                                    </div>
+
+                                    {/* Days Remaining Countdown Badge */}
+                                    {store.subscription.status === 'PAUSED' ? (
+                                      <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-blue-100 text-blue-900 border border-blue-300 flex items-center gap-1">
+                                        <Pause className="w-3 h-3 text-blue-700" />
+                                        <span>⏸️ प्रो फ्रीज ({store.subscription.daysRemaining || 0} दिन सुरक्षित)</span>
+                                      </span>
+                                    ) : (store.subscription.daysRemaining !== undefined && store.subscription.daysRemaining <= 0) ? (
+                                      <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-900 border border-rose-300">
+                                        ⌛ समाप्त (Expired)
+                                      </span>
+                                    ) : (store.subscription.daysRemaining !== undefined && store.subscription.daysRemaining <= 7) ? (
+                                      <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-amber-200 text-amber-950 border border-amber-400 animate-pulse">
+                                        ⚠️ {store.subscription.daysRemaining === 1 ? 'आज समाप्त हो रहा है' : `${store.subscription.daysRemaining} दिन शेष (नवीनीकरण निकट)`}
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                        ✓ {store.subscription.daysRemaining} दिन बाकी
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-[11px] text-stone-600 flex-wrap gap-2 pt-1 border-t border-amber-200/60">
+                                    <span>
+                                      📅 <strong>वैधता समाप्ति:</strong> {store.subscription.planExpiryDate ? new Date(store.subscription.planExpiryDate).toLocaleDateString('hi-IN') : 'असीमित'}
+                                    </span>
+                                    {store.latestClaim ? (
+                                      <span className="text-stone-700 font-mono bg-white px-2 py-0.5 rounded-md border border-stone-200">
+                                        UTR: <strong>{store.latestClaim.utrNumber}</strong> (₹{store.latestClaim.amount})
+                                      </span>
+                                    ) : (
+                                      <span className="text-stone-500 italic">
+                                        💼 नकद / मैन्युअल सक्रियण
+                                      </span>
+                                    )}
+                                    {store.subscription.pauseReason && (
+                                      <span className="text-rose-700 font-medium">
+                                        रोकने का कारण: {store.subscription.pauseReason}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               )}
-                              <span className="text-[11px] text-stone-400">
-                                पंजीकृत: {new Date(store.createdAt).toLocaleDateString('hi-IN')}
-                              </span>
+
+                              {/* Store Business Metrics Preview */}
+                              <div className="mt-2 flex items-center gap-3 flex-wrap text-xs">
+                                <div className="bg-white px-2.5 py-1 rounded-lg border border-stone-200">
+                                  <span className="text-stone-500 text-[11px]">कुल ग्राहक: </span>
+                                  <span className="font-bold text-stone-900">{store.customerCount}</span>
+                                </div>
+                                <div className="bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                                  <span className="text-rose-700 text-[11px]">कुल उधारी: </span>
+                                  <span className="font-black text-rose-900">{formatINR(store.totalDebt)}</span>
+                                </div>
+                              </div>
                             </div>
 
-                            {/* Store Business Metrics Preview */}
-                            <div className="mt-2.5 flex items-center gap-3 flex-wrap text-xs">
-                              <div className="bg-white px-2.5 py-1 rounded-lg border border-stone-200">
-                                <span className="text-stone-500 text-[11px]">कुल ग्राहक: </span>
-                                <span className="font-bold text-stone-900">{store.customerCount}</span>
-                              </div>
-                              <div className="bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
-                                <span className="text-rose-700 text-[11px]">कुल उधारी: </span>
-                                <span className="font-black text-rose-900">{formatINR(store.totalDebt)}</span>
-                              </div>
-                            </div>
-                          </div>
+                            {/* Quick Admin Actions */}
+                            <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200">
+                              {/* WhatsApp Direct Contact Button */}
+                              <a
+                                href={buildWhatsAppUrl(
+                                  store.phone, 
+                                  `नमस्कार ${store.ownerName} जी, मैं ग्रामीण किराना एडमिन टीम से संपर्क कर रहा हूँ। आपकी दुकान '${store.storeName}' के संदर्भ में सहायता हेतु उपलब्ध हूँ।`
+                                )}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer active:scale-95 transition-all shadow-xs"
+                                title="व्हाट्सएप पर सहायता संदेश भेजें"
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                              </a>
 
-                          {/* Quick Admin Actions */}
-                          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200">
-                            {/* WhatsApp Direct Contact Button */}
-                            <a
-                              href={buildWhatsAppUrl(
-                                store.phone, 
-                                `नमस्कार ${store.ownerName} जी, मैं ग्रामीण किराना एडमिन टीम से संपर्क कर रहा हूँ। आपकी दुकान '${store.storeName}' के संदर्भ में सहायता हेतु उपलब्ध हूँ।`
+                              {/* WhatsApp Renewal Reminder Button (if expiring soon <= 7 days) */}
+                              {isPro && store.subscription.daysRemaining !== undefined && store.subscription.daysRemaining <= 7 && store.subscription.status !== 'PAUSED' && (
+                                <a
+                                  href={buildWhatsAppUrl(
+                                    store.phone,
+                                    `नमस्कार ${store.ownerName} जी, आपकी दुकान '${store.storeName}' का ग्रामिन प्रो प्लान ${store.subscription.daysRemaining === 1 ? 'आज' : `${store.subscription.daysRemaining} दिनों में`} समाप्त हो रहा है। बिना किसी रुकावट के डिजिटल खाता व बैकअप चालू रखने के लिए कृपया समय रहते प्रो नवीनीकरण करें। सहायता के लिए संपर्क करें।`
+                                  )}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs cursor-pointer active:scale-95 transition-all shadow-xs flex items-center gap-1"
+                                  title="दुकानदार को व्हाट्सएप पर नवीनीकरण तगादा भेजें"
+                                >
+                                  <Bell className="w-3.5 h-3.5" />
+                                  <span>तगादा</span>
+                                </a>
                               )}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer active:scale-95 transition-all shadow-xs"
-                              title="व्हाट्सएप पर सहायता संदेश भेजें"
-                            >
-                              <MessageSquare className="w-4 h-4" />
-                            </a>
 
-                            {/* Plan Upgrade / Downgrade Button */}
-                            <button
-                              onClick={() => handleSubscriptionToggle(store)}
-                              className={`text-xs font-bold px-3 py-2 rounded-xl cursor-pointer active:scale-95 transition-all shadow-xs border ${
-                                isPro
-                                  ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
-                                  : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-700'
-                              }`}
-                              title={isPro ? 'प्लान डाउनग्रेड या नवीनीकरण करें' : 'प्रो प्लान में अपग्रेड करें'}
-                            >
-                              {isPro ? 'नवीनीकरण / बदलें' : 'प्रो में अपग्रेड'}
-                            </button>
+                              {/* Pro Pause / Resume Button */}
+                              {isPro && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleStorePause(store)}
+                                  className={`text-xs font-bold px-2.5 py-2 rounded-xl cursor-pointer active:scale-95 transition-all shadow-xs border flex items-center gap-1 ${
+                                    store.subscription.status === 'PAUSED'
+                                      ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-700'
+                                      : 'bg-stone-800 hover:bg-stone-700 text-amber-300 border-stone-700'
+                                  }`}
+                                  title={store.subscription.status === 'PAUSED' ? 'प्रो पुनः चालू करें' : 'प्रो अस्थायी रूप से रोकें (दिन फ्रीज होंगे)'}
+                                >
+                                  {store.subscription.status === 'PAUSED' ? (
+                                    <>
+                                      <Play className="w-3.5 h-3.5" />
+                                      <span>प्रो चालू</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Pause className="w-3.5 h-3.5" />
+                                      <span>प्रो रोकें</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
 
-                            {/* Suspend / Re-activate Button */}
-                            <button
-                              onClick={() => handleToggleStoreStatus(store)}
-                              className={`text-xs font-bold px-2.5 py-2 rounded-xl cursor-pointer active:scale-95 transition-all border ${
-                                store.isActive
-                                  ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                              }`}
-                              title={store.isActive ? 'खाता निलंबित करें' : 'खाता पुनः सक्रिय करें'}
-                            >
-                              {store.isActive ? 'निलंबित करें' : 'सक्रिय करें'}
-                            </button>
+                              {/* Plan Upgrade / Downgrade Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleSubscriptionToggle(store)}
+                                className={`text-xs font-bold px-3 py-2 rounded-xl cursor-pointer active:scale-95 transition-all shadow-xs border ${
+                                  isPro
+                                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
+                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-700'
+                                }`}
+                                title={isPro ? 'प्लान डाउनग्रेड या नवीनीकरण करें' : 'प्रो प्लान में अपग्रेड करें'}
+                              >
+                                {isPro ? 'नवीनीकरण' : 'प्रो अपग्रेड'}
+                              </button>
 
-                            {/* PIN Reset Helpline Button */}
-                            <button
-                              onClick={() => handleResetPin(store)}
-                              className="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 cursor-pointer active:scale-95 transition-all"
-                              title="दुकानदार का गुप्त 4-अंकों का PIN रीसेट करें"
-                            >
-                              <KeyRound className="w-4 h-4" />
-                            </button>
+                              {/* Suspend / Re-activate Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStoreStatus(store)}
+                                className={`text-xs font-bold px-2.5 py-2 rounded-xl cursor-pointer active:scale-95 transition-all border ${
+                                  store.isActive
+                                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                                }`}
+                                title={store.isActive ? 'खाता निलंबित करें' : 'खाता पुनः सक्रिय करें'}
+                              >
+                                {store.isActive ? 'निलंबित' : 'सक्रिय'}
+                              </button>
 
-                            {/* Safe Store Delete Button */}
-                            <button
-                              onClick={() => handleDeleteStore(store)}
-                              className="p-2 rounded-xl bg-stone-50 hover:bg-rose-50 text-stone-400 hover:text-rose-700 border border-stone-200 hover:border-rose-300 cursor-pointer active:scale-95 transition-all"
-                              title="टेस्ट / निष्क्रिय दुकान हटाएं"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                              {/* PIN Reset Helpline Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleResetPin(store)}
+                                className="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 cursor-pointer active:scale-95 transition-all"
+                                title="दुकानदार का गुप्त 4-अंकों का PIN रीसेट करें"
+                              >
+                                <KeyRound className="w-4 h-4" />
+                              </button>
+
+                              {/* Safe Store Delete Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteStore(store)}
+                                className="p-2 rounded-xl bg-stone-50 hover:bg-rose-50 text-stone-400 hover:text-rose-700 border border-stone-200 hover:border-rose-300 cursor-pointer active:scale-95 transition-all"
+                                title="टेस्ट / निष्क्रिय दुकान हटाएं"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -1630,6 +1965,196 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                   className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
                 >
                   अस्वीकृत करें
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 6. Single Store Pause Modal */}
+        {pauseModal.isOpen && pauseModal.store && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-stone-200 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-black">
+                    <Pause className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-stone-900">प्रो प्लान रोकें (Pause Pro)</h3>
+                    <p className="text-[11px] text-stone-500 font-medium">{pauseModal.store.storeName}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPauseModal({ isOpen: false, store: null, reason: '' })}
+                  className="text-stone-400 hover:text-stone-700 p-1.5 rounded-xl hover:bg-stone-100 text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Day Preservation Guarantee Banner */}
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 text-xs text-blue-900 space-y-1">
+                <div className="flex items-center gap-1.5 font-black text-blue-950">
+                  <Zap className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>शून्य दिन नुकसान गारंटी (Zero-Day-Loss)</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-blue-800">
+                  वर्तमान में <strong>{pauseModal.store.daysRemaining ?? 0} दिन</strong> शेष हैं। प्लान रोकने पर यह दिन सुरक्षित (Freeze) रहेंगे। जब आप प्रो पुनः चालू करेंगे, तो यह दिन उस दिन से आगे जुड़ जाएंगे।
+                </p>
+              </div>
+
+              {/* Pause Reason Options */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-stone-700">रोकने का कारण चुनें:</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                  {[
+                    'दुकानदार का अनुरोध',
+                    'भुगतान सत्यापन लंबित',
+                    'दुकान अस्थायी बंद',
+                    'तकनीकी रखरखाव',
+                  ].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setPauseModal(prev => ({ ...prev, reason: r }))}
+                      className={`text-left p-2 rounded-xl border text-xs cursor-pointer transition ${
+                        pauseModal.reason === r
+                          ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold shadow-xs'
+                          : 'border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-700'
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="pt-1">
+                  <label className="block text-[11px] font-bold text-stone-600 mb-1">अन्य या विवरण (वैकल्पिक):</label>
+                  <input
+                    type="text"
+                    value={pauseModal.reason}
+                    onChange={(e) => setPauseModal(prev => ({ ...prev, reason: e.target.value }))}
+                    placeholder="कारण लिखें..."
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setPauseModal({ isOpen: false, store: null, reason: '' })}
+                  className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  रद्द करें
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmPauseStore}
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
+                >
+                  <Pause className="w-3.5 h-3.5" />
+                  <span>प्रो रोकें (Confirm Pause)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 7. Universal Bulk Action Confirmation Modal */}
+        {bulkActionModal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-stone-200 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div className="flex items-center gap-2">
+                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center font-black ${
+                    bulkActionModal.action?.includes('SUSPEND')
+                      ? 'bg-rose-100 text-rose-800'
+                      : bulkActionModal.action?.includes('PAUSE')
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    <Sliders className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-stone-900">{bulkActionModal.title}</h3>
+                    <p className="text-[11px] text-stone-500 font-medium">यूनिवर्सल बल्क ऑपरेशन</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBulkActionModal(prev => ({ ...prev, isOpen: false }))}
+                  className="text-stone-400 hover:text-stone-700 p-1.5 rounded-xl hover:bg-stone-100 text-sm font-bold"
+                  disabled={bulkActionModal.isProcessing}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Action Description */}
+              <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3 text-xs text-stone-800 space-y-1">
+                <p className="text-xs leading-relaxed font-medium">
+                  {bulkActionModal.desc}
+                </p>
+                <div className="text-[11px] text-stone-500 flex items-center gap-1 pt-1">
+                  <span>प्रभावित संख्या:</span>
+                  <span className="font-bold text-stone-800">
+                    {bulkActionModal.action?.includes('PAUSE')
+                      ? `${stores.filter(s => s.subscription?.plan === 'PRO' && s.subscription?.status === 'ACTIVE').length} सक्रिय प्रो स्टोर`
+                      : bulkActionModal.action?.includes('RESUME')
+                      ? `${stores.filter(s => s.subscription?.plan === 'PRO' && s.subscription?.status === 'PAUSED').length} रुके हुए प्रो स्टोर`
+                      : `${stores.length} कुल स्टोर`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Reason input for Pause All */}
+              {bulkActionModal.action === 'PAUSE_ALL' && (
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-stone-700">रोकने का कारण (Reason):</label>
+                  <input
+                    type="text"
+                    value={bulkActionModal.reason}
+                    onChange={(e) => setBulkActionModal(prev => ({ ...prev, reason: e.target.value }))}
+                    placeholder="उदा. सर्वर अपग्रेड, आपातकालीन रखरखाव..."
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs focus:outline-none focus:border-amber-500 font-medium"
+                  />
+                </div>
+              )}
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setBulkActionModal(prev => ({ ...prev, isOpen: false }))}
+                  disabled={bulkActionModal.isProcessing}
+                  className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-50 cursor-pointer disabled:opacity-50"
+                >
+                  रद्द करें
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExecuteBulkAction}
+                  disabled={bulkActionModal.isProcessing}
+                  className={`px-4 py-2 rounded-xl text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 disabled:opacity-50 ${
+                    bulkActionModal.action?.includes('SUSPEND')
+                      ? 'bg-rose-600 hover:bg-rose-700'
+                      : bulkActionModal.action?.includes('PAUSE')
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+                >
+                  {bulkActionModal.isProcessing ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>प्रक्रिया जारी...</span>
+                    </>
+                  ) : (
+                    <span>हाँ, क्रियान्वित करें</span>
+                  )}
                 </button>
               </div>
             </div>
