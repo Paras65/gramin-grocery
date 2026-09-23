@@ -310,8 +310,9 @@ export const KhataLedger: React.FC = () => {
       .filter(t => t.type === 'JAMA')
       .reduce((sum, t) => sum + t.amount, 0);
 
+    const store = syncService.getStoreInfo();
     await printCustomerStatement({
-      storeName: 'ग्रामीण किराना स्टोर',
+      storeName: store?.storeName || (store as any)?.name || 'ग्रामीण किराना स्टोर',
       date: new Date().toLocaleDateString('hi-IN'),
       customerName: customer.name,
       customerPara: customer.para,

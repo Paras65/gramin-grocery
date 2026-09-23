@@ -1455,8 +1455,10 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
               <button
                 onClick={async () => {
                   if (!lastCompletedBill) return;
+                  const store = syncService.getStoreInfo();
                   await printReceipt({
-                    storeName: 'ग्रामीण किराना',
+                    storeName: store?.storeName || (store as any)?.name || 'ग्रामीण किराना',
+                    storeAddress: store?.village ? `गाँव: ${store.village}` : undefined,
                     date: new Date(lastCompletedBill.timestamp).toLocaleDateString('hi-IN'),
                     time: new Date(lastCompletedBill.timestamp).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }),
                     items: lastCompletedBill.items.map(it => ({

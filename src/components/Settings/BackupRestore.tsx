@@ -10,7 +10,11 @@ import {
   disconnectBluetoothPrinter,
   subscribePrinterStatus,
   isBluetoothPrinterConnected,
-  getConnectedPrinterName
+  getConnectedPrinterName,
+  getPaperWidth,
+  setPaperWidth,
+  printTestReceipt,
+  type PaperWidth
 } from '../../utils/thermalPrint';
 
 export const BackupRestore: React.FC = () => {
@@ -26,9 +30,11 @@ export const BackupRestore: React.FC = () => {
   // Printer slip customization
   const [receiptHeader, setReceiptHeader] = useState(() => localStorage.getItem('gk_receipt_header') || '');
   const [receiptFooter, setReceiptFooter] = useState(() => localStorage.getItem('gk_receipt_footer') || '');
+  const [paperWidth, setPaperWidthState] = useState<PaperWidth>(() => getPaperWidth());
   const [printerConnected, setPrinterConnected] = useState(isBluetoothPrinterConnected());
   const [printerName, setPrinterName] = useState(getConnectedPrinterName());
   const [isConnectingPrinter, setIsConnectingPrinter] = useState(false);
+  const [isTestPrinting, setIsTestPrinting] = useState(false);
 
   // PWA install state
   const [canInstallPwa, setCanInstallPwa] = useState(pwaService.canInstall());
@@ -86,6 +92,30 @@ export const BackupRestore: React.FC = () => {
       unsubPwa();
     };
   }, []);
+
+  const handlePaperWidthChange = (w: PaperWidth) => {
+    setPaperWidthState(w);
+    setPaperWidth(w);
+    setStatusMessage(`✅ प्रिंटर पेपर साइज़ ${w} सेट हो गया!`);
+    setTimeout(() => setStatusMessage(''), 3000);
+  };
+
+  const handleTestPrint = async () => {
+    setIsTestPrinting(true);
+    try {
+      const mode = await printTestReceipt();
+      if (mode === 'bluetooth') {
+        setStatusMessage('✅ टेस्ट पर्ची ब्लूटूथ प्रिंटर पर छप रही है!');
+      } else {
+        setStatusMessage('✅ टेस्ट पर्ची ब्राउज़र प्रिंट विंडो में खुल गई है!');
+      }
+    } catch {
+      setStatusMessage('❌ टेस्ट पर्ची प्रिंट करने में त्रुटि हुई।');
+    } finally {
+      setIsTestPrinting(false);
+      setTimeout(() => setStatusMessage(''), 4000);
+    }
+  };
 
   const handleSaveReceiptSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -552,9 +582,9 @@ export const BackupRestore: React.FC = () => {
 
     {/* Thermal Printer Settings Card */}
     <div className="village-card rounded-3xl p-5 sm:p-6 bg-white shadow-2xs space-y-4 border border-amber-300/70">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="p-2.5 rounded-2xl bg-amber-100 text-amber-900">
+          <div className="p-2.5 rounded-2xl bg-amber-100 text-amber-900 shrink-0">
             <Printer className="w-5 h-5" />
           </div>
           <div>
@@ -562,7 +592,7 @@ export const BackupRestore: React.FC = () => {
               प्रिंटर व पर्ची सेटिंग्स (Thermal Printer)
             </h3>
             <p className="text-xs text-stone-600 m-0 mt-0.5 font-medium">
-              58mm/80mm ब्लूटूथ प्रिंटर कनेक्शन व बिल पर्ची का संदेश बदलें
+              58mm/80mm ब्लूटूथ प्रिंटर कनेक्शन, रोल साइज़ व बिल पर्ची का संदेश बदलें
             </p>
           </div>
         </div>
@@ -597,7 +627,47 @@ export const BackupRestore: React.FC = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSaveReceiptSettings} className="space-y-3 pt-2">
+      {/* Paper Size Selector (58mm vs 80mm) */}
+      <div className="pt-1">
+        <label className="block text-xs font-bold text-stone-700 mb-1.5">
+          प्रिंटर रोल साइज़ (Paper Roll Width):
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => handlePaperWidthChange('58mm')}
+            className={`p-3 rounded-2xl border text-left flex flex-col gap-0.5 cursor-pointer transition ${
+              paperWidth === '58mm'
+                ? 'bg-amber-100/80 border-amber-500 text-stone-900 shadow-2xs'
+                : 'bg-[#faf8f3] border-stone-200 text-stone-600 hover:border-amber-300'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black">58mm (मानक छोटा रोल)</span>
+              {paperWidth === '58mm' && <CheckCircle2 className="w-4 h-4 text-amber-700" />}
+            </div>
+            <span className="text-[11px] text-stone-500">पॉकेट, बेल्ट-क्लिप व पोर्टेबल थर्मल प्रिंटर (32 अक्षर)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handlePaperWidthChange('80mm')}
+            className={`p-3 rounded-2xl border text-left flex flex-col gap-0.5 cursor-pointer transition ${
+              paperWidth === '80mm'
+                ? 'bg-amber-100/80 border-amber-500 text-stone-900 shadow-2xs'
+                : 'bg-[#faf8f3] border-stone-200 text-stone-600 hover:border-amber-300'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black">80mm (बड़ा चौड़ा रोल)</span>
+              {paperWidth === '80mm' && <CheckCircle2 className="w-4 h-4 text-amber-700" />}
+            </div>
+            <span className="text-[11px] text-stone-500">काउंटर डेस्कटॉप व हैवी-ड्यूटी प्रिंटर (42 अक्षर)</span>
+          </button>
+        </div>
+      </div>
+
+      <form onSubmit={handleSaveReceiptSettings} className="space-y-3 pt-1">
         <div>
           <label className="block text-xs font-bold text-stone-700 mb-1">
             दुकान का स्लोगन / जीएसटी / पता (पर्ची के ऊपर छपेगा):
@@ -624,10 +694,73 @@ export const BackupRestore: React.FC = () => {
           />
         </div>
 
-        <div className="flex justify-end pt-1">
+        {/* Live Thermal Receipt Preview */}
+        <div className="p-3.5 rounded-2xl bg-[#f7f5ee] border border-amber-200/70 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
+              <span>🧾 सजीव पर्ची पूर्वावलोकन (Live Preview)</span>
+              <span className="text-[10px] font-black text-amber-900 bg-amber-200/80 px-1.5 py-0.5 rounded-md">
+                {paperWidth}
+              </span>
+            </span>
+            <span className="text-[10px] text-stone-500 font-medium">वास्तविक पेपर जैसा</span>
+          </div>
+
+          <div
+            className={`mx-auto bg-white p-3.5 rounded-xl shadow-xs border border-stone-300 font-mono text-stone-900 text-[11px] space-y-1.5 ${
+              paperWidth === '80mm' ? 'max-w-[320px]' : 'max-w-[240px]'
+            }`}
+          >
+            <div className="text-center font-black text-xs leading-tight">
+              {syncService.getStoreInfo()?.storeName || (syncService.getStoreInfo() as any)?.name || 'माँ दुर्गा किराना स्टोर्स'}
+            </div>
+            {receiptHeader ? (
+              <div className="text-center text-[10px] text-stone-600 border-b border-dashed border-stone-300 pb-1 leading-snug">
+                {receiptHeader}
+              </div>
+            ) : (
+              <div className="text-center text-[10px] text-stone-400 italic border-b border-dashed border-stone-300 pb-1">
+                [यहाँ आपका शीर्ष स्लोगन छपेगा]
+              </div>
+            )}
+            <div className="text-[9px] text-stone-500 text-center py-0.5">
+              {new Date().toLocaleDateString('hi-IN')} &nbsp; 10:30 पूर्वाह्न
+            </div>
+            <div className="border-b border-dashed border-stone-300"></div>
+            <div className="flex justify-between text-[10px]">
+              <span>पारले-जी बिस्कुट x2</span>
+              <span>₹20</span>
+            </div>
+            <div className="flex justify-between text-[10px]">
+              <span>सरसों तेल (1kg)</span>
+              <span>₹135</span>
+            </div>
+            <div className="border-b border-dashed border-stone-300"></div>
+            <div className="flex justify-between font-black text-[11px]">
+              <span>कुल देय:</span>
+              <span>₹155</span>
+            </div>
+            <div className="border-b border-dashed border-stone-300"></div>
+            <div className="text-center text-[10px] text-stone-700 pt-0.5 leading-snug">
+              {receiptFooter || 'धन्यवाद! फिर पधारें 🙏'}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2">
+          <button
+            type="button"
+            onClick={handleTestPrint}
+            disabled={isTestPrinting}
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-stone-300 hover:border-amber-500 bg-white hover:bg-stone-50 text-stone-800 text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition shadow-2xs active:scale-95 disabled:opacity-60"
+          >
+            <Printer className="w-3.5 h-3.5 text-amber-600" />
+            <span>{isTestPrinting ? 'प्रिंट हो रहा है...' : '🧪 टेस्ट पर्ची प्रिंट'}</span>
+          </button>
+
           <button
             type="submit"
-            className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-amber-300 text-xs font-bold cursor-pointer transition shadow-xs active:scale-95"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-amber-300 text-xs font-black cursor-pointer transition shadow-xs active:scale-95"
           >
             पर्ची संदेश सेव करें
           </button>

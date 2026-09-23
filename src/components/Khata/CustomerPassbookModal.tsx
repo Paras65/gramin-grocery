@@ -28,7 +28,7 @@ export const CustomerPassbookModal: React.FC<CustomerPassbookModalProps> = ({
   isStandalone = false,
 }) => {
   const storeInfo = syncService.getStoreInfo();
-  const storeName = storeInfo?.storeName || 'ग्रामीण किराना स्टोर';
+  const storeName = storeInfo?.storeName || (storeInfo as any)?.name || 'ग्रामीण किराना स्टोर';
   const village = storeInfo?.village || 'छत्तीसगढ़';
   const storeUpi = localStorage.getItem('gk_store_upi_id') || '';
 

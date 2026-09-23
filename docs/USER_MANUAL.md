@@ -80,12 +80,14 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
     - [1-Click WhatsApp Day Summary (व्हाट्सएप पर दिन सारांश)](#1-click-whatsapp-day-summary-व्हाट्सएप-पर-दिन-सारांश)
     - [Past Cash Drawer Archive & Historical Slips (पिछला गल्ला इतिहास व पुरानी पर्ची)](#past-cash-drawer-archive--historical-slips-पिछला-गल्ला-इतिहास-व-पुरानी-पर्ची)
     - [Automated 30-Day Storage Maintenance (स्वचालित 30-दिन बैकग्राउंड सफाई)](#automated-30-day-storage-maintenance-स्वचालित-30-दिन-बैकग्राउंड-सफाई)
-13. [Bluetooth Thermal Printing (ब्लूटूथ व 58mm थर्मल प्रिंटर)](#13-bluetooth-thermal-printing-ब्लूटूथ-व-58mm-थर्मल-प्रिंटर)
-    - [Connecting Inexpensive Bluetooth Printers](#connecting-inexpensive-bluetooth-printers)
+13. [Bluetooth Thermal Printing & Receipt Customization (ब्लूटूथ व थर्मल प्रिंटर पर्ची)](#13-bluetooth-thermal-printing--receipt-customization-ब्लूटूथ-व-थर्मल-प्रिंटर-पर्ची)
+    - [Connecting Inexpensive Bluetooth Printers (सस्ता ब्लूटूथ प्रिंटर जोड़ें)](#connecting-inexpensive-bluetooth-printers-सस्ता-ब्लूटूथ-प्रिंटर-जोड़ें)
+    - [58mm & 80mm Paper Width Selection (पॉकेट 58mm व काउंटर 80mm रोल चुनाव)](#58mm--80mm-paper-width-selection-पॉकेट-58mm-व-काउंटर-80mm-रोल-चुनाव)
+    - [Instant Test Print Slip (परीक्षण पर्ची प्रिंट)](#instant-test-print-slip-परीक्षण-पर्ची-प्रिंट)
+    - [Custom Receipt Slogan, Footer & Live Preview (दुकान स्लोगन व सजीव पर्ची लुक)](#custom-receipt-slogan-footer--live-preview-दुकान-स्लोगन-व-सजीव-पर्ची-लुक)
     - [Top Bar Quick Connection Indicator (शीर्ष प्रिंटर स्थिति)](#top-bar-quick-connection-indicator-शीर्ष-प्रिंटर-स्थिति)
-    - [Custom Receipt Slogan & Footer (दुकान स्लोगन व आभार संदेश)](#custom-receipt-slogan--footer-दुकान-स्लोगन-व-आभार-संदेश)
-    - [1-Click POS Bill Receipt Print](#1-click-pos-bill-receipt-print)
-    - [Daily Cash Close Summary Slip](#daily-cash-close-summary-slip)
+    - [1-Click POS Bill Receipt Print (तुरंत बिल पर्ची प्रिंट)](#1-click-pos-bill-receipt-print-तुरंत-बिल-पर्ची-प्रिंट)
+    - [Daily Cash Close Summary Slip (दैनिक गल्ला बंद पर्ची)](#daily-cash-close-summary-slip-दैनिक-गल्ला-बंद-पर्ची)
 14. [Camera Barcode Scanner (कैमरा बारकोड स्कैनर)](#14-camera-barcode-scanner-कैमरा-बारकोड-स्कैनर)
    - [1-Second Camera Item Scan (कैमरा से तुरंत बिलिंग)](#1-second-camera-item-scan-कैमरा-से-तुरंत-बिलिंग)
    - [Torch Light & Night Counter Usability (टॉर्च लाइट)](#torch-light--night-counter-usability-टॉर्च-लाइट)
@@ -575,38 +577,50 @@ Gramin Kirana is crafted with a high-contrast, authentic **Village Premium (ग�
 
 ---
 
-## 13. Bluetooth Thermal Printing (ब्लूटूथ व 58mm थर्मल प्रिंटर)
+## 13. Bluetooth Thermal Printing & Receipt Customization (ब्लूटूथ व थर्मल प्रिंटर पर्ची)
 
-Gramin Kirana connects with affordable Bluetooth and USB thermal receipt printers (such as TVS LP45 Neo, Everycom EC-58, NGX BTP-90, and common ₹1,500–₹2,500 portable 58mm printers):
+Gramin Kirana connects seamlessly with affordable Bluetooth and USB thermal receipt printers (such as TVS LP45 Neo, Everycom EC-58, NGX BTP-90, and common ₹1,500–₹2,500 portable 58mm & 80mm printers):
 
-### Connecting Inexpensive Bluetooth Printers
-1. Power on your Bluetooth thermal printer and enable Bluetooth on your phone, tablet, or laptop.
-2. In the **गल्ला हिसाब** tab, tap **🖨️ ब्लूटूथ प्रिंटर से जोड़ें**.
-3. Select your printer name from the nearby device list to pair.
-4. Once connected, a green **प्रिंटर जुड़ा ✅** indicator confirms the printer is ready for instant printing.
+### Connecting Inexpensive Bluetooth Printers (सस्ता ब्लूटूथ प्रिंटर जोड़ें)
+1. Turn on your thermal printer and enable Bluetooth on your smartphone, tablet, or laptop.
+2. In the **डेटा बैकअप व सेटिंग्स** or **गल्ला हिसाब** tab, tap **🖨️ प्रिंटर जोड़ें**.
+3. Select your printer name from the nearby device prompt to pair.
+4. Once connected, a green **प्रिंटर जुड़ा ✅** badge confirms the printer is ready for instant receipts.
+
+### 58mm & 80mm Paper Width Selection (पॉकेट 58mm व काउंटर 80mm रोल चुनाव)
+- Rural shops use two primary paper roll sizes:
+  - **58mm (मानक छोटा रोल):** Standard 2-inch portable battery/belt-clip printers (32 characters per line).
+  - **80mm (बड़ा चौड़ा रोल):** Desktop counter thermal printers (42 characters per line).
+- In **प्रिंटर व पर्ची सेटिंग्स**, select your roll size with 1 tap. Gramin Kirana automatically formats item names, quantities, and totals with optimal margins so text never clips or overlaps.
+
+### Instant Test Print Slip (परीक्षण पर्ची प्रिंट)
+- Storekeepers do not need to generate a dummy sale to check if the printer is working properly.
+- Tap **🧪 टेस्ट पर्ची प्रिंट (Test Print)** to print a sample test slip containing your store name, greeting, and item lines. This verifies ink darkness, paper roll feeding, and Bluetooth pairing in under 3 seconds.
+
+### Custom Receipt Slogan, Footer & Live Preview (दुकान स्लोगन व सजीव पर्ची लुक)
+- In the **प्रिंटर व पर्ची सेटिंग्स** section, you can customize your receipts:
+  - **शीर्ष संदेश (Header):** Add your shop slogan, proprietor name, GST, or mobile number (उदा. *"प्रो. रामप्रसाद साहू | मो. 98260XXXXX | शुद्ध व ताज़ा सामान"*). This appears directly beneath your store name on every printed bill.
+  - **निचला संदेश (Footer):** Add your customized thank-you note or return policy (उदा. *"धन्यवाद! फिर पधारें 🙏 बिका माल वापस नहीं होगा"*).
+- **सजीव पर्ची पूर्वावलोकन (Live Preview):** As you type your slogan and footer, an interactive receipt card displays the exact paper look and alignment in real time before printing.
 
 ### Top Bar Quick Connection Indicator (शीर्ष प्रिंटर स्थिति)
 - The main top header bar includes a persistent **"प्रिंटर जोड़ें / प्रिंटर कनेक्टेड"** button.
 - You can check whether your thermal printer is actively connected or reconnect with 1 tap directly from the billing counter without leaving your current sale.
 
-### Custom Receipt Slogan & Footer (दुकान स्लोगन व आभार संदेश)
-- In the **डेटा बैकअप व सेटिंग्स** section under **प्रिंटर व पर्ची सेटिंग्स**, you can customize your receipts:
-  - **शीर्ष संदेश (Header):** Add your shop slogan, proprietor name, GST, or mobile number (उदा. *"प्रो. रामप्रसाद साहू | मो. 98260XXXXX | शुद्ध व ताज़ा सामान"*). This appears directly beneath your store name on every printed bill.
-  - **निचला संदेश (Footer):** Add your customized thank-you note or return policy (उदा. *"धन्यवाद! फिर पधारें 🙏 बिका माल वापस नहीं होगा"*).
-
-### 1-Click POS Bill Receipt Print
+### 1-Click POS Bill Receipt Print (तुरंत बिल पर्ची प्रिंट)
 - Immediately upon completing any sale in the **तुरंत बिलिंग (POS)** counter, a **🖨️ पर्ची प्रिंट करें (58mm / BT)** button is displayed.
-- Tapping it sends an authentic ESC/POS thermal slip to your paired printer.
+- Tapping it sends an authentic thermal slip to your paired printer.
 - **Printed Receipt Includes:**
-  - Store Name & Custom Header Slogan & Date/Time
+  - Store Name & Village Location
+  - Custom Header Slogan & Date/Time
   - Itemized product names with loose quantities (e.g., 250g, 500g) and rates
   - Grand total and payment mode (Cash, Udhaar, or UPI)
   - For Udhaar sales: Customer name, previous balance, and updated total balance due
   - Auspicious village greeting or custom footer message
-- **Non-Bluetooth Fallback:** If no Bluetooth printer is paired, the app automatically opens the standard browser print window formatted for 58mm thermal receipt paper.
+- **Non-Bluetooth Fallback:** If no Bluetooth printer is paired, the app automatically opens the standard browser print window formatted cleanly for your selected 58mm or 80mm paper size.
 
-### Daily Cash Close Summary Slip
-- Print a permanent paper slip of the day's closing figures for physical ledger filing by tapping **🖨️ थर्मल प्रिंटर से पर्ची** in the Cash Drawer tab.
+### Daily Cash Close Summary Slip (दैनिक गल्ला बंद पर्ची)
+- Print a permanent paper slip of the day's closing figures for physical ledger filing by tapping **🖨️ थर्मल प्रिंटर से पर्ची** in the Cash Drawer tab. Includes opening float, cash sales, Khata collections, UPI sales, and physical cash match.
 
 ---
 

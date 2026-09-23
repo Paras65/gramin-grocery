@@ -48,11 +48,32 @@ function line(text: string): string {
   return text + '\n';
 }
 
-function dashes(len = 32): string {
+// ─── Paper Width & Formatting Helpers ─────────────────────────────────────────
+export type PaperWidth = '58mm' | '80mm';
+
+export function getPaperWidth(): PaperWidth {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('gk_paper_width');
+    if (saved === '80mm') return '80mm';
+  }
+  return '58mm';
+}
+
+export function setPaperWidth(width: PaperWidth): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('gk_paper_width', width);
+  }
+}
+
+export function getReceiptLineWidth(): number {
+  return getPaperWidth() === '80mm' ? 42 : 32;
+}
+
+function dashes(len = getReceiptLineWidth()): string {
   return '-'.repeat(len) + '\n';
 }
 
-function col2(left: string, right: string, width = 32): string {
+function col2(left: string, right: string, width = getReceiptLineWidth()): string {
   const gap = Math.max(1, width - left.length - right.length);
   return left + ' '.repeat(gap) + right + '\n';
 }
@@ -120,7 +141,7 @@ export interface PrintCustomerStatementData {
 
 // ─── ESC/POS Slip Builder ─────────────────────────────────────────────────────
 function buildReceiptBytes(data: PrintReceiptData): Uint8Array {
-  const W = 32; // 58mm thermal = ~32 chars per line
+  const W = getReceiptLineWidth();
   const parts: (number[] | string)[] = [];
   const isDemo = !syncService.isLoggedIn();
 
@@ -153,8 +174,9 @@ function buildReceiptBytes(data: PrintReceiptData): Uint8Array {
   parts.push(CMD.BOLD_OFF);
   parts.push(dashes(W));
 
+  const maxNameLen = W > 36 ? 26 : 18;
   for (const item of data.items) {
-    const name = item.name.substring(0, 18);
+    const name = item.name.substring(0, maxNameLen);
     const qty = `${item.quantity}${item.unit}`;
     const amt = `₹${item.total}`;
     // Item name row
@@ -216,7 +238,7 @@ function buildReceiptBytes(data: PrintReceiptData): Uint8Array {
 }
 
 function buildDaySummaryBytes(data: PrintDaySummaryData): Uint8Array {
-  const W = 32;
+  const W = getReceiptLineWidth();
   const parts: (number[] | string)[] = [];
 
   parts.push(CMD.INIT);
@@ -280,7 +302,7 @@ function buildDaySummaryBytes(data: PrintDaySummaryData): Uint8Array {
 }
 
 function buildCustomerStatementBytes(data: PrintCustomerStatementData): Uint8Array {
-  const W = 32;
+  const W = getReceiptLineWidth();
   const parts: (number[] | string)[] = [];
 
   parts.push(CMD.INIT);
@@ -458,9 +480,16 @@ async function sendBytesToPrinter(bytes: Uint8Array): Promise<boolean> {
   }
 }
 
-// ─── Browser Print Fallback (CSS 58mm layout) ─────────────────────────────────
+// ─── Browser Print Fallback (CSS 58mm/80mm layout) ───────────────────────────
 function browserPrintHTML(htmlContent: string): void {
-  const printWindow = window.open('', '_blank', 'width=300,height=600');
+  const is80 = getPaperWidth() === '80mm';
+  const pageSize = is80 ? '80mm auto' : '58mm auto';
+  const bodyWidth = is80 ? '74mm' : '54mm';
+  const fontSize = is80 ? '11px' : '10px';
+  const bigFontSize = is80 ? '14px' : '13px';
+  const subFontSize = is80 ? '10px' : '9px';
+
+  const printWindow = window.open('', '_blank', 'width=320,height=600');
   if (!printWindow) return;
 
   printWindow.document.write(`
@@ -470,16 +499,16 @@ function browserPrintHTML(htmlContent: string): void {
       <meta charset="UTF-8">
       <title>ग्रामीण किराना — पर्ची</title>
       <style>
-        @page { size: 58mm auto; margin: 2mm; }
+        @page { size: ${pageSize}; margin: 2mm; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Courier New', monospace; font-size: 10px; width: 54mm; color: #000; }
+        body { font-family: 'Courier New', monospace; font-size: ${fontSize}; width: ${bodyWidth}; color: #000; }
         .center { text-align: center; }
         .bold { font-weight: bold; }
-        .big { font-size: 13px; }
+        .big { font-size: ${bigFontSize}; }
         .row { display: flex; justify-content: space-between; }
         .dashes { border-top: 1px dashed #000; margin: 3px 0; }
-        .item-name { font-size: 10px; }
-        .item-sub { font-size: 9px; color: #333; display: flex; justify-content: space-between; }
+        .item-name { font-size: ${fontSize}; }
+        .item-sub { font-size: ${subFontSize}; color: #333; display: flex; justify-content: space-between; }
       </style>
     </head>
     <body>
@@ -552,13 +581,22 @@ function daySummaryToHTML(data: PrintDaySummaryData): string {
   const diffText = diff === 0 ? 'मिलान सही ✅' : diff > 0 ? `अतिरिक्त: ₹${diff}` : `कम: ₹${Math.abs(diff)}`;
   const diffClass = diff < 0 ? 'color:red' : diff > 0 ? 'color:green' : 'color:green';
 
+  const openingHTML = data.openingCash !== undefined && data.openingCash > 0 ? `
+    <div class="row bold"><span>प्रारंभिक नकद:</span><span>₹${data.openingCash}</span></div>
+  ` : '';
+  const upiHTML = data.upiSales !== undefined && data.upiSales > 0 ? `
+    <div class="row bold"><span>UPI / ऑनलाइन:</span><span>₹${data.upiSales}</span></div>
+  ` : '';
+
   return `
     <div class="center bold big">${data.storeName}</div>
     <div class="center bold">दैनिक गल्ला रोकड़ हिसाब</div>
     <div class="center">${data.date}</div>
     <div class="dashes"></div>
+    ${openingHTML}
     <div class="row bold"><span>नकद बिक्री:</span><span>₹${data.cashSales}</span></div>
     <div class="row bold"><span>जमा (Udhaar):</span><span>₹${data.jamaCollected}</span></div>
+    ${upiHTML}
     <div class="dashes"></div>
     ${expHTML}
     <div class="row bold"><span>अपेक्षित नकद:</span><span>₹${data.expectedCash}</span></div>
@@ -650,5 +688,28 @@ export async function printCustomerStatement(data: PrintCustomerStatementData): 
   browserPrintHTML(customerStatementToHTML(data));
   return 'browser';
 }
+
+/**
+ * Print a test receipt slip to verify Bluetooth/thermal printer connectivity and paper alignment.
+ */
+export async function printTestReceipt(): Promise<'bluetooth' | 'browser'> {
+  const store = syncService.getStoreInfo();
+  const testData: PrintReceiptData = {
+    storeName: store?.storeName || (store as any)?.name || 'ग्रामीण किराना टेस्ट स्टोर',
+    storeAddress: store?.village ? `गाँव: ${store.village}` : 'गाँव: नवापारा | ब्लॉक: अभनपुर',
+    date: new Date().toLocaleDateString('hi-IN'),
+    time: new Date().toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }),
+    items: [
+      { name: 'पारले-जी बिस्कुट 100g', quantity: 2, unit: 'packet', total: 20 },
+      { name: 'शुद्ध सरसों तेल (खुला)', quantity: 1, unit: 'kg', total: 135 },
+      { name: 'टाटा नमक 1kg', quantity: 1, unit: 'packet', total: 28 },
+    ],
+    total: 183,
+    paymentMode: 'नकद (Cash)',
+    thankYouMsg: '*** प्रिंटर टेस्ट सफल! धन्यवाद 🙏 ***'
+  };
+  return printReceipt(testData);
+}
+
 
 
