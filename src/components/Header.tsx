@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Wifi, WifiOff, Globe, Mic, Store, Cloud, RefreshCw, ArrowRight, Sparkles, LogOut, Download, Printer } from 'lucide-react';
+import { Wifi, WifiOff, Globe, Mic, Store, Cloud, RefreshCw, ArrowRight, Sparkles, LogOut, Download, Printer, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { syncService } from '../services/syncService';
 import { SubscriptionModal } from './Subscription/SubscriptionModal';
@@ -35,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
   const [isPrinterConnected, setIsPrinterConnected] = useState<boolean>(isBluetoothPrinterConnected());
   const [connectedPrinterName, setConnectedPrinterName] = useState<string | undefined>(getConnectedPrinterName());
   const [isSubModalOpen, setIsSubModalOpen] = useState<boolean>(false);
+  const [isMobileStoreSheetOpen, setIsMobileStoreSheetOpen] = useState<boolean>(false);
   const [subStatus, setSubStatus] = useState(() => syncService.getSubscriptionStatus());
 
   const refreshAuthState = useCallback(async () => {
@@ -130,8 +131,72 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
 
   return (
     <header className="village-header-gradient text-white shadow-md sticky top-0 z-40">
-      {/* Top Banner: Store Branding & Rural Counter Controls */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2">
+      {/* Mobile Top Bar (Ultra-Compact Single Row: ~46px) */}
+      <div className="md:hidden px-3 py-2 flex items-center justify-between gap-2 border-b border-stone-800/80">
+        {/* Left: Store Branding with Status Dot */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 rounded-xl bg-emerald-700/90 text-amber-300 ring-1 ring-amber-400/40 shrink-0">
+            <Store className="w-4 h-4 text-amber-300" />
+          </div>
+          <div className="min-w-0 flex items-center gap-1.5">
+            <span className="text-sm font-black text-stone-50 truncate max-w-[130px] sm:max-w-[170px] leading-tight">
+              {isLoggedIn && storeInfo?.storeName ? storeInfo.storeName : t.appName}
+            </span>
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                isOnline ? (pendingCount > 0 ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400') : 'bg-rose-400'
+              }`}
+              title={isOnline ? (pendingCount > 0 ? `${pendingCount} बाकी` : 'ऑनलाइन') : 'ऑफ़लाइन'}
+            />
+          </div>
+        </div>
+
+        {/* Right: Quick Touch Actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Voice Search (Big Touch Hitbox) */}
+          <button
+            onClick={onOpenVoice}
+            className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 shadow-xs cursor-pointer"
+            title="बोलकर खोजें"
+          >
+            <Mic className="w-4 h-4" />
+          </button>
+
+          {/* Language Switch */}
+          <button
+            onClick={toggleLanguage}
+            className="px-2 py-1 rounded-lg bg-stone-900 border border-stone-700 text-amber-300 text-xs font-bold active:scale-95 cursor-pointer"
+            title="भाषा बदलें"
+          >
+            {language === 'hi' ? 'हिन्दी' : language === 'cg' ? 'छ.ग.' : 'EN'}
+          </button>
+
+          {/* Store Quick Status / Profile Pill */}
+          <button
+            onClick={() => setIsMobileStoreSheetOpen(true)}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border active:scale-95 cursor-pointer ${
+              pendingCount > 0
+                ? 'bg-amber-950 text-amber-300 border-amber-500'
+                : 'bg-stone-800 text-stone-200 border-stone-700'
+            }`}
+            title="दुकान विवरण व सिंक"
+          >
+            {isLoggedIn ? (
+              userInfo?.role === 'OWNER' ? '👑' : '💼'
+            ) : (
+              <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+            )}
+            {pendingCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-amber-500 text-stone-950 text-[10px] font-black flex items-center justify-center">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Top Banner: Store Branding & Rural Counter Controls (Desktop & Tablet) */}
+      <div className="hidden md:flex max-w-7xl mx-auto px-3 sm:px-6 py-2.5 items-center justify-between gap-2">
         {/* Left: Store Branding with Auspicious Motif */}
         <div className="flex items-center space-x-2.5 min-w-0">
           <div className="bg-emerald-700/90 ring-1 ring-amber-400/40 p-2 rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
@@ -232,8 +297,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
         </div>
       </div>
 
-      {/* Active Multi-Tenant Store Identity & Live Sync Strip */}
-      <div className="bg-stone-950/80 border-t border-stone-800/90 px-3 sm:px-6 py-1.5 text-xs">
+      {/* Active Multi-Tenant Store Identity & Live Sync Strip (Desktop & Tablet) */}
+      <div className="hidden md:block bg-stone-950/80 border-t border-stone-800/90 px-3 sm:px-6 py-1.5 text-xs">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           {isLoggedIn && storeInfo ? (
             <div className="flex items-center gap-2 flex-wrap min-w-0">
@@ -408,7 +473,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
       )}
 
       {/* Main Navigation Bar for Desktop & Tablet */}
-      <div className="max-w-7xl mx-auto px-2 sm:px-6 border-t border-stone-800/80">
+      <div className="hidden md:block max-w-7xl mx-auto px-2 sm:px-6 border-t border-stone-800/80">
         <nav className="flex flex-wrap gap-1.5 py-1.5">
           {tabs.map(tab => {
             const isActive = activeTab === tab.id;
@@ -429,6 +494,185 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
           })}
         </nav>
       </div>
+
+      {/* Mobile Store Status & Actions Bottom Sheet */}
+      {isMobileStoreSheetOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs md:hidden animate-fade-in">
+          <div className="w-full bg-stone-900 border-t border-amber-500/40 rounded-t-3xl p-5 text-stone-100 space-y-4 max-h-[85vh] overflow-y-auto">
+            {/* Top Bar with Title & Close */}
+            <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Store className="w-5 h-5 text-amber-400" />
+                <h3 className="text-base font-black text-white m-0">
+                  {isLoggedIn ? (storeInfo?.storeName || 'दुकान खाता') : 'दुकान स्थिति व लॉगिन'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsMobileStoreSheetOpen(false)}
+                className="w-8 h-8 rounded-full bg-stone-800 text-stone-300 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Store Information Card */}
+            {isLoggedIn && storeInfo ? (
+              <div className="bg-stone-800/80 p-3.5 rounded-2xl border border-stone-700/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-amber-300 text-sm">{storeInfo.storeName}</span>
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50">
+                    {userInfo?.role === 'OWNER' ? '👑 दुकानदार' : '💼 मुनीम'}
+                  </span>
+                </div>
+                {storeInfo.village && (
+                  <p className="text-xs text-stone-400 m-0">
+                    📍 {storeInfo.village}, {storeInfo.district}
+                  </p>
+                )}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs text-stone-400">दुकान प्लान:</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    subStatus.isPro ? 'bg-amber-400/20 text-amber-300 border-amber-400/50' : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                  }`}>
+                    {subStatus.isPro ? '👑 ग्रामिन प्रो' : '🌾 गाँव स्टार्टर (मुफ़्त)'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-stone-800/80 p-3.5 rounded-2xl border border-stone-700/80 space-y-2 text-center">
+                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-md font-bold text-xs inline-block">
+                  डेमो मोड ({Math.max(0, 15 - demoBillsCount)}/15 बिल बाकी)
+                </span>
+                <p className="text-xs text-stone-300 m-0">अपनी दुकान का असली डेटा सुरक्षित रखने के लिए दुकान जोड़ें या लॉगिन करें।</p>
+                <button
+                  onClick={() => {
+                    setIsMobileStoreSheetOpen(false);
+                    onOpenStoreAuth();
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs transition cursor-pointer"
+                >
+                  दुकानदार लॉगिन / नई दुकान जोड़ें
+                </button>
+              </div>
+            )}
+
+            {/* Quick Actions List */}
+            <div className="space-y-2">
+              {/* Cloud Sync Button */}
+              {isLoggedIn && (
+                <button
+                  onClick={async () => {
+                    await syncService.triggerSync();
+                    refreshAuthState();
+                  }}
+                  disabled={isSyncing || !isOnline}
+                  className="w-full p-3 rounded-2xl bg-stone-800 hover:bg-stone-700/80 border border-stone-700 text-left flex items-center justify-between cursor-pointer transition active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-emerald-950/80 text-emerald-400 border border-emerald-800">
+                      <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-stone-100 block">
+                        {isSyncing ? 'क्लाउड सिंक चालू है...' : pendingCount > 0 ? `${pendingCount} बिल सिंक बाकी` : 'क्लाउड सुरक्षित है'}
+                      </span>
+                      {lastSyncTime && (
+                        <span className="text-[10px] text-stone-400 block">अंतिम सिंक: {lastSyncTime}</span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-xl border border-emerald-800">
+                    सिंक करें
+                  </span>
+                </button>
+              )}
+
+              {/* Bluetooth Thermal Printer Quick Toggle */}
+              <button
+                onClick={async () => {
+                  if (!isPrinterConnected) {
+                    await connectBluetoothPrinter();
+                  } else {
+                    disconnectBluetoothPrinter();
+                  }
+                }}
+                className="w-full p-3 rounded-2xl bg-stone-800 hover:bg-stone-700/80 border border-stone-700 text-left flex items-center justify-between cursor-pointer transition active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-2 rounded-xl border ${
+                    isPrinterConnected ? 'bg-emerald-950 text-emerald-400 border-emerald-800' : 'bg-stone-700 text-stone-400 border-stone-600'
+                  }`}>
+                    <Printer className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-stone-100 block">
+                      {isPrinterConnected ? `${connectedPrinterName || 'ब्लूटूथ प्रिंटर'}` : 'ब्लूटूथ 58mm प्रिंटर'}
+                    </span>
+                    <span className="text-[10px] text-stone-400 block">
+                      {isPrinterConnected ? 'कनेक्टेड है ✅' : 'प्रिंटर अभी डिस्कनेक्टेड है'}
+                    </span>
+                  </div>
+                </div>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border ${
+                  isPrinterConnected ? 'bg-rose-950/80 text-rose-300 border-rose-800' : 'bg-amber-600 text-white border-amber-500'
+                }`}>
+                  {isPrinterConnected ? 'डिस्कनेक्ट' : 'प्रिंटर जोड़ें'}
+                </span>
+              </button>
+
+              {/* PWA App Install */}
+              {canInstallPWA && (
+                <button
+                  onClick={() => pwaService.triggerInstall()}
+                  className="w-full p-3 rounded-2xl bg-emerald-900/40 hover:bg-emerald-900/60 border border-emerald-600/80 text-left flex items-center justify-between cursor-pointer transition"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-emerald-800 text-emerald-200">
+                      <Download className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-emerald-200 block">फोन में ऐप इंस्टॉल करें (PWA)</span>
+                      <span className="text-[10px] text-stone-400 block">होमस्क्रीन पर आइकॉन बनाएं</span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-amber-950 bg-amber-400 px-2.5 py-1 rounded-xl">
+                    इंस्टॉल
+                  </span>
+                </button>
+              )}
+
+              {/* Munim shift exit */}
+              {isLoggedIn && syncService.getRole() === 'munim' && (
+                <button
+                  onClick={() => {
+                    syncService.clearMunimSession();
+                    refreshAuthState();
+                    setIsMobileStoreSheetOpen(false);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-amber-950 text-amber-300 border border-amber-600 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>मुनीम सत्र समाप्त करें</span>
+                </button>
+              )}
+
+              {/* Store Logout button */}
+              {isLoggedIn && (
+                <button
+                  onClick={async () => {
+                    setIsMobileStoreSheetOpen(false);
+                    await handleStoreLogout();
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition"
+                >
+                  <LogOut className="w-4 h-4 text-rose-400" />
+                  <span>दुकान से लॉगआउट करें</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Subscription & Features Showcase Modal */}
       <SubscriptionModal

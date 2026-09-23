@@ -51,6 +51,12 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
     - [High-Efficiency Delta Sync (कम इंटरनेट डेटा व सुपरफ़ास्ट सिंक)](#high-efficiency-delta-sync-कम-इंटरनेट-डेटा-व-सुपरफ़ास्ट-सिंक)
     - [Multi-Store Local Switching Isolation Guarantee](#multi-store-local-switching-isolation-guarantee-सुरक्षित-दुकान-बदलाव)
 11. [Village Premium Look & Multi-Device Usability (ग्रामीण प्रीमियम लुक व मोबाइल/टैबलेट उपयोग)](#11-village-premium-look--multi-device-usability-ग्रामीण-प्रीमियम-लुक-व-मोबाइलटैबलेट-उपयोग)
+    - [Sunlight-Friendly Counter Contrast (धूप में स्पष्टता)](#1-sunlight-friendly-counter-contrast-धूप-में-स्पष्टता)
+    - [Traditional Bahi-Khata Ledger Ribbons (लाल व हरा खाता रिबन)](#2-traditional-bahi-khata-ledger-ribbons-लाल-व-हरा-खाता-रिबन)
+    - [Ultra-Compact Mobile Header & Maximum Screen Space (अल्ट्रा-कॉम्पैक्ट मोबाइल हेडर)](#3-ultra-compact-mobile-header--maximum-screen-space-अल्ट्रा-कॉम्पैक्ट-मोबाइल-हेडर)
+    - [5-Button Rural Counter Navigation & More Tools Drawer (5 मुख्य काउंटर बटन व मेनू ड्रॉवर)](#4-5-button-rural-counter-navigation--more-tools-drawer-5-मुख्य-काउंटर-बटन-व-मेनू-ड्रॉवर)
+    - [Mobile Floating Cart & Drawer (स्मार्टफोन पर 1-हाथ से बिलिंग)](#5-mobile-floating-cart--drawer-स्मार्टफोन-पर-1-हाथ-से-बिलिंग)
+    - [Hybrid Views Across Devices (मोबाइल, टैबलेट व कंप्यूटर)](#6-hybrid-views-across-devices-मोबाइल-टैबलेट-व-कंप्यूटर)
 12. [Daily Cash Drawer Closing (दैनिक गल्ला व रोकड़ हिसाब)](#12-daily-cash-drawer-closing-दैनिक-गल्ला-व-रोकड़-हिसाब)
     - [Evening Cash Count (शाम का गल्ला मिलान)](#evening-cash-count-शाम-का-गल्ला-मिलान)
     - [Daily Shop Expenses & Quick Category Chips (दुकान के खर्चे व त्वरित बटन)](#daily-shop-expenses--quick-category-chips-दुकान-के-खर्चे-व-त्वरित-बटन)
@@ -370,14 +376,37 @@ Gramin Kirana is crafted with a high-contrast, authentic **Village Premium (ग�
   - **हरा रिबन (Green Left Edge):** Indicates all previous dues have been fully cleared.
 - Large, thumb-friendly **जमा (+)** and **उधार (-)** buttons allow single-tap updates without mis-typing.
 
-### 3. Mobile Floating Cart & Drawer (स्मार्टफोन पर 1-हाथ से बिलिंग)
+### 3. Ultra-Compact Mobile Header & Maximum Screen Space (अल्ट्रा-कॉम्पैक्ट मोबाइल हेडर)
+- Built specifically for village store counters using budget smartphones with limited screen height.
+- **Single-Line Top Header (सिंगल-लाइन हेडर):** The top bar is streamlined into a single slim line (~46px) containing only essential indicators:
+  - Store Name & live online/offline status dot.
+  - Quick **Voice Search (🎙️)** button for instant spoken product lookup.
+  - 1-Tap **Language Switcher (🌐)** toggle between Hindi, Chhattisgarhi, and English.
+  - Store Status pill that opens the **Store Details & Quick Actions Sheet (दुकान एक्शन शीट)** to access Bluetooth printer pairing, cloud sync, app installation, and secure logout without wasting screen space.
+- Over **140px of vertical screen space** is saved, giving shopkeepers maximum room for viewing product catalogs, loose weight calculations, and bill totals.
+
+### 4. 5-Button Rural Counter Navigation & More Tools Drawer (5 मुख्य काउंटर बटन व मेनू ड्रॉवर)
+- On smartphones, the bottom bar is focused on high-speed daily counter operations with 5 primary buttons:
+  1. **⚡ POS (बिलिंग):** Standard barcode and loose grocery counter checkout.
+  2. **🎪 हाट (हाट-बाज़ार):** 1-tap rapid cash checkout for weekly market rush.
+  3. **📒 खाता (उधार):** Customer credit ledgers, Jama entries, and WhatsApp payment reminders.
+  4. **🏦 गल्ला (रोकड़):** Evening cash drawer reconciliation and daily expense entry.
+  5. **☰ मेनू (अतिरिक्त टूल्स):** Quick drawer for secondary store management features.
+- **More Tools Drawer (अतिरिक्त टूल्स ड्रॉवर):** Tapping **"☰ मेनू"** slides up a clean sheet with 1-tap access to:
+  - **🛒 मंडी खरीदारी (Mandi Restock):** Market purchase sheets and wholesale stock additions.
+  - **⚠️ खराबी व वेस्टेज (Spoilage):** Logging spoiled fruits, vegetables, or expired packaged goods.
+  - **📦 गोदाम व स्टॉक (Inventory):** Full inventory master, prices, low-stock alerts, and loose pack sizing.
+  - **📊 लाभ-हानि रिपोर्ट (P&L):** Net profit, sales analytics, and business health.
+  - **⚙️ दुकान सेटिंग्स (Settings):** Shop profile, receipt headers, UPI QR codes, and Munim staff PINs.
+
+### 5. Mobile Floating Cart & Drawer (स्मार्टफोन पर 1-हाथ से बिलिंग)
 - When adding items on a smartphone, you do not need to scroll past dozen items to find the bill.
 - A **Floating Cart Summary Bar** (`🛒 X सामान • ₹XXX | बिल देखें ➔`) appears above your phone's bottom menu.
 - Tapping it instantly opens the bill drawer to select cash, credit (उधार), or online payment and finalize the sale in seconds.
 
-### 4. Hybrid Views Across Devices (मोबाइल, टैबलेट व कंप्यूटर)
-- **Mobile Phones (320px–480px):** Single-column cards, easy thumb reach, sticky quick actions, and zero horizontal scrolling.
-- **Tablets & iPad (768px–1024px):** Ergonomic dual-column cards for Mandi restock and customer ledgers.
+### 6. Hybrid Views Across Devices (मोबाइल, टैबलेट व कंप्यूटर)
+- **Mobile Phones (320px–480px):** Single-column cards, ultra-compact single-row header, 5-tab thumb-friendly bottom bar, and zero horizontal scrolling.
+- **Tablets & iPad (768px–1024px):** Ergonomic dual-column cards for Mandi restock and customer ledgers with top tabs navigation.
 - **Desktop & Laptops (1280px+):** Full side-by-side split screen—catalog on the left and sticky receipt pad on the right for fast barcode scanner or keyboard billing.
 
 ---

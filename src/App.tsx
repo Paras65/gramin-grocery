@@ -29,6 +29,7 @@ const MainApp: React.FC = () => {
   const [isVoiceOpen, setIsVoiceOpen] = useState<boolean>(false);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
   const [isMunimModalOpen, setIsMunimModalOpen] = useState<boolean>(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
   const [posSearchQuery, setPosSearchQuery] = useState<string>('');
   const [isDbReady, setIsDbReady] = useState<boolean>(false);
   const [lowStockDismissed, setLowStockDismissed] = useState<boolean>(false);
@@ -246,71 +247,149 @@ const MainApp: React.FC = () => {
         onSuccess={() => setIsAdminMode(true)}
       />
 
-      {/* Village Premium Mobile Bottom Navigation Bar */}
+      {/* Village Premium Mobile Bottom Navigation Bar (Ultra-Ergonomic: ~52px) */}
       <nav
         aria-label="Mobile Navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-amber-200/60 px-1 py-1.5 flex justify-around items-center shadow-lg"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-amber-200/60 px-1 py-1 flex justify-around items-center shadow-lg"
       >
         <button
-          onClick={() => setActiveTab('pos')}
-          className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
+          onClick={() => { setActiveTab('pos'); setIsMoreMenuOpen(false); }}
+          className={`flex-1 py-1 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
             activeTab === 'pos' 
               ? 'text-amber-950 bg-amber-100 ring-1 ring-amber-400/60' 
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
-          <span className="text-base">⚡</span>
-          <span className="truncate max-w-[65px]">{t.tabs.pos}</span>
+          <span className="text-base leading-none">⚡</span>
+          <span className="truncate max-w-[65px] leading-tight">{t.tabs.pos}</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('khata')}
-          className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
+          onClick={() => { setActiveTab('haat'); setIsMoreMenuOpen(false); }}
+          className={`flex-1 py-1 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
+            activeTab === 'haat' 
+              ? 'text-amber-950 bg-amber-100 ring-1 ring-amber-400/60' 
+              : 'text-stone-600 hover:text-stone-900'
+          }`}
+        >
+          <span className="text-base leading-none">🎪</span>
+          <span className="truncate max-w-[65px] leading-tight">{t.tabs.haat}</span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('khata'); setIsMoreMenuOpen(false); }}
+          className={`flex-1 py-1 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
             activeTab === 'khata' 
               ? 'text-amber-950 bg-amber-100 ring-1 ring-amber-400/60' 
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
-          <span className="text-base">📒</span>
-          <span className="truncate max-w-[65px]">{t.tabs.khata}</span>
+          <span className="text-base leading-none">📒</span>
+          <span className="truncate max-w-[65px] leading-tight">{t.tabs.khata}</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('cashClose')}
-          className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
+          onClick={() => { setActiveTab('cashClose'); setIsMoreMenuOpen(false); }}
+          className={`flex-1 py-1 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
             activeTab === 'cashClose' 
               ? 'text-amber-950 bg-amber-100 ring-1 ring-amber-400/60' 
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
-          <span className="text-base">🏦</span>
-          <span className="truncate max-w-[65px]">{t.tabs.cashClose}</span>
+          <span className="text-base leading-none">🏦</span>
+          <span className="truncate max-w-[65px] leading-tight">{t.tabs.cashClose}</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('inventory')}
-          className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
-            activeTab === 'inventory' 
+          onClick={() => setIsMoreMenuOpen(true)}
+          className={`flex-1 py-1 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
+            ['mandi', 'spoilage', 'inventory', 'reports', 'settings'].includes(activeTab) || isMoreMenuOpen
               ? 'text-amber-950 bg-amber-100 ring-1 ring-amber-400/60' 
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
-          <span className="text-base">📦</span>
-          <span className="truncate max-w-[65px]">{t.tabs.inventory}</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
-            activeTab === 'settings' 
-              ? 'text-amber-950 bg-amber-100 ring-1 ring-amber-400/60' 
-              : 'text-stone-600 hover:text-stone-900'
-          }`}
-        >
-          <span className="text-base">⚙️</span>
-          <span className="truncate max-w-[65px]">{t.tabs.settings}</span>
+          <span className="text-base leading-none">☰</span>
+          <span className="truncate max-w-[65px] leading-tight">{t.tabs.more || 'मेनू'}</span>
         </button>
       </nav>
+
+      {/* Mobile More Navigation Sheet */}
+      {isMoreMenuOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs md:hidden animate-fade-in">
+          <div className="w-full bg-[#fbf9f4] border-t border-amber-400/60 rounded-t-3xl p-5 text-stone-900 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+              <h3 className="text-base font-black text-stone-900 m-0 flex items-center gap-2">
+                <span>☰ अतिरिक्त सुविधाएं (More)</span>
+              </h3>
+              <button
+                onClick={() => setIsMoreMenuOpen(false)}
+                className="w-8 h-8 rounded-full bg-stone-200 text-stone-700 flex items-center justify-center cursor-pointer font-bold active:scale-95"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                onClick={() => { setActiveTab('mandi'); setIsMoreMenuOpen(false); }}
+                className={`p-3.5 rounded-2xl border text-left flex flex-col gap-1 transition cursor-pointer active:scale-[0.98] ${
+                  activeTab === 'mandi' ? 'bg-amber-100 border-amber-400 text-amber-950 font-black' : 'bg-white border-stone-200 text-stone-800'
+                }`}
+              >
+                <span className="text-2xl">🛒</span>
+                <span className="text-xs font-bold">{t.tabs.mandi}</span>
+                <span className="text-[10px] text-stone-500 font-medium">थोक खरीदारी व मंडी लिस्ट</span>
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('spoilage'); setIsMoreMenuOpen(false); }}
+                className={`p-3.5 rounded-2xl border text-left flex flex-col gap-1 transition cursor-pointer active:scale-[0.98] ${
+                  activeTab === 'spoilage' ? 'bg-amber-100 border-amber-400 text-amber-950 font-black' : 'bg-white border-stone-200 text-stone-800'
+                }`}
+              >
+                <span className="text-2xl">⚠️</span>
+                <span className="text-xs font-bold">{t.tabs.spoilage}</span>
+                <span className="text-[10px] text-stone-500 font-medium">खराबी व एक्सपायरी गार्ड</span>
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('inventory'); setIsMoreMenuOpen(false); }}
+                className={`p-3.5 rounded-2xl border text-left flex flex-col gap-1 transition cursor-pointer active:scale-[0.98] ${
+                  activeTab === 'inventory' ? 'bg-amber-100 border-amber-400 text-amber-950 font-black' : 'bg-white border-stone-200 text-stone-800'
+                }`}
+              >
+                <span className="text-2xl">📦</span>
+                <span className="text-xs font-bold">{t.tabs.inventory}</span>
+                <span className="text-[10px] text-stone-500 font-medium">स्टॉक, भाव व बारकोड</span>
+              </button>
+
+              {userRole === 'owner' && (
+                <button
+                  onClick={() => { setActiveTab('reports'); setIsMoreMenuOpen(false); }}
+                  className={`p-3.5 rounded-2xl border text-left flex flex-col gap-1 transition cursor-pointer active:scale-[0.98] ${
+                    activeTab === 'reports' ? 'bg-amber-100 border-amber-400 text-amber-950 font-black' : 'bg-white border-stone-200 text-stone-800'
+                  }`}
+                >
+                  <span className="text-2xl">📊</span>
+                  <span className="text-xs font-bold">माहवारी P&L रिपोर्ट</span>
+                  <span className="text-[10px] text-stone-500 font-medium">शुद्ध नफ़ा व बिक्री PDF</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => { setActiveTab('settings'); setIsMoreMenuOpen(false); }}
+                className={`p-3.5 rounded-2xl border text-left flex flex-col gap-1 transition cursor-pointer active:scale-[0.98] ${
+                  activeTab === 'settings' ? 'bg-amber-100 border-amber-400 text-amber-950 font-black' : 'bg-white border-stone-200 text-stone-800'
+                }`}
+              >
+                <span className="text-2xl">⚙️</span>
+                <span className="text-xs font-bold">{t.tabs.settings}</span>
+                <span className="text-[10px] text-stone-500 font-medium">डेटा बैकअप, प्रिंटर व UPI</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -14,7 +14,8 @@ export const translations = {
       inventory: '📦 पूरा स्टॉक लिस्ट',
       settings: '⚙️ सेटिंग्स व बैकअप',
       cashClose: '🏦 गल्ला हिसाब',
-      haat: '🎪 हाट मोड'
+      haat: '🎪 हाट मोड',
+      more: '☰ मेनू'
     },
     pos: {
       searchPlaceholder: 'सामान खोजें (जैसे: चावल, तेल, बिस्कुट, बीड़ी)...',
@@ -218,7 +219,8 @@ export const translations = {
       inventory: '📦 सबो सामान के स्टॉक',
       settings: '⚙️ सेटिंग्स अउ बैकअप',
       cashClose: '🏦 गल्ला हिसाब',
-      haat: '🎪 हाट-बाजार'
+      haat: '🎪 हाट-बाजार',
+      more: '☰ मेनू'
     },
     pos: {
       searchPlaceholder: 'सामान खोजव (जैसे: चांउर, तेल, बिस्कुट, बीड़ी)...',
@@ -422,7 +424,8 @@ export const translations = {
       inventory: '📦 All Stock',
       settings: '⚙️ Settings & Backup',
       cashClose: '🏦 Cash Drawer',
-      haat: '🎪 Haat Bazaar'
+      haat: '🎪 Haat Bazaar',
+      more: '☰ Menu'
     },
     pos: {
       searchPlaceholder: 'Search item (e.g. Rice, Oil, Biscuits, Bidi)...',
