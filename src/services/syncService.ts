@@ -626,6 +626,19 @@ class SyncService {
       return null;
     }
   }
+
+  /**
+   * Get server-enforced platform UPI configuration
+   */
+  public async getSubscriptionConfig(): Promise<{ upiId: string; upiName: string } | null> {
+    try {
+      const res = await fetch(`${API_BASE}/tenant/subscription/config`);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
 }
 
 export const syncService = new SyncService();

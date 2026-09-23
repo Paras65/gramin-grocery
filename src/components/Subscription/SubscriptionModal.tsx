@@ -57,13 +57,27 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const storeInfo = syncService.getStoreInfo();
   const sub = t.subscription;
 
-  // Platform UPI ID
-  const platformUpiId = (import.meta as any).env?.VITE_PLATFORM_UPI_ID || 'graminkirana@upi';
+  // Platform UPI ID & Name (Server-Enforced with local fallback)
+  const [platformUpiId, setPlatformUpiId] = useState<string>(
+    (import.meta as any).env?.VITE_PLATFORM_UPI_ID || 'graminkirana@upi'
+  );
+  const [platformUpiName, setPlatformUpiName] = useState<string>('GraminKirana');
 
-  // Load existing claim status when modal opens
+  // Load server-side configuration and existing claim status when modal opens
   useEffect(() => {
-    if (isOpen && isLoggedIn) {
-      loadClaimStatus();
+    if (isOpen) {
+      syncService.getSubscriptionConfig().then((cfg) => {
+        if (cfg?.upiId) {
+          setPlatformUpiId(cfg.upiId);
+          if (cfg.upiName) {
+            setPlatformUpiName(cfg.upiName.replace(/[^a-zA-Z0-9]/g, ''));
+          }
+        }
+      }).catch(console.warn);
+
+      if (isLoggedIn) {
+        loadClaimStatus();
+      }
     }
   }, [isOpen, isLoggedIn]);
 
@@ -90,7 +104,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   // Dynamic UPI URL payload: NPCI compliant (alphanumeric, max 25 chars without special symbols)
   const cleanStoreName = (storeInfo?.storeName || 'Shop').replace(/[^a-zA-Z0-9]/g, '').slice(0, 15);
   const upiNote = `Pro${currentPlanConfig.months}M${cleanStoreName}`;
-  const upiUri = `upi://pay?pa=${platformUpiId}&pn=${encodeURIComponent('GraminKirana')}&am=${currentPlanConfig.price}&cu=INR&tn=${upiNote}`;
+  const upiUri = `upi://pay?pa=${platformUpiId}&pn=${encodeURIComponent(platformUpiName)}&am=${currentPlanConfig.price}&cu=INR&tn=${upiNote}`;
 
   const handleCopyUpiId = () => {
     navigator.clipboard.writeText(platformUpiId);
