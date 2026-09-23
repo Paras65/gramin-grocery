@@ -28,6 +28,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Calculating Cash Needed for Mandi Trip](#calculating-cash-needed-for-mandi-trip)
    - [Sending Purchase Order to Town Wholesaler](#sending-purchase-order-to-town-wholesaler)
    - [Wholesaler Directory & Bulk Stock Receiving (थोक व्यापारी व माल आया स्टॉक अपडेट)](#wholesaler-directory--bulk-stock-receiving-थोक-व्यापारी-व-माल-आया-स्टॉक-अपडेट)
+   - [Daily Morning Rate Sheet (दुकानदार त्वरित दैनिक मंडी भाव शीट)](#daily-morning-rate-sheet-दुकानदार-त्वरित-दैनिक-मंडी-भाव-शीट)
 5. [Spoilage & Expiry Guard (खराबी व एक्सपायरी गार्ड)](#5-spoilage--expiry-guard-खराबी-व-एक्सपायरी-गार्ड)
    - [Logging Power-Cut & Heat Losses (दूध/दही/कोल्ड ड्रिंक)](#logging-power-cut--heat-losses-दूधदहीकोल्ड-ड्रिंक)
    - [Cause-Wise Loss Breakdown (कारण अनुसार नुकसान वर्गीकरण)](#cause-wise-loss-breakdown-कारण-अनुसार-नुकसान-वर्गीकरण)
@@ -230,6 +231,13 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
   - A clean checklist displays all items ordered from the mandi with their incoming quantities and purchase rates.
   - You can adjust the exact quantities that arrived and update purchase rates if wholesale prices changed.
   - Tap **"पुष्टि करें व स्टॉक में जोड़ें"** to instantly increment your shop's inventory stock in a single batch, eliminating the need to manually edit dozens of items individually.
+
+### Daily Morning Rate Sheet (दुकानदार त्वरित दैनिक मंडी भाव शीट)
+- **रोज़ सुबह 30-सेकंड में भाव बदलाव:** तेल, चीनी, गुड़, आलू, प्याज और दालों जैसे मुख्य राशन के खुदरा भाव रोज़ाना बदलते हैं। हर सामान को अलग-अलग एडिट करने के बजाय, **"🌅 दैनिक भाव शीट"** बटन दबाकर सभी मुख्य वस्तुओं की सूची एक साथ खुल जाती है।
+- **त्वरित चिप्स (+1, +2, +5, -1, -2, -5):** किसी वस्तु का भाव ₹2 बढ़ाना या घटाना हो, तो बिना टाइप किए सीधे `+2` या `-2` बटन दबाते ही नया भाव सेट हो जाता है।
+- **लागत व मुनाफ़ा सुरक्षा गार्ड (Margin Guard):** दुकान मालिक को थोक खरीद दर और मुनाफ़ा मार्जिन दिखता है। यदि कोई नया भाव थोक खरीद से कम हो जाता है, तो तुरंत लाल चेतावनी (`⚠️ लागत से कम`) दिखाई देती है ताकि नुकसान से बचा जा सके।
+- **1-क्लिक में पूरी दुकान में लागू (Apply All Rates):** नीचे लगे **"💾 सभी नए भाव लागू करें"** बटन पर टैप करते ही पूरे काउंटर (POS), बारकोड बिलिंग और खुला वजन कैलकुलेटर में नए भाव तुरंत सक्रिय हो जाते हैं।
+- **📲 व्हाट्सएप पर आज का रेट बोर्ड भेजें (WhatsApp Rate Broadcast):** शीट में दिए गए **"📲 आज का रेट बोर्ड भेजें"** बटन पर क्लिक करते ही दुकान के नाम और आज के ताज़ा भावों के साथ एक सुंदर व्हाट्सएप संदेश तैयार हो जाता है, जिसे दुकानदार गाँव के व्हाट्सएप ग्रुप या स्टेटस पर 1-टैप में साझा कर सकता है।
 
 ---
 

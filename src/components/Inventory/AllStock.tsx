@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Search, Plus, Edit2, Package, X } from 'lucide-react';
+import { Search, Plus, Edit2, Package, X, Sparkles } from 'lucide-react';
 import { db } from '../../db';
 import type { Product } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { syncService } from '../../services/syncService';
+import { DailyRateSheetModal } from '../Mandi/DailyRateSheetModal';
 
 export const AllStock: React.FC = () => {
   const { language, t } = useLanguage();
@@ -15,6 +16,7 @@ export const AllStock: React.FC = () => {
   const [selectedCat, setSelectedCat] = useState('all');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [isRateSheetOpen, setIsRateSheetOpen] = useState(false);
 
   // New product form
   const [newProdName, setNewProdName] = useState('');
@@ -121,13 +123,24 @@ export const AllStock: React.FC = () => {
         </div>
 
         {!isCashier && (
-          <button
-            onClick={() => setIsAddProductOpen(true)}
-            className="bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-stone-950 px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span>नया सामान जोड़ें</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setIsRateSheetOpen(true)}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-stone-950 px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform"
+              title="दैनिक मंडी भाव शीट"
+            >
+              <Sparkles className="w-4 h-4 text-stone-950" />
+              <span>{t.mandi?.dailyRateSheet || '🌅 दैनिक भाव शीट'}</span>
+            </button>
+
+            <button
+              onClick={() => setIsAddProductOpen(true)}
+              className="bg-stone-900 hover:bg-stone-800 active:bg-stone-950 text-white px-4 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs transition-transform active:scale-95"
+            >
+              <Plus className="w-4 h-4 text-amber-400" />
+              <span>नया सामान जोड़ें</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -662,6 +675,13 @@ export const AllStock: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Daily Rate Sheet Modal */}
+      <DailyRateSheetModal
+        isOpen={isRateSheetOpen}
+        onClose={() => setIsRateSheetOpen(false)}
+        isCashier={isCashier}
+      />
     </div>
   );
 };

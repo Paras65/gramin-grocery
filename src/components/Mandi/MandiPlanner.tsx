@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ShoppingCart, Share2, Plus, Trash2, CheckSquare, X, PackageCheck, Check, UserCheck } from 'lucide-react';
+import { ShoppingCart, Share2, Plus, Trash2, CheckSquare, X, PackageCheck, Check, UserCheck, Sparkles } from 'lucide-react';
 import { db } from '../../db';
 import type { Product } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
+import { DailyRateSheetModal } from './DailyRateSheetModal';
 
 interface MandiItemRow {
   productId?: string;
@@ -47,6 +48,7 @@ export const MandiPlanner: React.FC = () => {
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [receiveList, setReceiveList] = useState<ReceiveItemRow[]>([]);
   const [receiveSuccessMsg, setReceiveSuccessMsg] = useState('');
+  const [isRateSheetOpen, setIsRateSheetOpen] = useState(false);
 
   // Persist wholesaler details
   useEffect(() => {
@@ -258,6 +260,15 @@ export const MandiPlanner: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setIsRateSheetOpen(true)}
+              className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-stone-950 font-black rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+              title="सुबह 1-क्लिक में आज के मंडी भाव अपडेट करें"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-stone-950" />
+              <span>{t.mandi?.dailyRateSheet || '🌅 दैनिक भाव शीट'}</span>
+            </button>
+
             <button
               onClick={() => setShowAddCustom(true)}
               className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
@@ -642,11 +653,17 @@ export const MandiPlanner: React.FC = () => {
                 >
                   पुष्टि करें व स्टॉक में जोड़ें
                 </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+      {/* Daily Rate Sheet Modal */}
+      <DailyRateSheetModal
+        isOpen={isRateSheetOpen}
+        onClose={() => setIsRateSheetOpen(false)}
+      />
     </div>
   );
 };

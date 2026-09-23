@@ -90,7 +90,15 @@ export const translations = {
       wholesalePrice: 'अनुमानित थोक दर',
       totalCost: 'कुल लागत',
       shareWholesaler: '📲 शहर के थोक व्यापारी को व्हाट्सएप पर लिस्ट भेजें',
-      addItemManually: '+ लिस्ट में और सामान जोड़ें'
+      addItemManually: '+ लिस्ट में और सामान जोड़ें',
+      dailyRateSheet: '🌅 दैनिक भाव शीट',
+      dailyRateSheetSubtitle: 'सुबह 1-क्लिक में मुख्य सामान के आज के खुदरा भाव अपडेट करें',
+      applyAllRates: '💾 सभी नए भाव लागू करें',
+      shareRateBoard: '📲 व्हाट्सएप पर आज का रेट बोर्ड भेजें',
+      currentRate: 'वर्तमान भाव',
+      todayNewRate: 'आज का नया भाव',
+      staplesOnly: '🌾 दैनिक मुख्य वस्तुएं',
+      allItems: '📦 सभी सामान'
     },
     spoilage: {
       title: 'खराबी व एक्सपायरी सुरक्षा गार्ड',
@@ -299,7 +307,15 @@ export const translations = {
       wholesalePrice: 'थोक भाव (दर)',
       totalCost: 'जम्मा लागत',
       shareWholesaler: '📲 सहर के थोक व्यापारी ला व्हाट्सएप म लिस्ट भेजव',
-      addItemManually: '+ लिस्ट म अउ सामान जोड़व'
+      addItemManually: '+ लिस्ट म अउ सामान जोड़व',
+      dailyRateSheet: '🌅 दैनिक भाव शीट',
+      dailyRateSheetSubtitle: 'बिहनिया 1-क्लिक म मुख्य सामान के आज के खुदरा भाव बदलव',
+      applyAllRates: '💾 सबो नवा भाव लागू करव',
+      shareRateBoard: '📲 व्हाट्सएप म आज के रेट बोर्ड भेजव',
+      currentRate: 'अब्बड़ के भाव',
+      todayNewRate: 'आज के नवा भाव',
+      staplesOnly: '🌾 दैनिक मुख्य सामान मन',
+      allItems: '📦 सबो सामान'
     },
     spoilage: {
       title: 'खराबी अउ एक्सपायरी सुरक्षा गार्ड',
@@ -508,7 +524,15 @@ export const translations = {
       wholesalePrice: 'Wholesale Rate',
       totalCost: 'Total Cost',
       shareWholesaler: '📲 WhatsApp List to Town Wholesaler',
-      addItemManually: '+ Add Item Manually'
+      addItemManually: '+ Add Item Manually',
+      dailyRateSheet: '🌅 Daily Rate Sheet',
+      dailyRateSheetSubtitle: 'Update retail prices for key commodities in 1 click every morning',
+      applyAllRates: '💾 Apply All New Rates',
+      shareRateBoard: '📲 Share Rate Board on WhatsApp',
+      currentRate: 'Current Rate',
+      todayNewRate: "Today's New Rate",
+      staplesOnly: '🌾 Daily Staples Only',
+      allItems: '📦 All Products'
     },
     spoilage: {
       title: 'Spoilage & Expiry Guard',
