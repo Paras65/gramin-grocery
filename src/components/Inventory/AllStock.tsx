@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Search, Plus, Edit2, Package, X, Sparkles } from 'lucide-react';
+import { Search, Plus, Edit2, Package, X, Sparkles, AlertTriangle, Check, Layers } from 'lucide-react';
 import { db } from '../../db';
 import type { Product } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
@@ -17,6 +17,9 @@ export const AllStock: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isRateSheetOpen, setIsRateSheetOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [isMerging, setIsMerging] = useState(false);
+  const [showDeduplicateDetails, setShowDeduplicateDetails] = useState(false);
 
   // New product form
   const [newProdName, setNewProdName] = useState('');
@@ -31,12 +34,96 @@ export const AllStock: React.FC = () => {
   const [newProdIsLoose, setNewProdIsLoose] = useState(false);
   const [newProdExp, setNewProdExp] = useState('');
 
-  // Duplicate barcode checks
-  const duplicateAddMatch = newProdBarcode.trim()
-    ? products.find(p => p.barcode && p.barcode.trim() === newProdBarcode.trim())
+  const normalize = (str?: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+  // Identify duplicate groups in existing products catalog (for 1-click audit & cleanup)
+  const duplicateGroups = useMemo(() => {
+    const groups: {
+      key: string;
+      reason: 'BARCODE' | 'NAME';
+      primary: Product;
+      duplicates: Product[];
+      totalStock: number;
+    }[] = [];
+
+    const seenIds = new Set<string>();
+
+    // 1. Group by non-empty Barcode
+    const barcodeMap = new Map<string, Product[]>();
+    for (const p of products) {
+      const bc = (p.barcode || '').trim();
+      if (bc) {
+        if (!barcodeMap.has(bc)) barcodeMap.set(bc, []);
+        barcodeMap.get(bc)!.push(p);
+      }
+    }
+
+    for (const [bc, prods] of barcodeMap.entries()) {
+      if (prods.length > 1) {
+        const [primary, ...dups] = prods;
+        prods.forEach(p => p.id && seenIds.add(p.id));
+        const totalStock = prods.reduce((sum, p) => sum + (p.stockQty || 0), 0);
+        groups.push({
+          key: `bc_${bc}`,
+          reason: 'BARCODE',
+          primary,
+          duplicates: dups,
+          totalStock
+        });
+      }
+    }
+
+    // 2. Group by Normalized Name + Unit (excluding items already caught by barcode)
+    const nameMap = new Map<string, Product[]>();
+    for (const p of products) {
+      if (p.id && seenIds.has(p.id)) continue;
+      const normName = normalize(p.name);
+      const normHindi = normalize(p.hindiName);
+      const key = `${normName || normHindi}_${p.unit}`;
+      if (!nameMap.has(key)) nameMap.set(key, []);
+      nameMap.get(key)!.push(p);
+    }
+
+    for (const [key, prods] of nameMap.entries()) {
+      if (prods.length > 1) {
+        const [primary, ...dups] = prods;
+        prods.forEach(p => p.id && seenIds.add(p.id));
+        const totalStock = prods.reduce((sum, p) => sum + (p.stockQty || 0), 0);
+        groups.push({
+          key: `name_${key}`,
+          reason: 'NAME',
+          primary,
+          duplicates: dups,
+          totalStock
+        });
+      }
+    }
+
+    return groups;
+  }, [products]);
+
+  // Real-time duplicate detection in Add modal
+  const cleanNewBarcode = newProdBarcode.trim();
+  const cleanNewName = normalize(newProdName);
+  const cleanNewHindi = normalize(newProdHindi);
+
+  const duplicateBarcodeAddMatch = cleanNewBarcode
+    ? products.find(p => p.barcode && p.barcode.trim() === cleanNewBarcode)
     : null;
 
-  const duplicateEditMatch = editingProduct && editingProduct.barcode && editingProduct.barcode.trim()
+  const duplicateNameAddMatch = (cleanNewName || cleanNewHindi)
+    ? products.find(p => {
+        const pName = normalize(p.name);
+        const pHindi = normalize(p.hindiName);
+        return (cleanNewName && (pName === cleanNewName || pHindi === cleanNewName)) ||
+               (cleanNewHindi && (pHindi === cleanNewHindi || pName === cleanNewHindi));
+      })
+    : null;
+
+  const existingMatchToAdd = duplicateBarcodeAddMatch || duplicateNameAddMatch;
+
+  // Real-time duplicate barcode detection in Edit modal
+  const duplicateBarcodeEditMatch = editingProduct && editingProduct.barcode && editingProduct.barcode.trim()
     ? products.find(p => p.id !== editingProduct.id && p.barcode && p.barcode.trim() === editingProduct.barcode!.trim())
     : null;
 
@@ -48,53 +135,7 @@ export const AllStock: React.FC = () => {
     return matchesCat && matchesSearch;
   });
 
-  const handleQuickPriceAdjust = async (productId: string, delta: number) => {
-    const p = products.find(item => item.id === productId);
-    if (!p || !p.id) return;
-    const newPrice = Math.max(1, Math.round((p.sellingPrice + delta) * 10) / 10);
-    await db.products.update(p.id, { sellingPrice: newPrice });
-  };
-
-  const handleUpdateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProduct || !editingProduct.id) return;
-
-    await db.products.update(editingProduct.id, {
-      name: editingProduct.name,
-      hindiName: editingProduct.hindiName,
-      barcode: editingProduct.barcode?.trim() || undefined,
-      purchasePrice: editingProduct.purchasePrice,
-      sellingPrice: editingProduct.sellingPrice,
-      stockQty: editingProduct.stockQty,
-      minStockThreshold: editingProduct.minStockThreshold,
-      unit: editingProduct.unit,
-      isLoose: editingProduct.isLoose,
-      expiryDate: editingProduct.expiryDate
-    });
-
-    setEditingProduct(null);
-  };
-
-  const handleCreateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newProdName.trim()) return;
-
-    await db.products.add({
-      id: 'prod_' + Math.random().toString(36).substring(2, 9),
-      name: newProdName.trim(),
-      hindiName: newProdHindi.trim() || newProdName.trim(),
-      barcode: newProdBarcode.trim() || undefined,
-      category: newProdCat,
-      purchasePrice: parseFloat(newProdBuy) || 0,
-      sellingPrice: parseFloat(newProdSell) || 0,
-      stockQty: parseFloat(newProdStock) || 0,
-      unit: newProdUnit,
-      minStockThreshold: parseFloat(newProdMin) || 5,
-      isLoose: newProdIsLoose,
-      expiryDate: newProdExp || undefined
-    });
-
-    setIsAddProductOpen(false);
+  const resetAddForm = () => {
     setNewProdName('');
     setNewProdHindi('');
     setNewProdBarcode('');
@@ -102,6 +143,163 @@ export const AllStock: React.FC = () => {
     setNewProdSell('');
     setNewProdStock('');
     setNewProdExp('');
+  };
+
+  const showNotification = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 4500);
+  };
+
+  const handleQuickPriceAdjust = async (productId: string, delta: number) => {
+    const p = products.find(item => item.id === productId);
+    if (!p || !p.id) return;
+    const newPrice = Math.max(1, Math.round((p.sellingPrice + delta) * 10) / 10);
+    await db.products.update(p.id, { 
+      sellingPrice: newPrice,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  const handleMergeStockIntoExisting = async (targetProduct: Product) => {
+    if (!targetProduct.id) return;
+    const addedQty = Math.max(0, parseFloat(newProdStock) || 0);
+    const newBuyRate = parseFloat(newProdBuy);
+    const newSellRate = parseFloat(newProdSell);
+    
+    const updatedStock = Math.max(0, (targetProduct.stockQty || 0) + addedQty);
+    const updates: Partial<Product> = {
+      stockQty: updatedStock,
+      updatedAt: new Date().toISOString()
+    };
+    if (!isNaN(newBuyRate) && newBuyRate > 0) {
+      updates.purchasePrice = newBuyRate;
+    }
+    if (!isNaN(newSellRate) && newSellRate > 0) {
+      updates.sellingPrice = newSellRate;
+    }
+    if (!targetProduct.barcode && cleanNewBarcode) {
+      updates.barcode = cleanNewBarcode;
+    }
+    
+    await db.products.update(targetProduct.id, updates);
+    setIsAddProductOpen(false);
+    resetAddForm();
+    showNotification(`✅ "${targetProduct.hindiName}" का स्टॉक बढ़कर ${updatedStock} ${targetProduct.unit} हो गया (डुप्लीकेट नहीं बना)!`);
+  };
+
+  const handleMergeAllDuplicates = async () => {
+    if (duplicateGroups.length === 0) return;
+    const confirmMsg = `क्या आप सभी ${duplicateGroups.length} डुप्लीकेट सामानों को मिलाना चाहते हैं?\n\n- सभी का स्टॉक आपस में जुड़ जाएगा।\n- डुप्लीकेट रिकॉर्ड साफ़ हो जाएंगे।\n- कोई डेटा या हिसाब नष्ट नहीं होगा।`;
+    if (!confirm(confirmMsg)) return;
+
+    setIsMerging(true);
+    try {
+      await db.transaction('rw', db.products, async () => {
+        for (const group of duplicateGroups) {
+          const { primary, duplicates } = group;
+          if (!primary.id) continue;
+          const additionalStock = duplicates.reduce((sum, d) => sum + (d.stockQty || 0), 0);
+          const bestSellingPrice = Math.max(primary.sellingPrice, ...duplicates.map(d => d.sellingPrice || 0));
+          const bestPurchasePrice = Math.max(primary.purchasePrice, ...duplicates.map(d => d.purchasePrice || 0));
+
+          await db.products.update(primary.id, {
+            stockQty: (primary.stockQty || 0) + additionalStock,
+            sellingPrice: bestSellingPrice > 0 ? bestSellingPrice : primary.sellingPrice,
+            purchasePrice: bestPurchasePrice > 0 ? bestPurchasePrice : primary.purchasePrice,
+            updatedAt: new Date().toISOString()
+          });
+
+          for (const dup of duplicates) {
+            if (dup.id) {
+              await db.products.delete(dup.id);
+            }
+          }
+        }
+      });
+      setShowDeduplicateDetails(false);
+      showNotification(`✅ सभी ${duplicateGroups.length} डुप्लीकेट सामान सफलतापूर्वक एक में मिला दिए गए!`);
+    } catch (err) {
+      console.error('Failed to merge duplicates:', err);
+      alert('डुप्लीकेट मिलाने में त्रुटि हुई।');
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct || !editingProduct.id) return;
+
+    if (duplicateBarcodeEditMatch) {
+      alert(`⚠️ बारकोड टकराव: यह बारकोड पहले से "${duplicateBarcodeEditMatch.hindiName}" में दर्ज है। कृपया अलग बारकोड दें।`);
+      return;
+    }
+
+    const trimmedName = editingProduct.name.trim().replace(/\s+/g, ' ');
+    const trimmedHindi = editingProduct.hindiName.trim().replace(/\s+/g, ' ') || trimmedName;
+
+    await db.products.update(editingProduct.id, {
+      name: trimmedName,
+      hindiName: trimmedHindi,
+      barcode: editingProduct.barcode?.trim() || undefined,
+      purchasePrice: Math.max(0, editingProduct.purchasePrice || 0),
+      sellingPrice: Math.max(0, editingProduct.sellingPrice || 0),
+      stockQty: Math.max(0, editingProduct.stockQty || 0),
+      minStockThreshold: Math.max(0, editingProduct.minStockThreshold || 0),
+      unit: editingProduct.unit,
+      isLoose: editingProduct.isLoose,
+      expiryDate: editingProduct.expiryDate || undefined,
+      updatedAt: new Date().toISOString()
+    });
+
+    setEditingProduct(null);
+    showNotification(`✅ "${trimmedHindi}" विवरण सुरक्षित कर दिया गया!`);
+  };
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedName = newProdName.trim().replace(/\s+/g, ' ');
+    if (!trimmedName) {
+      alert('कृपया सामान का नाम दर्ज करें!');
+      return;
+    }
+
+    // Strict: block duplicate barcode
+    if (duplicateBarcodeAddMatch) {
+      alert(`⚠️ बारकोड टकराव: यह बारकोड पहले से "${duplicateBarcodeAddMatch.hindiName}" में दर्ज है। कृपया अलग बारकोड दें या 'मौजूदा सामान में स्टॉक जोड़ें' बटन दबाएँ।`);
+      return;
+    }
+
+    // Soft check: warn if exact duplicate name & unit
+    if (duplicateNameAddMatch && duplicateNameAddMatch.unit === newProdUnit) {
+      const proceed = confirm(`⚠️ "${duplicateNameAddMatch.hindiName}" (${newProdUnit}) पहले से स्टॉक में मौजूद है (वर्तमान स्टॉक: ${duplicateNameAddMatch.stockQty} ${duplicateNameAddMatch.unit})।\n\nक्या आप सचमुच एक नया डुप्लीकेट सामान बनाना चाहते हैं?\n(सुझाव: 'Cancel' दबाकर 'मौजूदा सामान में स्टॉक जोड़ें' बटन दबाएँ)`);
+      if (!proceed) return;
+    }
+
+    const buyRate = Math.max(0, parseFloat(newProdBuy) || 0);
+    const sellRate = Math.max(0, parseFloat(newProdSell) || 0);
+    const stock = Math.max(0, parseFloat(newProdStock) || 0);
+    const minStock = Math.max(0, parseFloat(newProdMin) || 5);
+
+    await db.products.add({
+      id: 'prod_' + Math.random().toString(36).substring(2, 9),
+      name: trimmedName,
+      hindiName: newProdHindi.trim().replace(/\s+/g, ' ') || trimmedName,
+      barcode: cleanNewBarcode || undefined,
+      category: newProdCat,
+      purchasePrice: buyRate,
+      sellingPrice: sellRate,
+      stockQty: stock,
+      unit: newProdUnit,
+      minStockThreshold: minStock,
+      isLoose: newProdIsLoose,
+      expiryDate: newProdExp || undefined,
+      updatedAt: new Date().toISOString()
+    });
+
+    setIsAddProductOpen(false);
+    resetAddForm();
+    showNotification(`✅ नया सामान "${newProdHindi.trim() || trimmedName}" सफलतापूर्वक जोड़ा गया!`);
   };
 
   return (
@@ -143,6 +341,88 @@ export const AllStock: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="p-3 bg-emerald-700 text-white rounded-2xl text-xs font-bold shadow-md flex items-center justify-between animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-200 shrink-0" />
+            <span>{toastMsg}</span>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => setToastMsg('')} 
+            className="text-emerald-200 hover:text-white font-bold p-1 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Catalog Deduplication Audit Banner */}
+      {!isCashier && duplicateGroups.length > 0 && (
+        <div className="village-card p-4 rounded-3xl bg-amber-50 border-2 border-amber-300 shadow-xs space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <div className="p-2 rounded-xl bg-amber-500 text-stone-950 shrink-0 mt-0.5">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-black text-amber-950 m-0">
+                  ⚠️ स्टॉक ऑडिट: दुकान में {duplicateGroups.length} डुप्लीकेट सामान मिले
+                </h4>
+                <p className="text-[11px] text-amber-800 m-0 font-medium mt-0.5">
+                  एक ही नाम या बारकोड के अलग-अलग रिकॉर्ड हैं। 1-क्लिक में सभी का स्टॉक आपस में जोड़कर लिस्ट साफ़ करें।
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowDeduplicateDetails(!showDeduplicateDetails)}
+                className="text-[11px] font-bold text-amber-900 underline hover:text-amber-950 cursor-pointer px-2 py-1"
+              >
+                {showDeduplicateDetails ? '▲ विवरण छुपाएं' : '▼ विवरण देखें'}
+              </button>
+              <button
+                type="button"
+                onClick={handleMergeAllDuplicates}
+                disabled={isMerging}
+                className="px-3.5 py-2 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>{isMerging ? 'मिला रहे हैं...' : 'सभी डुप्लीकेट मिलाएं'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Collapsible Details */}
+          {showDeduplicateDetails && (
+            <div className="pt-2 border-t border-amber-200/80 space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {duplicateGroups.map((g) => (
+                <div 
+                  key={g.key}
+                  className="p-2 bg-white/80 rounded-xl border border-amber-200 text-xs flex items-center justify-between gap-2"
+                >
+                  <div className="min-w-0">
+                    <span className="font-black text-stone-900 truncate block">
+                      {g.primary.hindiName} ({g.primary.name})
+                    </span>
+                    <span className="text-[10px] text-stone-500 font-medium">
+                      {g.reason === 'BARCODE' ? `बारकोड: ${g.primary.barcode}` : `इकाई: ${g.primary.unit}`} • {g.duplicates.length + 1} अलग रिकॉर्ड
+                    </span>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] text-stone-500 block">कुल मिलकर होगा</span>
+                    <span className="font-black text-emerald-800 text-xs">{g.totalStock} {g.primary.unit}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Search & Category Filter Bar */}
       <div className="village-card p-3 rounded-2xl bg-white flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
@@ -424,12 +704,13 @@ export const AllStock: React.FC = () => {
                   onChange={e => setEditingProduct({ ...editingProduct, barcode: e.target.value })}
                   placeholder="उदा. 8901030382748"
                   className={`w-full p-2.5 bg-[#faf8f3] border rounded-xl text-xs sm:text-sm font-semibold text-stone-900 outline-hidden ${
-                    duplicateEditMatch ? 'border-amber-500 bg-amber-50' : 'border-amber-200/80 focus:border-amber-500'
+                    duplicateBarcodeEditMatch ? 'border-rose-500 bg-rose-50' : 'border-amber-200/80 focus:border-amber-500'
                   }`}
                 />
-                {duplicateEditMatch && (
-                  <p className="text-[11px] text-amber-800 font-bold mt-1 m-0">
-                    ⚠️ यह बारकोड पहले से "{duplicateEditMatch.name}" में दर्ज है।
+                {duplicateBarcodeEditMatch && (
+                  <p className="text-[11px] text-rose-700 font-bold mt-1 m-0 flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span>⚠️ यह बारकोड पहले से "{duplicateBarcodeEditMatch.hindiName} ({duplicateBarcodeEditMatch.name})" में दर्ज है। कृपया अलग बारकोड दें।</span>
                   </p>
                 )}
               </div>
@@ -440,8 +721,9 @@ export const AllStock: React.FC = () => {
                   <input
                     type="number"
                     step="0.1"
+                    min="0"
                     value={editingProduct.purchasePrice}
-                    onChange={e => setEditingProduct({ ...editingProduct, purchasePrice: parseFloat(e.target.value) || 0 })}
+                    onChange={e => setEditingProduct({ ...editingProduct, purchasePrice: Math.max(0, parseFloat(e.target.value) || 0) })}
                     className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-bold text-stone-900 outline-hidden focus:border-amber-500"
                   />
                 </div>
@@ -450,11 +732,19 @@ export const AllStock: React.FC = () => {
                   <input
                     type="number"
                     step="0.1"
+                    min="0"
                     value={editingProduct.sellingPrice}
-                    onChange={e => setEditingProduct({ ...editingProduct, sellingPrice: parseFloat(e.target.value) || 0 })}
+                    onChange={e => setEditingProduct({ ...editingProduct, sellingPrice: Math.max(0, parseFloat(e.target.value) || 0) })}
                     className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-bold text-stone-900 outline-hidden focus:border-amber-500"
                   />
                 </div>
+
+                {editingProduct.purchasePrice > 0 && editingProduct.sellingPrice > 0 && editingProduct.sellingPrice < editingProduct.purchasePrice && (
+                  <div className="col-span-2 p-2 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>⚠️ नुकसान चेतावनी: बिक्री दर थोक खरीद से ₹{(editingProduct.purchasePrice - editingProduct.sellingPrice).toFixed(1)} कम है!</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -463,8 +753,9 @@ export const AllStock: React.FC = () => {
                   <input
                     type="number"
                     step="0.1"
+                    min="0"
                     value={editingProduct.stockQty}
-                    onChange={e => setEditingProduct({ ...editingProduct, stockQty: parseFloat(e.target.value) || 0 })}
+                    onChange={e => setEditingProduct({ ...editingProduct, stockQty: Math.max(0, parseFloat(e.target.value) || 0) })}
                     className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-bold text-stone-900 outline-hidden focus:border-amber-500"
                   />
                 </div>
@@ -472,8 +763,9 @@ export const AllStock: React.FC = () => {
                   <label className="text-xs font-bold text-stone-700 block mb-1">न्यूनतम सीमा:</label>
                   <input
                     type="number"
+                    min="0"
                     value={editingProduct.minStockThreshold}
-                    onChange={e => setEditingProduct({ ...editingProduct, minStockThreshold: parseFloat(e.target.value) || 0 })}
+                    onChange={e => setEditingProduct({ ...editingProduct, minStockThreshold: Math.max(0, parseFloat(e.target.value) || 0) })}
                     className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-bold text-stone-900 outline-hidden focus:border-amber-500"
                   />
                 </div>
@@ -489,7 +781,8 @@ export const AllStock: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl text-xs font-black bg-emerald-700 hover:bg-emerald-600 text-white cursor-pointer shadow-xs"
+                  disabled={Boolean(duplicateBarcodeEditMatch)}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-black bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white cursor-pointer shadow-xs"
                 >
                   अपडेट करें
                 </button>
@@ -549,15 +842,46 @@ export const AllStock: React.FC = () => {
                   onChange={e => setNewProdBarcode(e.target.value)}
                   placeholder="उदा. 8901030382748"
                   className={`w-full p-2.5 bg-[#faf8f3] border rounded-xl text-xs sm:text-sm font-semibold text-stone-900 outline-hidden ${
-                    duplicateAddMatch ? 'border-amber-500 bg-amber-50' : 'border-amber-200/80 focus:border-amber-500'
+                    duplicateBarcodeAddMatch ? 'border-rose-500 bg-rose-50' : 'border-amber-200/80 focus:border-amber-500'
                   }`}
                 />
-                {duplicateAddMatch && (
-                  <p className="text-[11px] text-amber-800 font-bold mt-1 m-0">
-                    ⚠️ यह बारकोड पहले से "{duplicateAddMatch.name}" में दर्ज है।
+                {duplicateBarcodeAddMatch && (
+                  <p className="text-[11px] text-rose-700 font-bold mt-1 m-0 flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span>⚠️ यह बारकोड पहले से "{duplicateBarcodeAddMatch.hindiName} ({duplicateBarcodeAddMatch.name})" में दर्ज है। कृपया अलग बारकोड दें या नीचे 'मौजूदा सामान में जोड़ें' बटन दबाएँ।</span>
                   </p>
                 )}
               </div>
+
+              {/* Smart Duplicate Match & Stock Merge Helper */}
+              {existingMatchToAdd && (
+                <div className="p-3 bg-amber-50 rounded-2xl border-2 border-amber-300 space-y-2 animate-in fade-in duration-150">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">
+                        {duplicateBarcodeAddMatch ? '⚠️ बारकोड मैच मिला' : 'ℹ️ मिलता-जुलता सामान पहले से मौजूद'}
+                      </span>
+                      <div className="font-black text-xs text-amber-950 mt-0.5">
+                        {existingMatchToAdd.hindiName} ({existingMatchToAdd.name})
+                      </div>
+                      <div className="text-[11px] text-stone-600 mt-0.5">
+                        वर्तमान स्टॉक: <span className="font-black text-stone-900">{existingMatchToAdd.stockQty} {existingMatchToAdd.unit}</span> • बिक्री भाव: <span className="font-bold text-stone-900">₹{existingMatchToAdd.sellingPrice}/{existingMatchToAdd.unit}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleMergeStockIntoExisting(existingMatchToAdd)}
+                    className="w-full py-2 bg-amber-700 hover:bg-amber-600 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>
+                      मौजूदा सामान में +{parseFloat(newProdStock) || 0} {existingMatchToAdd.unit} जोड़ें (बिना डुप्लीकेट बनाए)
+                    </span>
+                  </button>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -599,6 +923,7 @@ export const AllStock: React.FC = () => {
                   <input
                     type="number"
                     step="0.1"
+                    min="0"
                     required
                     value={newProdBuy}
                     onChange={e => setNewProdBuy(e.target.value)}
@@ -611,6 +936,7 @@ export const AllStock: React.FC = () => {
                   <input
                     type="number"
                     step="0.1"
+                    min="0"
                     required
                     value={newProdSell}
                     onChange={e => setNewProdSell(e.target.value)}
@@ -620,11 +946,22 @@ export const AllStock: React.FC = () => {
                 </div>
               </div>
 
+              {parseFloat(newProdBuy) > 0 && parseFloat(newProdSell) > 0 && parseFloat(newProdSell) < parseFloat(newProdBuy) && (
+                <div className="p-2 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>
+                    ⚠️ नुकसान चेतावनी: बिक्री दर थोक खरीद से ₹{(parseFloat(newProdBuy) - parseFloat(newProdSell)).toFixed(1)} कम है! घाटा होगा।
+                  </span>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs font-bold text-stone-700 block mb-1">शुरुआती स्टॉक: *</label>
                   <input
                     type="number"
+                    min="0"
+                    step="any"
                     required
                     value={newProdStock}
                     onChange={e => setNewProdStock(e.target.value)}
@@ -636,6 +973,8 @@ export const AllStock: React.FC = () => {
                   <label className="text-xs font-bold text-stone-700 block mb-1">न्यूनतम सीमा:</label>
                   <input
                     type="number"
+                    min="0"
+                    step="any"
                     value={newProdMin}
                     onChange={e => setNewProdMin(e.target.value)}
                     placeholder="10"
@@ -666,7 +1005,8 @@ export const AllStock: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl text-xs font-black bg-emerald-700 hover:bg-emerald-600 text-white cursor-pointer shadow-xs"
+                  disabled={Boolean(duplicateBarcodeAddMatch)}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-black bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white cursor-pointer shadow-xs"
                 >
                   सुरक्षित करें
                 </button>

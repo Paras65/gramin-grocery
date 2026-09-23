@@ -35,10 +35,12 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Cause-Wise Loss Breakdown (कारण अनुसार नुकसान वर्गीकरण)](#cause-wise-loss-breakdown-कारण-अनुसार-नुकसान-वर्गीकरण)
    - [Tracking Upcoming Expiry Items](#tracking-upcoming-expiry-items)
 6. [Inventory Management (दुकान का पूरा स्टॉक)](#6-inventory-management-दुकान-का-पूरा-स्टॉक)
-   - [Updating Rates & Profit Margins](#updating-rates--profit-margins)
-   - [Barcode Management & Duplicate Warning (बारकोड व डुप्लीकेट रोक)](#barcode-management--duplicate-warning-बारकोड-व-डुप्लीकेट-रोक)
+   - [Updating Rates, Profit Margins & Loss Alert (दरें, मार्जिन व नुकसान सुरक्षा)](#updating-rates-profit-margins--loss-alert-दरें-मार्जिन-व-नुकसान-सुरक्षा)
+   - [Barcode Management & Strict Duplicate Block (बारकोड व डुप्लीकेट रोक)](#barcode-management--strict-duplicate-block-बारकोड-व-डुप्लीकेट-रोक)
+   - [Smart Name Match & 1-Click Stock Merge (स्मार्ट नाम मिलान व स्टॉक विलय)](#smart-name-match--1-click-stock-merge-स्मार्ट-नाम-मिलान-व-स्टॉक-विलय)
+   - [Catalog Deduplication Audit & 1-Click Merger Tool (स्टॉक ऑडिट व डुप्लीकेट सफाई)](#catalog-deduplication-audit--1-click-merger-tool-स्टॉक-ऑडिट-व-डुप्लीकेट-सफाई)
    - [Quick Price Revisions (+1, +2, -1) (तुरंत दर बदलाव)](#quick-price-revisions-1-2--1-तुरंत-दर-बदलाव)
-   - [Adding New Items](#adding-new-items)
+   - [Adding New Items & Input Sanitization](#adding-new-items--input-sanitization)
 7. [Voice Assistant (बोलकर दर्ज करें)](#7-voice-assistant-बोलकर-दर्ज-करें)
    - [Rural Dialect & Quantity Recognition (गाँव की तौल व बोलचाल)](#rural-dialect--quantity-recognition-गाँव-की-तौल-व-बोलचाल)
 8. [Data Backup, Privacy & App Installation (डेटा बैकअप, सुरक्षा व ऐप इंस्टॉलेशन)](#8-data-backup-privacy--app-installation-डेटा-बैकअप-सुरक्षा-व-ऐप-इंस्टॉलेशन)
@@ -273,20 +275,30 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 
 ## 6. Inventory Management (दुकान का पूरा स्टॉक)
 
-### Updating Rates & Profit Margins
+### Updating Rates, Profit Margins & Loss Alert (दरें, मार्जिन व नुकसान सुरक्षा)
 - Review purchase rates, selling rates, and real-time profit margin percentages for every item.
 - Click the edit pencil to update rates when wholesale prices change.
+- **लागत से कम भाव पर नुकसान चेतावनी (Loss Guard):** यदि नया सामान जोड़ते समय या एडिट करते समय खुदरा बिक्री दर थोक खरीद से कम डाली जाए, तो सिस्टम तुरंत लाल चेतावनी प्रदर्शित करता है (उदा. *"⚠️ नुकसान चेतावनी: बिक्री दर थोक खरीद से कम है"*), जिससे दुकानदार अनजाने में होने वाले घाटे से सुरक्षित रहता है।
 
-### Barcode Management & Duplicate Warning (बारकोड व डुप्लीकेट रोक)
-- When adding or editing any item in your catalog, you can assign an authentic barcode.
-- **डुप्लीकेट चेतावनी (Duplicate Alert):** If the barcode you entered or scanned is already assigned to another product in your store, an immediate amber warning appears identifying the existing product. This prevents overlapping barcodes from corrupting your POS billing.
+### Barcode Management & Strict Duplicate Block (बारकोड व डुप्लीकेट रोक)
+- When adding or editing any item in your catalog, you can assign an authentic barcode via manual entry or handheld/camera scanner.
+- **सख्त डुप्लीकेट बारकोड रोक (Strict Duplicate Prevention):** यदि दर्ज किया गया बारकोड पहले से दुकान के किसी अन्य सामान में असाइन है, तो सिस्टम नया सामान सेव होने से रोकता है और चेतावनी देता है। इससे काउंटर पर बारकोड स्कैनर में गलत सामान स्कैन होने या बिलिंग में गड़बड़ी होने का खतरा पूरी तरह समाप्त हो जाता है।
+
+### Smart Name Match & 1-Click Stock Merge (स्मार्ट नाम मिलान व स्टॉक विलय)
+- **मिलता-जुलता सामान तुरंत पहचानना:** नया सामान जोड़ते समय जैसे ही दुकानदार नाम (उदा. "सूजी" या "Suji") टाइप करता है, सिस्टम तुरंत जांचता है कि क्या यह सामान पहले से स्टॉक में है।
+- **1-क्लिक में मौजूदा स्टॉक में जोड़ें (Merge on Add):** यदि सामान पहले से मौजूद है, तो सिस्टम एक त्वरित बटन दिखाता है: **"मौजूदा सामान में +[N] स्टॉक जोड़ें (बिना डुप्लीकेट बनाए)"**। इस पर टैप करते ही नया डुप्लीकेट सामान बनने के बजाय मौजूदा सामान का स्टॉक स्वतः बढ़ जाता है और सूची पूरी तरह व्यवस्थित रहती है।
+
+### Catalog Deduplication Audit & 1-Click Merger Tool (स्टॉक ऑडिट व डुप्लीकेट सफाई)
+- **स्वचालित डुप्लीकेट पहचान:** यदि पूर्व में दर्ज सामानों में से किसी दो सामानों का बारकोड एक जैसा हो, या एक ही नाम व इकाई (जैसे दो बार "अरवा चावल (kg)") के अलग-अलग रिकॉर्ड बने हों, तो इन्वेंट्री स्क्रीन के शीर्ष पर एक स्पष्ट ऑडिट बैनर दिखाई देता है।
+- **1-क्लिक में सभी डुप्लीकेट मिलाएं (1-Click Consolidator):** **"सभी डुप्लीकेट मिलाएं"** बटन दबाते ही सिस्टम सभी डुप्लीकेट रिकॉर्ड्स का स्टॉक आपस में जोड़ देता है, सबसे बेहतर भाव सुरक्षित रखता है, और अतिरिक्त फालतू रिकॉर्ड्स को हटाकर दुकान का स्टॉक 100% सटीक व साफ़ कर देता है।
 
 ### Quick Price Revisions (+1, +2, -1) (तुरंत दर बदलाव)
 - When commodity wholesale prices fluctuate in the mandi, use the quick **-1**, **+1**, or **+2** adjustment buttons directly on each item card/table row.
 - Instantly revises your selling price without needing to open the full edit dialog.
 
-### Adding New Items
+### Adding New Items & Input Sanitization
 - Click **"+ नया सामान जोड़ें"** to add any packaged or loose product with local names in Hindi and English.
+- सभी इनपुट फ़ील्ड्स में नकारात्मक संख्याएं (`< 0`) और अनावश्यक खाली स्पेस (Whitespace) स्वतः साफ़ कर दिए जाते हैं।
 
 ---
 

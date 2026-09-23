@@ -190,7 +190,13 @@ export async function initializeDatabaseIfEmpty() {
 export async function seedStandardRuralEssentials(): Promise<{ added: number; total: number }> {
   let added = 0;
   for (const p of INITIAL_PRODUCTS) {
-    const existing = await db.products.where('name').equalsIgnoreCase(p.name).first();
+    let existing = await db.products.where('name').equalsIgnoreCase(p.name.trim()).first();
+    if (!existing && p.barcode) {
+      existing = await db.products.where('barcode').equals(p.barcode.trim()).first();
+    }
+    if (!existing) {
+      existing = await db.products.where('hindiName').equalsIgnoreCase(p.hindiName.trim()).first();
+    }
     if (!existing) {
       await db.products.add({
         ...p,
