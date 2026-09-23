@@ -1,4 +1,4 @@
-import type { PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan, PlatformAnnouncement } from '../types';
+import type { PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan, PlatformAnnouncement, PaymentClaim } from '../types';
 import { API_BASE } from '../utils/apiConfig';
 
 export interface AdminUser {
@@ -260,6 +260,41 @@ class AdminService {
     } catch {
       return null;
     }
+  }
+
+  public async getPaymentClaims(status: string = 'ALL'): Promise<PaymentClaim[]> {
+    const res = await fetch(`${API_BASE}/admin/payment-claims?status=${status}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    try {
+      const data = await this.parseResponse(res, 'भुगतान क्लेम सूची प्राप्त करने में विफल');
+      return data.claims || [];
+    } catch (err: any) {
+      if (res.status === 401 || res.status === 403) {
+        this.logout();
+      }
+      throw err;
+    }
+  }
+
+  public async approvePaymentClaim(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/payment-claims/${id}/approve`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+    });
+
+    return await this.parseResponse(res, 'भुगतान क्लेम स्वीकृत करने में विफल');
+  }
+
+  public async rejectPaymentClaim(id: string, rejectionReason?: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/payment-claims/${id}/reject`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ rejectionReason }),
+    });
+
+    return await this.parseResponse(res, 'भुगतान क्लेम अस्वीकृत करने में विफल');
   }
 }
 

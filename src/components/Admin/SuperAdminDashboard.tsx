@@ -4,10 +4,11 @@ import {
   Search, RefreshCw, LogOut, AlertTriangle, 
   Phone, MessageSquare, MapPin, Crown,
   Download, KeyRound, Trash2, Megaphone,
-  Eye, Clock, Plus, X, Send
+  Eye, Clock, Plus, X, Send, CreditCard,
+  CheckCircle2, XCircle, Copy, CheckCheck
 } from 'lucide-react';
 import { adminService, type PlatformOverviewResponse } from '../../services/adminService';
-import type { AdminStoreSummary, PlatformAnnouncement, AnnouncementType, AnnouncementTargetMode } from '../../types';
+import type { AdminStoreSummary, PlatformAnnouncement, AnnouncementType, AnnouncementTargetMode, PaymentClaim } from '../../types';
 import { formatINR } from '../../utils/formatters';
 import { buildWhatsAppUrl } from '../../utils/whatsapp';
 
@@ -26,8 +27,19 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
   const [selectedPlan, setSelectedPlan] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
 
+  // Tabs: STORES | PAYMENTS | BROADCASTS
+  const [adminTab, setAdminTab] = useState<'STORES' | 'PAYMENTS' | 'BROADCASTS'>('STORES');
+
+  // Payment Claims States
+  const [paymentClaims, setPaymentClaims] = useState<PaymentClaim[]>([]);
+  const [loadingClaims, setLoadingClaims] = useState<boolean>(false);
+  const [claimStatusFilter, setClaimStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+  const [actioningClaimId, setActioningClaimId] = useState<string | null>(null);
+  const [rejectModalClaim, setRejectModalClaim] = useState<PaymentClaim | null>(null);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState<string>('बैंक खाते में इस UTR से भुगतान प्राप्त नहीं हुआ।');
+  const [copiedUtrId, setCopiedUtrId] = useState<string | null>(null);
+
   // Broadcast & Announcement States
-  const [adminTab, setAdminTab] = useState<'STORES' | 'BROADCASTS'>('STORES');
   const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([]);
   const [loadingAnnouncements, setLoadingAnnouncements] = useState<boolean>(false);
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState<boolean>(false);
@@ -127,21 +139,79 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
     }
   };
 
+  const loadPaymentClaims = async (status = claimStatusFilter) => {
+    try {
+      setLoadingClaims(true);
+      const list = await adminService.getPaymentClaims(status);
+      setPaymentClaims(list);
+    } catch (err: any) {
+      console.error('Failed to load payment claims:', err);
+    } finally {
+      setLoadingClaims(false);
+    }
+  };
+
+  const handleApproveClaim = async (claim: PaymentClaim) => {
+    const claimId = claim._id || claim.id;
+    if (!claimId) return;
+
+    if (!window.confirm(`क्या आप दुकान '${claim.storeName}' के लिए UTR: ${claim.utrNumber} (₹${claim.amount} - ${claim.planDurationMonths} माह) का भुगतान स्वीकृत कर प्रो प्लान सक्रिय करना चाहते हैं?\n\n(यदि दुकान पहले से प्रो है, तो शेष दिनों में यह अवधि जुड़ जाएगी)`)) {
+      return;
+    }
+
+    try {
+      setActioningClaimId(claimId);
+      const res = await adminService.approvePaymentClaim(claimId);
+      alert(res.message || 'प्रो प्लान सफलतापूर्वक सक्रिय हो गया!');
+      await loadData(true);
+    } catch (err: any) {
+      alert(`स्वीकृति में त्रुटि: ${err.message}`);
+    } finally {
+      setActioningClaimId(null);
+    }
+  };
+
+  const handleRejectClaim = async () => {
+    if (!rejectModalClaim) return;
+    const claimId = rejectModalClaim._id || rejectModalClaim.id;
+    if (!claimId) return;
+
+    try {
+      setActioningClaimId(claimId);
+      await adminService.rejectPaymentClaim(claimId, rejectionReasonInput);
+      setRejectModalClaim(null);
+      alert('भुगतान क्लेम अस्वीकृत कर दिया गया।');
+      await loadData(true);
+    } catch (err: any) {
+      alert(`अस्वीकृति में त्रुटि: ${err.message}`);
+    } finally {
+      setActioningClaimId(null);
+    }
+  };
+
+  const handleCopyUtr = (utr: string, id: string) => {
+    navigator.clipboard.writeText(utr);
+    setCopiedUtrId(id);
+    setTimeout(() => setCopiedUtrId(null), 2000);
+  };
+
   const loadData = async (isManualRefresh = false) => {
     try {
       if (isManualRefresh) setRefreshing(true);
       else setLoading(true);
       setError('');
 
-      const [overviewData, storesData, announcementsData] = await Promise.all([
+      const [overviewData, storesData, announcementsData, claimsData] = await Promise.all([
         adminService.getOverview(),
         adminService.getStores(searchQuery, selectedPlan, selectedDistrict),
-        adminService.getAnnouncements().catch(() => [])
+        adminService.getAnnouncements().catch(() => []),
+        adminService.getPaymentClaims(claimStatusFilter).catch(() => []),
       ]);
 
       setOverview(overviewData);
       setStores(storesData);
       setAnnouncements(announcementsData);
+      setPaymentClaims(claimsData);
     } catch (err: any) {
       setError(err.message || 'डेटा लोड करने में असमर्थ');
     } finally {
@@ -152,7 +222,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
 
   useEffect(() => {
     loadData();
-  }, [selectedPlan, selectedDistrict]);
+  }, [selectedPlan, selectedDistrict, claimStatusFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -454,12 +524,12 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
           </div>
         ) : null}
 
-        {/* Navigation Tabs: Stores Directory vs Platform Broadcasts */}
-        <div className="flex items-center gap-2 border-b border-amber-200/80 pb-2">
+        {/* Navigation Tabs: Stores Directory vs UPI Claims vs Platform Broadcasts */}
+        <div className="flex items-center gap-2 border-b border-amber-200/80 pb-2 overflow-x-auto">
           <button
             type="button"
             onClick={() => setAdminTab('STORES')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm cursor-pointer transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm cursor-pointer transition-all shrink-0 ${
               adminTab === 'STORES'
                 ? 'bg-amber-600 text-white shadow-xs'
                 : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
@@ -472,17 +542,42 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
           <button
             type="button"
             onClick={() => {
+              setAdminTab('PAYMENTS');
+              loadPaymentClaims();
+            }}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm cursor-pointer transition-all shrink-0 ${
+              adminTab === 'PAYMENTS'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
+            }`}
+          >
+            <CreditCard className="w-4 h-4" />
+            <span>💳 UPI भुगतान क्लेम</span>
+            {paymentClaims.filter(c => c.status === 'PENDING').length > 0 ? (
+              <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs animate-pulse">
+                {paymentClaims.filter(c => c.status === 'PENDING').length} नए!
+              </span>
+            ) : (
+              <span className="text-[11px] text-stone-400 font-normal">
+                ({paymentClaims.length})
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
               setAdminTab('BROADCASTS');
               if (announcements.length === 0) loadAnnouncements();
             }}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm cursor-pointer transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm cursor-pointer transition-all shrink-0 ${
               adminTab === 'BROADCASTS'
                 ? 'bg-amber-600 text-white shadow-xs'
                 : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
             }`}
           >
             <Megaphone className="w-4 h-4" />
-            <span>📢 मंच घोषणाएं व ब्रॉडकास्ट ({announcements.length})</span>
+            <span>📢 मंच घोषणाएं ({announcements.length})</span>
           </button>
         </div>
 
@@ -736,6 +831,199 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
               )}
             </div>
           </>
+        ) : adminTab === 'PAYMENTS' ? (
+          /* PAYMENT CLAIMS VERIFICATION MANAGER */
+          <div className="village-card p-4 sm:p-6 rounded-3xl bg-white border border-amber-200 shadow-2xs space-y-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-stone-200">
+              <div>
+                <h2 className="text-base sm:text-lg font-black text-stone-950 m-0 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-amber-600" />
+                  <span>यूपीआई भुगतान सत्यापन (UPI Payment Claims)</span>
+                </h2>
+                <p className="text-xs text-stone-500 m-0 font-medium">
+                  दुकानदारों द्वारा प्रो अपग्रेड हेतु सबमिट किए गए 12-अंकों के UTR का बैंक खाते से मिलान कर प्रो सक्रिय करें
+                </p>
+              </div>
+
+              {/* Status Filter Tabs */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map(st => {
+                  const labelMap = {
+                    ALL: `सभी (${paymentClaims.length})`,
+                    PENDING: `⏳ लंबित (${paymentClaims.filter(c => c.status === 'PENDING').length})`,
+                    APPROVED: `✓ स्वीकृत (${paymentClaims.filter(c => c.status === 'APPROVED').length})`,
+                    REJECTED: `✕ अस्वीकृत (${paymentClaims.filter(c => c.status === 'REJECTED').length})`,
+                  };
+                  return (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setClaimStatusFilter(st)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        claimStatusFilter === st
+                          ? 'bg-stone-900 text-amber-400 shadow-xs'
+                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
+                    >
+                      {labelMap[st]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Claims Cards */}
+            {loadingClaims ? (
+              <div className="space-y-3 animate-pulse">
+                {[1, 2, 3].map(n => (
+                  <div key={n} className="h-28 bg-stone-100 rounded-2xl" />
+                ))}
+              </div>
+            ) : paymentClaims.length === 0 ? (
+              <div className="text-center py-12 px-4 rounded-3xl bg-stone-50 border border-dashed border-stone-300">
+                <CreditCard className="w-12 h-12 text-stone-300 mx-auto mb-3" />
+                <h3 className="text-sm font-bold text-stone-700 m-0">
+                  {claimStatusFilter === 'ALL'
+                    ? 'कोई भुगतान क्लेम दर्ज नहीं है'
+                    : `कोई ${claimStatusFilter === 'PENDING' ? 'लंबित' : claimStatusFilter === 'APPROVED' ? 'स्वीकृत' : 'अस्वीकृत'} क्लेम नहीं मिला`}
+                </h3>
+                <p className="text-xs text-stone-400 mt-1 m-0">
+                  दुकानदार जब प्रो अपग्रेड के लिए QR स्कैन कर UTR दर्ज करेंगे, वे यहाँ दिखाई देंगे।
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                {paymentClaims.map(claim => {
+                  const claimId = claim._id || claim.id || '';
+                  const durationLabel = claim.planDurationMonths === 1 ? '1 महीना' : claim.planDurationMonths === 3 ? '3 महीने (10% छूट)' : '1 वर्ष (12 माह)';
+                  const isActioning = actioningClaimId === claimId;
+
+                  return (
+                    <div
+                      key={claimId}
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                        claim.status === 'PENDING'
+                          ? 'bg-amber-50/40 border-amber-300 shadow-xs'
+                          : claim.status === 'APPROVED'
+                          ? 'bg-emerald-50/20 border-emerald-200'
+                          : 'bg-stone-50 border-stone-200 opacity-75'
+                      }`}
+                    >
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        {/* Store & Claim Info */}
+                        <div className="space-y-2 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-black text-stone-950 text-sm sm:text-base">
+                              🏪 {claim.storeName}
+                            </span>
+                            <span className="text-xs text-stone-500 font-medium">
+                              (संचालक: {claim.ownerName} • {claim.phone})
+                            </span>
+                            <a
+                              href={buildWhatsAppUrl(claim.phone, `नमस्ते ${claim.ownerName} जी, आपकी दुकान "${claim.storeName}" के ग्रामिन प्रो अपग्रेड (UTR: ${claim.utrNumber}) के संबंध में:`)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-lg no-underline"
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              <span>WhatsApp</span>
+                            </a>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-3 text-xs">
+                            <div className="bg-white px-2.5 py-1 rounded-xl border border-stone-200 font-semibold text-stone-800">
+                              योजना: <strong className="text-amber-700 font-bold">{durationLabel}</strong>
+                            </div>
+                            <div className="bg-white px-2.5 py-1 rounded-xl border border-stone-200 font-semibold text-stone-800">
+                              राशि: <strong className="text-emerald-700 font-black text-sm">₹{claim.amount}</strong>
+                            </div>
+                            <div className="text-stone-500 text-[11px]">
+                              सबमिट: {new Date(claim.createdAt).toLocaleString('hi-IN')}
+                            </div>
+                          </div>
+
+                          {/* UTR Highlight Card */}
+                          <div className="flex items-center gap-2 flex-wrap bg-white/90 p-2.5 rounded-xl border border-stone-200 w-fit">
+                            <span className="text-xs font-bold text-stone-500">12-अंक UTR:</span>
+                            <span className="font-mono font-black text-stone-950 text-sm tracking-wider select-all">
+                              {claim.utrNumber}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyUtr(claim.utrNumber, claimId)}
+                              className="p-1 rounded-md text-stone-500 hover:text-amber-700 hover:bg-stone-100 transition cursor-pointer"
+                              title="UTR कॉपी करें"
+                            >
+                              {copiedUtrId === claimId ? (
+                                <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                            <span className="text-[10px] text-stone-400">
+                              (बैंक ऐप / SMS में यह UTR चेक करें)
+                            </span>
+                          </div>
+
+                          {claim.rejectionReason && (
+                            <div className="text-xs text-rose-700 font-medium">
+                              अस्वीकृति कारण: {claim.rejectionReason}
+                            </div>
+                          )}
+
+                          {claim.approvedAt && (
+                            <div className="text-[11px] text-emerald-800 font-medium">
+                              स्वीकृत द्वारा: {claim.approvedBy || 'SUPER_ADMIN'} दिनांक {new Date(claim.approvedAt).toLocaleString('hi-IN')}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Status & Actions Column */}
+                        <div className="flex sm:flex-col items-end justify-between sm:justify-center gap-2 shrink-0">
+                          {claim.status === 'PENDING' ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleApproveClaim(claim)}
+                                disabled={isActioning}
+                                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5 disabled:opacity-50"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>{isActioning ? 'सक्रिय हो रहा है...' : 'प्रो सक्रिय करें (Approve)'}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRejectModalClaim(claim);
+                                  setRejectionReasonInput('बैंक खाते में इस UTR से भुगतान प्राप्त नहीं हुआ।');
+                                }}
+                                disabled={isActioning}
+                                className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs transition cursor-pointer active:scale-95 disabled:opacity-50"
+                              >
+                                <XCircle className="w-4 h-4" />
+                                <span>अस्वीकृत</span>
+                              </button>
+                            </div>
+                          ) : claim.status === 'APPROVED' ? (
+                            <span className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 border border-emerald-300 font-black text-xs flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                              <span>स्वीकृत (प्रो एक्टिव)</span>
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1.5 rounded-xl bg-rose-100 text-rose-900 border border-rose-300 font-black text-xs flex items-center gap-1.5">
+                              <XCircle className="w-4 h-4 text-rose-700" />
+                              <span>अस्वीकृत</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         ) : (
           /* PLATFORM BROADCASTS & ANNOUNCEMENTS MANAGER */
           <div className="village-card p-4 sm:p-6 rounded-3xl bg-white border border-amber-200 shadow-2xs space-y-5">
@@ -1266,6 +1554,84 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* PAYMENT CLAIM REJECTION MODAL */}
+        {rejectModalClaim && (
+          <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-5 sm:p-6 border border-rose-300 space-y-4 animate-slide-down my-auto">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+                <div className="flex items-center gap-2 text-rose-700 font-black">
+                  <XCircle className="w-5 h-5" />
+                  <span>भुगतान क्लेम अस्वीकृत करें</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRejectModalClaim(null)}
+                  className="p-1 rounded-lg text-stone-400 hover:text-stone-700 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="text-xs text-stone-600 space-y-1 bg-stone-50 p-3 rounded-xl border border-stone-200">
+                <div>दुकान: <strong className="text-stone-900">{rejectModalClaim.storeName}</strong> ({rejectModalClaim.ownerName})</div>
+                <div>फोन: <strong>{rejectModalClaim.phone}</strong></div>
+                <div>UTR: <strong className="font-mono text-stone-900">{rejectModalClaim.utrNumber}</strong> (राशि: ₹{rejectModalClaim.amount})</div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-stone-700">अस्वीकृति का कारण चुनें या लिखें:</label>
+                <div className="space-y-1.5 text-xs">
+                  {[
+                    'बैंक खाते में इस UTR से भुगतान प्राप्त नहीं हुआ।',
+                    'अमान्य या अधूरा UTR नंबर।',
+                    'प्राप्त राशि प्रो प्लान शुल्क से कम है।',
+                    'डुप्लीकेट या पहले इस्तेमाल किया गया UTR।',
+                  ].map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      onClick={() => setRejectionReasonInput(reason)}
+                      className={`w-full text-left p-2 rounded-xl border text-xs cursor-pointer transition ${
+                        rejectionReasonInput === reason
+                          ? 'border-rose-500 bg-rose-50 text-rose-950 font-bold'
+                          : 'border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-700'
+                      }`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+
+                <input
+                  type="text"
+                  value={rejectionReasonInput}
+                  onChange={(e) => setRejectionReasonInput(e.target.value)}
+                  placeholder="कस्टम कारण लिखें..."
+                  className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs mt-2 focus:outline-none focus:border-rose-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setRejectModalClaim(null)}
+                  className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-50 cursor-pointer"
+                >
+                  रद्द करें
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRejectClaim}
+                  disabled={!rejectionReasonInput.trim()}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                >
+                  अस्वीकृत करें
+                </button>
+              </div>
             </div>
           </div>
         )}

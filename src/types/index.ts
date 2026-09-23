@@ -202,3 +202,24 @@ export interface PlatformAnnouncement {
   expiresAt?: string;
   createdAt: string;
 }
+
+export type PaymentClaimStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface PaymentClaim {
+  _id?: string;
+  id?: string;
+  tenantId: string;
+  storeName: string;
+  ownerName: string;
+  phone: string;
+  amount: number;
+  planDurationMonths: number;
+  utrNumber: string;
+  status: PaymentClaimStatus;
+  rejectionReason?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+

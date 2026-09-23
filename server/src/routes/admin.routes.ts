@@ -11,6 +11,7 @@ import { Product } from '../models/Product.js';
 import { Transaction } from '../models/Transaction.js';
 import { SpoilageLog } from '../models/SpoilageLog.js';
 import { Announcement } from '../models/Announcement.js';
+import { PaymentClaim } from '../models/PaymentClaim.js';
 import { adminAuthLimiter, requireAuth, requireRole } from '../middleware/security.js';
 import { runWithTenantContext } from '../middleware/tenantContext.js';
 
@@ -223,7 +224,18 @@ router.patch('/stores/:id/subscription', requireAuth, requireRole('SUPER_ADMIN')
     let planExpiryDate: Date | undefined;
     if (plan === 'PRO') {
       const months = Number(durationMonths) || 1;
-      planExpiryDate = new Date(Date.now() + months * 30 * 86400000);
+      const durationMs = months * 30 * 86400000;
+      const existingTenant = await Tenant.findById(id);
+      const now = Date.now();
+      if (
+        existingTenant?.subscription?.plan === 'PRO' &&
+        existingTenant.subscription?.planExpiryDate &&
+        new Date(existingTenant.subscription.planExpiryDate).getTime() > now
+      ) {
+        planExpiryDate = new Date(new Date(existingTenant.subscription.planExpiryDate).getTime() + durationMs);
+      } else {
+        planExpiryDate = new Date(now + durationMs);
+      }
     }
 
     const tenant = await Tenant.findByIdAndUpdate(
@@ -431,5 +443,99 @@ router.delete('/announcements/:id', requireAuth, requireRole('SUPER_ADMIN'), asy
   }
 });
 
+// 12. List Payment Claims
+router.get('/payment-claims', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { status = 'ALL' } = req.query;
+    const filter: any = {};
+    if (status !== 'ALL') {
+      filter.status = status;
+    }
+    const claims = await PaymentClaim.find(filter).sort({ createdAt: -1 }).lean();
+    res.json({ claims });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 13. Approve Payment Claim (with Day Stacking)
+router.post('/payment-claims/:id/approve', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const claim = await PaymentClaim.findById(id);
+    if (!claim) {
+      return res.status(404).json({ error: 'भुगतान क्लेम नहीं मिला (Payment claim not found)' });
+    }
+    if (claim.status === 'APPROVED') {
+      return res.status(400).json({ error: 'यह क्लेम पहले से ही स्वीकृत है (Claim already approved)' });
+    }
+
+    const tenant = await Tenant.findById(claim.tenantId);
+    if (!tenant) {
+      return res.status(404).json({ error: 'संबंधित दुकान नहीं मिली (Store not found)' });
+    }
+
+    const months = claim.planDurationMonths || 1;
+    const durationMs = months * 30 * 86400000;
+    const now = Date.now();
+
+    // Plan stacking: if currently PRO and unexpired, extend from existing expiry date
+    let newExpiryDate: Date;
+    if (
+      tenant.subscription?.plan === 'PRO' &&
+      tenant.subscription?.planExpiryDate &&
+      new Date(tenant.subscription.planExpiryDate).getTime() > now
+    ) {
+      newExpiryDate = new Date(new Date(tenant.subscription.planExpiryDate).getTime() + durationMs);
+    } else {
+      newExpiryDate = new Date(now + durationMs);
+    }
+
+    tenant.subscription = {
+      plan: 'PRO',
+      status: 'ACTIVE',
+      planExpiryDate: newExpiryDate,
+    };
+    await tenant.save();
+
+    claim.status = 'APPROVED';
+    claim.approvedBy = (req as any).user?.name || 'SUPER_ADMIN';
+    claim.approvedAt = new Date();
+    await claim.save();
+
+    res.json({
+      message: `भुगतान स्वीकृत! दुकान ${tenant.storeName} के लिए प्रो प्लान ${newExpiryDate.toLocaleDateString('hi-IN')} तक सक्रिय हो गया है।`,
+      claim,
+      subscription: tenant.subscription,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 14. Reject Payment Claim
+router.post('/payment-claims/:id/reject', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { rejectionReason = 'अमान्य UTR या बैंक खाते में भुगतान प्राप्त नहीं हुआ।' } = req.body;
+    const claim = await PaymentClaim.findById(id);
+    if (!claim) {
+      return res.status(404).json({ error: 'भुगतान क्लेम नहीं मिला (Payment claim not found)' });
+    }
+
+    claim.status = 'REJECTED';
+    claim.rejectionReason = rejectionReason;
+    await claim.save();
+
+    res.json({
+      message: 'भुगतान क्लेम अस्वीकृत कर दिया गया (Payment claim rejected)',
+      claim,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
+
 

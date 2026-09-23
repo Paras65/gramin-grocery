@@ -1,5 +1,5 @@
 import { db, clearDatabase, initializeDatabaseIfEmpty } from '../db';
-import type { Customer, Product, Sale, SpoilageLog, Transaction, TenantInfo, UserRole } from '../types';
+import type { Customer, Product, Sale, SpoilageLog, Transaction, TenantInfo, UserRole, PaymentClaim } from '../types';
 import { API_BASE } from '../utils/apiConfig';
 
 export interface SyncStatus {
@@ -67,6 +67,10 @@ class SyncService {
   public getUserInfo(): any | null {
     const data = localStorage.getItem('gk_user_info');
     return data ? JSON.parse(data) : null;
+  }
+
+  public isMunimSession(): boolean {
+    return typeof window !== 'undefined' && sessionStorage.getItem('gk_munim_session') === 'true';
   }
 
   public getSubscriptionStatus(): {
@@ -515,6 +519,32 @@ class SyncService {
         localStorage.setItem('gk_last_sync', syncResult.serverTimestamp);
       }
 
+      // 4. Update store subscription status if returned by server
+      if (syncResult.subscription) {
+        const currentStore = this.getStoreInfo();
+        if (currentStore) {
+          const updatedStore = {
+            ...currentStore,
+            plan: syncResult.subscription.plan,
+            planExpiryDate: syncResult.subscription.planExpiryDate,
+          };
+          localStorage.setItem('gk_store_info', JSON.stringify(updatedStore));
+          this.notifyAuth();
+        }
+      }
+
+      // 5. Automatically sync offline pending payment claim if present
+      const pendingClaimStr = localStorage.getItem('gk_pending_pro_claim');
+      if (pendingClaimStr) {
+        try {
+          const pendingClaim = JSON.parse(pendingClaimStr);
+          await this.submitPaymentClaim(pendingClaim.amount, pendingClaim.planDurationMonths, pendingClaim.utrNumber);
+          localStorage.removeItem('gk_pending_pro_claim');
+        } catch (e) {
+          console.warn('Auto-sync of offline payment claim skipped/failed:', e);
+        }
+      }
+
       this.setStatus({
         isSyncing: false,
         lastSyncedAt: new Date().toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }),
@@ -525,6 +555,71 @@ class SyncService {
       console.warn('Sync attempt encountered error:', err.message);
       this.setStatus({ isSyncing: false, error: err.message });
       return false;
+    }
+  }
+
+  /**
+   * Submit UPI Payment UTR claim for Pro Upgrade
+   */
+  public async submitPaymentClaim(amount: number, planDurationMonths: number, utrNumber: string): Promise<PaymentClaim> {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error('कृपया पहले दुकान से लॉगिन करें');
+    }
+
+    if (!navigator.onLine) {
+      // Save offline claim for later sync
+      localStorage.setItem('gk_pending_pro_claim', JSON.stringify({
+        amount,
+        planDurationMonths,
+        utrNumber,
+        timestamp: new Date().toISOString(),
+      }));
+      throw new Error('ऑफ़लाइन: नेटवर्क नहीं है। आपका UTR सुरक्षित रख लिया गया है और इंटरनेट आते ही स्वतः सबमिट हो जाएगा।');
+    }
+
+    const res = await fetch(`${API_BASE}/tenant/subscription/claim`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        amount,
+        planDurationMonths,
+        utrNumber,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'क्लेम सबमिट करने में विफल');
+    }
+
+    // Clean up offline copy if it was successfully sent
+    localStorage.removeItem('gk_pending_pro_claim');
+    return data.claim;
+  }
+
+  /**
+   * Get store's latest payment claim status
+   */
+  public async getPaymentClaimStatus(): Promise<PaymentClaim | null> {
+    const token = this.getToken();
+    if (!token) return null;
+
+    try {
+      const res = await fetch(`${API_BASE}/tenant/subscription/claim`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.claim || null;
+    } catch {
+      return null;
     }
   }
 }

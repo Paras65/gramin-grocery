@@ -6,6 +6,7 @@ import { Transaction } from '../models/Transaction.js';
 import { Sale } from '../models/Sale.js';
 import { SpoilageLog } from '../models/SpoilageLog.js';
 import { Product } from '../models/Product.js';
+import { Tenant } from '../models/Tenant.js';
 
 const router = Router();
 
@@ -185,9 +186,12 @@ router.post('/sync', requireAuth, async (req: Request, res: Response) => {
       createdAt: { $gt: sinceDate },
     }).lean();
 
+    const tenant = await Tenant.findById(tenantId).select('subscription').lean();
+
     res.json({
       status: 'SUCCESS',
       serverTimestamp: now.toISOString(),
+      subscription: tenant?.subscription || null,
       deltas: {
         products: updatedProducts,
         customers: updatedCustomers,
