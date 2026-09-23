@@ -95,10 +95,11 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Bluetooth Thermal Statement Slip (58mm पर्ची प्रिंट)](#bluetooth-thermal-statement-slip-58mm-पर्ची-प्रिंट)
    - [1-Click Detailed WhatsApp Statement (व्हाट्सएप पर पूरी पर्ची)](#1-click-detailed-whatsapp-statement-व्हाट्सएप-पर-पूरी-पर्ची)
 16. [Weekly Haat-Bazaar High-Speed Mode (साप्ताहिक हाट-बाजार मोड)](#16-weekly-haat-bazaar-high-speed-mode-साप्ताहिक-हाट-बाजार-मोड)
-   - [Top 12 Extra-Large Touch Tiles (मोटी टच बटन)](#top-12-extra-large-touch-tiles-मोटी-टच-बटन)
+   - [Top 12 Extra-Large Touch Tiles & Low-Stock Radar (मोटी टच बटन व स्टॉक सूचना)](#top-12-extra-large-touch-tiles--low-stock-radar-मोटी-टच-बटन-व-स्टॉक-सूचना)
+   - [Ad-Hoc Produce & Miscellaneous Quick-Add (त्वरित खुला सामान व मौसमी भाजी)](#ad-hoc-produce--miscellaneous-quick-add-त्वरित-खुला-सामान-व-मौसमी-भाजी)
    - [Quick Tender & Change Calculator (छुट्टे पैसे हिसाब)](#quick-tender--change-calculator-छुट्टे-पैसे-हिसाब)
-   - [1-Tap Cash Checkout & Zero-Wait Queue (1-टैप नकद बिल)](#1-tap-cash-checkout--zero-wait-queue-1-टैप-नकद-बिल)
-   - [Live Haat Cash & Customer Meter (हाट रोकड़ मीटर)](#live-haat-cash--customer-meter-हाट-रोकड़-मीटर)
+   - [1-Tap Cash & UPI Checkout (1-टैप नकद व UPI बिल)](#1-tap-cash--upi-checkout-1-टैप-नकद-व-upi-बिल)
+   - [Live Haat Meter, Mute & Session Summary (हाट रोकड़ मीटर, आवाज़ नियंत्रण व सारांश)](#live-haat-meter-mute--session-summary-हाट-रोकड़-मीटर-आवाज़-नियंत्रण-व-सारांश)
 17. [Village Subscription Plans & Transparent Pricing (दुकान प्लान व सुविधाएं)](#17-village-subscription-plans--transparent-pricing-दुकान-प्लान-व-सुविधाएं)
     - [Village Starter Free Plan (🌾 गाँव स्टार्टर - आजीवन मुफ़्त)](#village-starter-free-plan-गाँव-स्टार्टर---आजीवन-मुफ़्त)
     - [Gramin Pro Plan (🚀 ग्रामिन प्रो - ₹99/माह)](#gramin-pro-plan-ग्रामिन-प्रो---99माह)
@@ -656,22 +657,30 @@ To prevent credit misunderstandings and provide 100% transparency between storek
 
 Village grocery stores experience intense counter rushes on weekly market days (अठवरिया हाट-बाजार) where dozens of villagers queue up simultaneously for small, cash-and-carry purchases. **हाट-बाजार मोड** transforms the app into an ultra-fast tally pad:
 
-### Top 12 Extra-Large Touch Tiles (मोटी टच बटन)
+### Top 12 Extra-Large Touch Tiles & Low-Stock Radar (मोटी टच बटन व स्टॉक सूचना)
 - Open the **🎪 हाट मोड** tab (or tap the **🎪 हाट मोड** quick-switch badge in the POS screen).
 - The screen displays the top 12 high-velocity market items (*गुड़, खुला सरसों तेल, नमक, बीड़ी 502, चीता माचिस, पारले-जी, रिन साबुन, चायपत्ती, दालें*) as oversized, high-contrast touch tiles.
 - Tapping any item adds it to the tally with a single touch—no sub-menus, search typing, or weight selectors required.
+- **⚠️ काउंटर लो-स्टॉक रडार (Counter Stock Radar):** Every item tile actively monitors remaining shelf quantities. If an item runs out or falls dangerously low during the market surge, an alert badge appears directly on the tile (`⚠️ खत्म (0)` or `⚠️ N बचा`), signaling the store assistant to immediately bring more sacks or cartons from the store room.
 - **⚙️ 12 बटन बदलें (Customize Tiles):** If you sell different items during different festival markets (e.g. Holi, Diwali, or summer season), click **"12 बटन बदलें"** in the top bar to select any 12 products from your shop inventory.
+
+### Ad-Hoc Produce & Miscellaneous Quick-Add (त्वरित खुला सामान व मौसमी भाजी)
+- On weekly bazaar days, farmers and local vendors frequently buy or bring seasonal loose items, fresh farm produce, firewood, or miscellaneous greens that are not pre-cataloged in the shop inventory.
+- **त्वरित मूल्य बटन (Quick Amount Buttons):** Tap preset fast buttons (**+₹10, +₹20, +₹30, +₹50, +₹100**) to add produce directly to the customer's cart in under a second.
+- **कस्टम राशि जोड़ें (Custom ₹ Input):** Type any specific amount (e.g. ₹75) into the quick box and tap **+ जोड़ें** to include it immediately without halting the queue or creating a new product listing.
 
 ### Quick Tender & Change Calculator (छुट्टे पैसे हिसाब)
 - Quick-tap cash tender buttons (**बराबर, ₹50, ₹100, ₹200, ₹500**) let the cashier instantly check exact change to return to the customer in bold numerals.
 
-### 1-Tap Cash Checkout & Zero-Wait Queue (1-टैप नकद बिल)
-- Tapping the giant green **⚡ 1-टैप नकद पूरा** button (or pressing **Enter** on keyboard) completes the sale in under 1.5 seconds.
-- Automatically saves the sale, deducts stock, rings a cashier chime, and clears the pad instantly for the next villager waiting in line.
+### 1-Tap Cash & UPI Checkout (1-टैप नकद व UPI बिल)
+- **1-टैप भुगतान विकल्प (Cash vs UPI):** Toggle between **💵 नकद (Cash)** and **📱 UPI / QR** with a single tap. During fast counter rushes, villagers paying through QR code can be processed instantly without switching screens.
+- **बिजली जैसी बिलिंग (Instant Checkout):** Tapping the giant green **⚡ 1-टैप नकद पूरा** (or **⚡ 1-टैप UPI पूरा**) button (or pressing **Enter** on keyboard) completes the sale in under 1.5 seconds.
+- Automatically saves the sale record, deducts stock, plays a pleasant cashier audio chime, prints receipt with your shop name & slogan, and clears the tally pad immediately for the next villager in line.
 
-### Live Haat Cash & Session Summary (हाट रोकड़ मीटर व सत्र सारांश)
-- The header displays a live ticker showing total Haat cash collected today along with the total count of customers served during the market session.
-- **🏁 सत्र सारांश (WhatsApp Report):** At the end of the market rush, tap **"सत्र सारांश"** to generate a clean summary of total cash collected and customers served, ready to share to your family or shop phone via WhatsApp.
+### Live Haat Meter, Mute & Session Summary (हाट रोकड़ मीटर, आवाज़ नियंत्रण व सारांश)
+- **लाइव रोकड़ व UPI मीटर:** The top header displays a live ticker showing total Haat Cash (नकद), total UPI received, and total customer footfall served during the day's market rush.
+- **🔊 / 🔇 आवाज़ चालू/बंद (Audio Mute Toggle):** In noisy bazaar environments or during sensitive store hours, toggle the audio icon to mute or unmute checkout chime sounds.
+- **🏁 सत्र सारांश (WhatsApp Report):** At the end of the market rush, tap **"सत्र सारांश"** to generate a clean breakdown of Cash, UPI, and total sales, ready to share to your family or shop phone via WhatsApp.
 
 ---
 

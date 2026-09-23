@@ -190,9 +190,17 @@ export const translations = {
       quickTender: 'नकद प्राप्त (Tender):',
       changeReturn: 'वापस देने योग्य खुल्ले (Change):',
       finishBill: '⚡ 1-टैप नकद पूरा (₹',
-      billSuccess: 'नकद प्राप्त! अगला ग्राहक तैयार ➔',
+      finishBillUpi: '⚡ 1-टैप UPI पूरा (₹',
+      billSuccess: 'बिक्री पूरी हुई! अगला ग्राहक तैयार ➔',
       autoPrint: 'प्रिंटर पर्ची (58mm)',
-      clearCart: 'रद्द करें'
+      clearCart: 'रद्द करें',
+      adHocItem: '⚡ खुला सामान / भाजी (+₹)',
+      paymentMode: 'भुगतान तरीका:',
+      cashMode: '💵 नकद (Cash)',
+      upiMode: '📲 UPI (QR कोड)',
+      lowStockBadge: '⚠️ कम स्टॉक',
+      soundOn: '🔊 आवाज़ चालू',
+      soundOff: '🔇 आवाज़ बंद'
     },
     subscription: {
       modalTitle: 'ग्रामीण किराना — सुविधाएं व प्लान',
@@ -417,9 +425,17 @@ export const translations = {
       quickTender: 'नगद मिले (रुपिया):',
       changeReturn: 'वापस देय के खुल्ला (Change):',
       finishBill: '⚡ 1-टैप नगद पूरा (₹',
-      billSuccess: 'नगद मिल गे! अगला ग्राहक लावव ➔',
+      finishBillUpi: '⚡ 1-टैप UPI पूरा (₹',
+      billSuccess: 'बिक्री पूरा हो गे! अगला ग्राहक लावव ➔',
       autoPrint: 'प्रिंटर पर्ची (58mm)',
-      clearCart: 'रद्द करव'
+      clearCart: 'रद्द करव',
+      adHocItem: '⚡ खुल्ला सामान / भाजी (+₹)',
+      paymentMode: 'पईसा देय के तरीका:',
+      cashMode: '💵 नगद (Cash)',
+      upiMode: '📲 UPI (QR कोड)',
+      lowStockBadge: '⚠️ कम माल',
+      soundOn: '🔊 आवाज़ चालू',
+      soundOff: '🔇 आवाज़ बंद'
     },
     subscription: {
       modalTitle: 'ग्रामीण किराना — सुविधा अउ प्लान',
@@ -644,9 +660,17 @@ export const translations = {
       quickTender: 'Cash Tendered:',
       changeReturn: 'Change to Return:',
       finishBill: '⚡ 1-Tap Cash Complete (₹',
-      billSuccess: 'Cash Received! Next Customer Ready ➔',
+      finishBillUpi: '⚡ 1-Tap UPI Complete (₹',
+      billSuccess: 'Sale Completed! Next Customer Ready ➔',
       autoPrint: 'Receipt Print (58mm)',
-      clearCart: 'Cancel'
+      clearCart: 'Cancel',
+      adHocItem: '⚡ Loose Item / Produce (+₹)',
+      paymentMode: 'Payment Mode:',
+      cashMode: '💵 Cash',
+      upiMode: '📲 UPI (QR Code)',
+      lowStockBadge: '⚠️ Low Stock',
+      soundOn: '🔊 Sound On',
+      soundOff: '🔇 Sound Off'
     },
     subscription: {
       modalTitle: 'Gramin Kirana — Features & Plans',

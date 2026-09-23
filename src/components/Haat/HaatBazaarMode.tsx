@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import confetti from 'canvas-confetti';
 import { 
   Zap, Check, Trash2, Printer, Plus, Minus,
-  RotateCcw, Sparkles, Settings, Share2, X
+  RotateCcw, Sparkles, Settings, Share2, X,
+  Volume2, VolumeX, Smartphone
 } from 'lucide-react';
 import { db } from '../../db';
 import type { Product, Sale } from '../../types';
@@ -28,6 +29,15 @@ export const HaatBazaarMode: React.FC = () => {
 
   const [cart, setCart] = useState<HaatCartItem[]>([]);
   const [tenderCash, setTenderCash] = useState<number | null>(null);
+  const [paymentMode, setPaymentMode] = useState<'CASH' | 'UPI'>('CASH');
+  const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('gk_haat_sound') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const [adHocAmtInput, setAdHocAmtInput] = useState<string>('');
   const [autoPrint, setAutoPrint] = useState<boolean>(false);
   const [lastSaleBanner, setLastSaleBanner] = useState<{ total: number; change: number } | null>(null);
   const [isDemoLimitOpen, setIsDemoLimitOpen] = useState<boolean>(false);
@@ -71,14 +81,22 @@ export const HaatBazaarMode: React.FC = () => {
     return products.slice(0, 12);
   }, [products, customTileIds]);
 
-  // Today's Haat Sales Total
+  // Today's Haat Sales Total (Cash + UPI)
   const todayStr = new Date().toISOString().split('T')[0];
   const todayHaatSales = useMemo(() => {
-    return sales.filter(s => s.timestamp.startsWith(todayStr) && s.paymentMode === 'CASH');
+    return sales.filter(s => s.timestamp.startsWith(todayStr) && (s.paymentMode === 'CASH' || s.paymentMode === 'UPI'));
   }, [sales, todayStr]);
 
   const totalHaatCash = useMemo(() => {
-    return todayHaatSales.reduce((sum, s) => sum + s.totalAmount, 0);
+    return todayHaatSales
+      .filter(s => s.paymentMode === 'CASH')
+      .reduce((sum, s) => sum + s.totalAmount, 0);
+  }, [todayHaatSales]);
+
+  const totalHaatUpi = useMemo(() => {
+    return todayHaatSales
+      .filter(s => s.paymentMode === 'UPI')
+      .reduce((sum, s) => sum + s.totalAmount, 0);
   }, [todayHaatSales]);
 
   // Total payable in cart
@@ -91,6 +109,7 @@ export const HaatBazaarMode: React.FC = () => {
 
   // Audio confirmation
   const playHaatChime = () => {
+    if (!isSoundEnabled) return;
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
@@ -134,6 +153,26 @@ export const HaatBazaarMode: React.FC = () => {
     });
   };
 
+  // Add Ad-Hoc Produce or Loose Item (1-tap)
+  const addAdHocItemToCart = (amount: number, label?: string) => {
+    if (isNaN(amount) || amount <= 0) return;
+    const itemLabel = label || `खुला सामान (₹${amount})`;
+    const adHocProduct: Product = {
+      id: 'adhoc_' + Math.random().toString(36).substring(2, 8),
+      name: itemLabel,
+      hindiName: itemLabel,
+      sellingPrice: amount,
+      purchasePrice: 0,
+      stockQty: 999,
+      unit: 'piece',
+      category: 'rural_special',
+      minStockThreshold: 0,
+      isLoose: true
+    };
+    addItemToHaatCart(adHocProduct);
+    setAdHocAmtInput('');
+  };
+
   // Update quantity in cart
   const updateQty = (productId: string | undefined, delta: number) => {
     setCart(prev => {
@@ -175,7 +214,7 @@ export const HaatBazaarMode: React.FC = () => {
         total: it.calculatedPrice
       })),
       totalAmount: cartTotal,
-      paymentMode: 'CASH',
+      paymentMode,
     };
 
     // Atomic ACID transaction for sale and stock decrement
@@ -183,7 +222,7 @@ export const HaatBazaarMode: React.FC = () => {
       await db.sales.add(saleRecord);
 
       for (const item of cart) {
-        if (item.product.id) {
+        if (item.product.id && !item.product.id.startsWith('adhoc_')) {
           const prod = await db.products.get(item.product.id);
           if (prod) {
             await db.products.update(item.product.id, {
@@ -205,8 +244,11 @@ export const HaatBazaarMode: React.FC = () => {
 
     // Auto-print thermal slip if toggled
     if (autoPrint) {
+      const storeInfo = syncService.getStoreInfo();
+      const storeDisplayName = storeInfo?.storeName?.trim() || 'ग्रामीण किराना';
+
       printReceipt({
-        storeName: 'ग्रामीण किराना (हाट-बाजार)',
+        storeName: `${storeDisplayName} (हाट-बाजार)`,
         date: new Date(timestamp).toLocaleDateString('hi-IN'),
         time: new Date(timestamp).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }),
         items: cart.map(it => ({
@@ -216,7 +258,7 @@ export const HaatBazaarMode: React.FC = () => {
           total: it.calculatedPrice
         })),
         total: cartTotal,
-        paymentMode: 'नकद (हाट नकद)'
+        paymentMode: paymentMode === 'CASH' ? 'नकद (हाट नकद)' : 'UPI (हाट ऑनलाइन)'
       });
     }
 
@@ -309,6 +351,20 @@ export const HaatBazaarMode: React.FC = () => {
 
           {/* Live Cash Counter Badge & Haat Actions */}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Audio Mute/Unmute toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = !isSoundEnabled;
+                setIsSoundEnabled(next);
+                try { localStorage.setItem('gk_haat_sound', String(next)); } catch {}
+              }}
+              className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 px-2 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+              title={isSoundEnabled ? (th.soundOn || 'आवाज़ चालू') : (th.soundOff || 'आवाज़ बंद')}
+            >
+              {isSoundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-300" /> : <VolumeX className="w-3.5 h-3.5 text-stone-400" />}
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -339,6 +395,11 @@ export const HaatBazaarMode: React.FC = () => {
               <span className="text-lg sm:text-xl font-black text-emerald-400">
                 ₹{totalHaatCash}
               </span>
+              {totalHaatUpi > 0 && (
+                <span className="text-[10px] font-bold text-blue-300 block -mt-0.5">
+                  + UPI ₹{totalHaatUpi}
+                </span>
+              )}
             </div>
             <div className="bg-stone-950/70 border border-amber-400/40 px-2.5 py-1.5 rounded-xl text-center">
               <span className="text-[10px] text-stone-400 block leading-tight font-medium">
@@ -371,11 +432,14 @@ export const HaatBazaarMode: React.FC = () => {
 
       {/* Main Haat Grid: Large Touch Buttons on Left, Instant Cart on Right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
-        {/* Left Column: Top 12 Extra-Large Touch Tiles */}
-        <div className="lg:col-span-7 xl:col-span-8">
+        {/* Left Column: Top 12 Extra-Large Touch Tiles + Ad-Hoc Produce */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-2.5">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-2.5">
             {haatFastItems.map(product => {
               const inCartItem = cart.find(c => c.product.id === product.id);
+              const isLowStock = product.stockQty <= 2;
+              const isOutOfStock = product.stockQty <= 0;
+
               return (
                 <button
                   key={product.id}
@@ -394,9 +458,20 @@ export const HaatBazaarMode: React.FC = () => {
                   )}
 
                   <div>
-                    <span className="text-xs sm:text-sm font-black text-stone-950 leading-tight block line-clamp-2">
-                      {language === 'hi' ? product.hindiName : product.name}
-                    </span>
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="text-xs sm:text-sm font-black text-stone-950 leading-tight block line-clamp-2">
+                        {language === 'hi' ? product.hindiName : product.name}
+                      </span>
+                      {isOutOfStock ? (
+                        <span className="text-[9px] font-black bg-rose-100 text-rose-800 border border-rose-300 px-1 rounded-sm shrink-0">
+                          खत्म
+                        </span>
+                      ) : isLowStock ? (
+                        <span className="text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300 px-1 rounded-sm shrink-0">
+                          {product.stockQty} बचा
+                        </span>
+                      ) : null}
+                    </div>
                     <span className="text-[11px] text-stone-500 font-medium">
                       प्रति {product.unit}
                     </span>
@@ -413,6 +488,57 @@ export const HaatBazaarMode: React.FC = () => {
                 </button>
               );
             })}
+          </div>
+
+          {/* Ad-Hoc Produce & Miscellaneous Quick-Add Box */}
+          <div className="village-card p-3 sm:p-3.5 rounded-2xl border border-amber-300/80 bg-amber-50/50">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base">🥬</span>
+                <h4 className="font-black text-stone-900 text-xs sm:text-sm m-0">
+                  {th.adHocItem || '⚡ खुला सामान / मौसमी भाजी (+₹)'}
+                </h4>
+              </div>
+              <span className="text-[10px] text-stone-500 font-medium">बिना लिस्ट का सामान 1-टैप में जोड़ें</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[10, 20, 30, 50, 100].map(amt => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => addAdHocItemToCart(amt)}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100 border border-amber-300 text-stone-900 font-black text-xs transition cursor-pointer shadow-2xs active:scale-95"
+                >
+                  + ₹{amt}
+                </button>
+              ))}
+
+              {/* Custom Amount Quick Add */}
+              <div className="flex items-center gap-1 ml-auto">
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-xs">₹</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    value={adHocAmtInput}
+                    onChange={e => setAdHocAmtInput(e.target.value)}
+                    placeholder="भाव"
+                    onKeyDown={e => e.key === 'Enter' && addAdHocItemToCart(parseFloat(adHocAmtInput))}
+                    className="w-20 pl-5 pr-2 py-1 text-xs font-bold bg-white border border-stone-300 rounded-lg focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => addAdHocItemToCart(parseFloat(adHocAmtInput))}
+                  disabled={!adHocAmtInput || isNaN(parseFloat(adHocAmtInput))}
+                  className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:bg-stone-200 disabled:text-stone-400 text-white font-bold text-xs transition cursor-pointer active:scale-95"
+                >
+                  + जोड़ें
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -487,19 +613,46 @@ export const HaatBazaarMode: React.FC = () => {
               )}
             </div>
 
-            {/* Bill Amount Display */}
+            {/* Bill Amount Display & Payment Mode */}
             <div className="pt-3 border-t border-stone-200 space-y-2">
+              {/* Payment Mode Selector */}
+              <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-xl border border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMode('CASH')}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    paymentMode === 'CASH'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <span>{th.cashMode || '💵 नकद (Cash)'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMode('UPI')}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    paymentMode === 'UPI'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>{th.upiMode || '📲 UPI (QR)'}</span>
+                </button>
+              </div>
+
               <div className="flex items-center justify-between bg-amber-500/15 p-3 rounded-2xl border border-amber-500/30">
                 <span className="font-black text-stone-800 text-sm">
-                  कुल नकद देय:
+                  {paymentMode === 'CASH' ? 'कुल नकद देय:' : 'कुल UPI देय:'}
                 </span>
-                <span className="text-2xl sm:text-3xl font-black text-amber-950">
+                <span className={`text-2xl sm:text-3xl font-black ${paymentMode === 'CASH' ? 'text-amber-950' : 'text-blue-950'}`}>
                   ₹{cartTotal}
                 </span>
               </div>
 
-              {/* Quick Cash Tender Presets */}
-              {cartTotal > 0 && (
+              {/* Quick Cash Tender Presets (Only when paymentMode is CASH) */}
+              {cartTotal > 0 && paymentMode === 'CASH' && (
                 <div className="space-y-1.5 pt-1">
                   <span className="text-[11px] font-bold text-stone-600 block uppercase tracking-wider">
                     {th.quickTender}
@@ -533,7 +686,7 @@ export const HaatBazaarMode: React.FC = () => {
               )}
 
               {/* Change to return alert */}
-              {tenderCash !== null && tenderCash >= cartTotal && cartTotal > 0 && (
+              {paymentMode === 'CASH' && tenderCash !== null && tenderCash >= cartTotal && cartTotal > 0 && (
                 <div className="bg-emerald-50 border border-emerald-300 p-2.5 rounded-xl flex items-center justify-between">
                   <span className="text-xs font-bold text-emerald-800">
                     {th.changeReturn}
@@ -558,7 +711,7 @@ export const HaatBazaarMode: React.FC = () => {
                 </label>
               </div>
 
-              {/* Big 1-Tap Cash Complete Button */}
+              {/* Big 1-Tap Cash / UPI Complete Button */}
               <button
                 type="button"
                 onClick={handleCompleteHaatSale}
@@ -566,11 +719,13 @@ export const HaatBazaarMode: React.FC = () => {
                 className={`w-full py-3.5 rounded-2xl font-black text-base flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98] cursor-pointer ${
                   cart.length === 0
                     ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
-                    : 'bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white ring-2 ring-emerald-400/50 shadow-lg'
+                    : paymentMode === 'CASH'
+                    ? 'bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white ring-2 ring-emerald-400/50 shadow-lg'
+                    : 'bg-blue-700 hover:bg-blue-600 active:bg-blue-800 text-white ring-2 ring-blue-400/50 shadow-lg'
                 }`}
               >
                 <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
-                <span>{th.finishBill}{cartTotal})</span>
+                <span>{paymentMode === 'CASH' ? th.finishBill : (th.finishBillUpi || '⚡ 1-टैप UPI पूरा (₹')}{cartTotal})</span>
               </button>
             </div>
           </div>
