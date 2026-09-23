@@ -16,9 +16,18 @@ interface HeaderProps {
   onOpenStoreAuth: () => void;
   onOpenMunimLogin?: () => void;
   onBackToLanding?: () => void;
+  onOpenWizard?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenVoice, onOpenStoreAuth, onOpenMunimLogin, onBackToLanding }) => {
+export const Header: React.FC<HeaderProps> = ({ 
+  activeTab, 
+  setActiveTab, 
+  onOpenVoice, 
+  onOpenStoreAuth, 
+  onOpenMunimLogin, 
+  onBackToLanding,
+  onOpenWizard
+}) => {
   const { language, toggleLanguage, t } = useLanguage();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [storeInfo, setStoreInfo] = useState(syncService.getStoreInfo());
@@ -335,6 +344,16 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
                 <Sparkles className="w-2.5 h-2.5" />
                 <span>{subStatus.isPro ? 'प्रो' : subStatus.isExpired ? 'योजना समाप्त' : 'मुफ़्त प्लान'}</span>
               </button>
+
+              {onOpenWizard && (
+                <button
+                  onClick={onOpenWizard}
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20 transition cursor-pointer flex items-center gap-1"
+                  title="दुकान सेटअप विज़ार्ड व 52 सामान"
+                >
+                  <span>🚀 सेटअप विज़ार्ड</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2 flex-wrap min-w-0">
@@ -558,6 +577,30 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onOpenV
 
             {/* Quick Actions List */}
             <div className="space-y-2">
+              {/* 1-Click Store Setup Wizard */}
+              {onOpenWizard && (
+                <button
+                  onClick={() => {
+                    setIsMobileStoreSheetOpen(false);
+                    onOpenWizard();
+                  }}
+                  className="w-full p-3 rounded-2xl bg-amber-950/40 hover:bg-amber-900/40 border border-amber-600/60 text-left flex items-center justify-between cursor-pointer transition active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-amber-200 block">दुकान सेटअप विज़ार्ड</span>
+                      <span className="text-[10px] text-stone-400 block">52 ग्रामीण किराना सामान व UPI लोड</span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-amber-950 bg-amber-400 px-2.5 py-1 rounded-xl">
+                    खोलें
+                  </span>
+                </button>
+              )}
+
               {/* Cloud Sync Button */}
               {isLoggedIn && (
                 <button

@@ -12,6 +12,7 @@ import { printCustomerStatement } from '../../utils/thermalPrint';
 import { syncService } from '../../services/syncService';
 import { openWhatsApp } from '../../utils/whatsapp';
 import { formatINR } from '../../utils/formatters';
+import { CustomerPassbookModal } from './CustomerPassbookModal';
 
 export const KhataLedger: React.FC = () => {
   const { t } = useLanguage();
@@ -22,6 +23,7 @@ export const KhataLedger: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPara, setSelectedPara] = useState<string>('all');
   const [activeCustomerForLedger, setActiveCustomerForLedger] = useState<Customer | null>(null);
+  const [passbookCustomer, setPassbookCustomer] = useState<Customer | null>(null);
 
   // Quick transaction modal (Jama or Udhaar)
   const [txnModal, setTxnModal] = useState<{
@@ -200,11 +202,13 @@ export const KhataLedger: React.FC = () => {
       ? 'महतारी वंदन / सरकारी DBT' 
       : 'नियत तारीख';
 
+    const passbookLink = `${window.location.origin}${window.location.pathname}#passbook=${customer.id}`;
     let text = `नमस्ते ${customer.name} जी,\n`;
     text += `दुकान के बही-खाते अनुसार आपका कुल बकाया *₹${customer.balanceDue}* है।\n`;
     if (customer.dueDate) {
       text += `📅 भुगतान का वादा: ${customer.dueDate} (${reasonText})\n`;
     }
+    text += `\n📖 अपनी डिजिटल पासबुक और लेन-देन पर्ची यहाँ देखें:\n${passbookLink}\n\n`;
     text += `कृपया समय पर भुगतान कर दुकान संचालन में सहयोग दें।\n`;
     text += `🙏 धन्यवाद! - ग्रामीण किराना स्टोर`;
 
@@ -529,6 +533,15 @@ export const KhataLedger: React.FC = () => {
                   >
                     <History className="w-4 h-4" />
                   </button>
+
+                  {/* Customer Digital Passbook & QR */}
+                  <button
+                    onClick={() => setPassbookCustomer(customer)}
+                    className="p-2 rounded-xl text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 cursor-pointer active:scale-95 transition-all"
+                    title="डिजिटल पासबुक व QR कोड खोलें"
+                  >
+                    <BookOpen className="w-4 h-4 text-amber-700" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -704,6 +717,16 @@ export const KhataLedger: React.FC = () => {
             </div>
 
             <div className="pt-3 mt-2 border-t border-stone-200 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPassbookCustomer(activeCustomerForLedger);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 active:scale-[0.99] text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-amber-600/20 transition-all"
+              >
+                <BookOpen className="w-4 h-4 text-amber-200" />
+                <span>📖 ग्राहक डिजिटल पासबुक व UPI QR खोलें</span>
+              </button>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -892,6 +915,15 @@ export const KhataLedger: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Customer Digital Passbook Modal */}
+      {passbookCustomer && (
+        <CustomerPassbookModal
+          customer={passbookCustomer}
+          isOpen={!!passbookCustomer}
+          onClose={() => setPassbookCustomer(null)}
+        />
       )}
     </div>
   );

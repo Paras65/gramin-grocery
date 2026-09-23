@@ -19,9 +19,12 @@ import { ProfitLossReport } from './components/Reports/ProfitLossReport';
 import { UpdateNotificationBanner } from './components/Common/UpdateNotificationBanner';
 import { SuperAdminDashboard } from './components/Admin/SuperAdminDashboard';
 import { AdminLoginModal } from './components/Admin/AdminLoginModal';
+import { StoreSetupWizardModal } from './components/Auth/StoreSetupWizardModal';
+import { CustomerPassbookModal } from './components/Khata/CustomerPassbookModal';
 import { syncService } from './services/syncService';
 import { adminService } from './services/adminService';
-import type { UserRole } from './types';
+import type { Customer, UserRole } from './types';
+import { db } from './db';
 
 const MainApp: React.FC = () => {
   const { t } = useLanguage();
@@ -36,6 +39,18 @@ const MainApp: React.FC = () => {
 
   const [isAdminMode, setIsAdminMode] = useState<boolean>(() => adminService.isSuperAdmin());
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState<boolean>(false);
+
+  const [isStoreWizardOpen, setIsStoreWizardOpen] = useState<boolean>(false);
+  const [passbookCustomerId, setPassbookCustomerId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash.startsWith('#passbook=')) {
+        return hash.replace('#passbook=', '').trim();
+      }
+    }
+    return null;
+  });
+  const [passbookCustomer, setPassbookCustomer] = useState<Customer | null>(null);
 
   const [isLoggedIn, setIsLoggedIn] = useState(syncService.isLoggedIn());
   const [userRole, setUserRole] = useState<UserRole>(syncService.getRole());
@@ -87,10 +102,46 @@ const MainApp: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
 
+    // Customer Passbook Hash listener (#passbook=CUSTOMER_ID)
+    const checkPassbookHash = async () => {
+      if (typeof window === 'undefined') return;
+      const hash = window.location.hash;
+      if (hash.startsWith('#passbook=')) {
+        const custId = hash.replace('#passbook=', '').trim();
+        setPassbookCustomerId(custId);
+        if (custId) {
+          try {
+            const cust = await db.customers.get(custId);
+            if (cust) {
+              setPassbookCustomer(cust);
+            }
+          } catch (err) {
+            console.warn('Passbook customer lookup error:', err);
+          }
+        }
+      } else {
+        setPassbookCustomerId(null);
+        setPassbookCustomer(null);
+      }
+    };
+
+    window.addEventListener('hashchange', checkPassbookHash);
+    checkPassbookHash();
+
+    // Check if logged-in store has empty catalog -> prompt Store Setup Wizard
+    if (syncService.isLoggedIn()) {
+      db.products.count().then((count) => {
+        if (count === 0) {
+          setIsStoreWizardOpen(true);
+        }
+      });
+    }
+
     return () => {
       unsub();
       unsubAdmin();
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('hashchange', checkPassbookHash);
     };
   }, []);
 
@@ -100,6 +151,42 @@ const MainApp: React.FC = () => {
         <div className="w-12 h-12 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mb-4" />
         <h2 className="text-lg font-black text-stone-900 tracking-tight">ग्रामीण किराना शुरू हो रहा है...</h2>
         <p className="text-xs text-stone-600 mt-1">डेटाबेस व खाता तैयार किया जा रहा है</p>
+      </div>
+    );
+  }
+
+  // Standalone Customer Passbook View (Directly opened via WhatsApp #passbook= link)
+  if (passbookCustomerId) {
+    if (passbookCustomer) {
+      return (
+        <CustomerPassbookModal
+          customer={passbookCustomer}
+          isOpen={true}
+          onClose={() => {
+            window.location.hash = '';
+            setPassbookCustomerId(null);
+            setPassbookCustomer(null);
+          }}
+          isStandalone={true}
+        />
+      );
+    }
+    return (
+      <div className="min-h-screen bg-stone-900 text-white flex flex-col items-center justify-center p-4 text-center">
+        <div className="bg-stone-800 border border-stone-700 p-6 rounded-3xl max-w-sm w-full space-y-3 shadow-2xl">
+          <div className="text-3xl">📖</div>
+          <h3 className="text-lg font-black">डिजिटल पासबुक लोड हो रहा है...</h3>
+          <p className="text-xs text-stone-400">यदि ग्राहक रिकॉर्ड नहीं मिलता है, तो कृपया दुकानदार से नया लिंक भेजने का अनुरोध करें।</p>
+          <button
+            onClick={() => {
+              window.location.hash = '';
+              setPassbookCustomerId(null);
+            }}
+            className="mt-3 px-4 py-2 bg-stone-700 hover:bg-stone-600 rounded-xl text-xs font-bold text-stone-200 cursor-pointer"
+          >
+            मुख्य पेज पर जाएं
+          </button>
+        </div>
       </div>
     );
   }
@@ -155,6 +242,7 @@ const MainApp: React.FC = () => {
         onOpenVoice={() => setIsVoiceOpen(true)}
         onOpenStoreAuth={() => setIsAuthOpen(true)}
         onOpenMunimLogin={() => setIsMunimModalOpen(true)}
+        onOpenWizard={() => setIsStoreWizardOpen(true)}
         onBackToLanding={() => {
           if (typeof window !== 'undefined') {
             sessionStorage.removeItem('gk_exploring_demo');
@@ -228,6 +316,17 @@ const MainApp: React.FC = () => {
       <StoreAuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
+        onOpenWizard={() => setIsStoreWizardOpen(true)}
+      />
+
+      {/* 1-Click Store Onboarding Wizard */}
+      <StoreSetupWizardModal
+        isOpen={isStoreWizardOpen}
+        onClose={() => setIsStoreWizardOpen(false)}
+        onComplete={() => {
+          setIsStoreWizardOpen(false);
+          setActiveTab('pos');
+        }}
       />
 
       {/* Munim / Counter Staff Login Modal */}
@@ -385,6 +484,15 @@ const MainApp: React.FC = () => {
                 <span className="text-2xl">⚙️</span>
                 <span className="text-xs font-bold">{t.tabs.settings}</span>
                 <span className="text-[10px] text-stone-500 font-medium">डेटा बैकअप, प्रिंटर व UPI</span>
+              </button>
+
+              <button
+                onClick={() => { setIsStoreWizardOpen(true); setIsMoreMenuOpen(false); }}
+                className="p-3.5 rounded-2xl border text-left flex flex-col gap-1 transition cursor-pointer active:scale-[0.98] bg-gradient-to-br from-amber-50 to-orange-50/50 border-amber-300 text-stone-800"
+              >
+                <span className="text-2xl">🚀</span>
+                <span className="text-xs font-black text-amber-950">दुकान सेटअप विज़ार्ड</span>
+                <span className="text-[10px] text-amber-800 font-medium">52 किराना सामान व UPI लोड</span>
               </button>
             </div>
           </div>

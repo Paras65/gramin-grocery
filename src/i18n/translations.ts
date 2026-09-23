@@ -76,6 +76,7 @@ export const translations = {
       },
       whatsappReminder: 'व्हाट्सएप तगादा',
       viewLedger: 'पूरा हिसाब देखें',
+      digitalPassbook: '📖 डिजिटल पासबुक',
       noHistory: 'कोई लेन-देन नहीं है'
     },
     mandi: {
@@ -293,6 +294,7 @@ export const translations = {
       },
       whatsappReminder: 'व्हाट्सएप तगादा',
       viewLedger: 'सब्बो हिसाब देखव',
+      digitalPassbook: '📖 डिजिटल पासबुक',
       noHistory: 'कोनो लेन-देन नइये'
     },
     mandi: {
@@ -510,6 +512,7 @@ export const translations = {
       },
       whatsappReminder: 'WhatsApp Reminder',
       viewLedger: 'View Full Ledger',
+      digitalPassbook: '📖 Digital Passbook',
       noHistory: 'No transaction history'
     },
     mandi: {

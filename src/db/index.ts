@@ -74,11 +74,17 @@ export const INITIAL_PRODUCTS: Omit<Product, 'id'>[] = [
   { name: 'Rahar Daal (Toor)', hindiName: 'रहर (तुअर) दाल', category: 'pulses', purchasePrice: 140, sellingPrice: 165, stockQty: 40, unit: 'kg', minStockThreshold: 15, isLoose: true },
   { name: 'Chana Daal', hindiName: 'चना दाल', category: 'pulses', purchasePrice: 78, sellingPrice: 92, stockQty: 35, unit: 'kg', minStockThreshold: 12, isLoose: true },
   { name: 'Urad Daal (Kaali/Dhuli)', hindiName: 'उड़द दाल', category: 'pulses', purchasePrice: 110, sellingPrice: 130, stockQty: 20, unit: 'kg', minStockThreshold: 8, isLoose: true },
+  { name: 'Moong Daal (Dhuli)', hindiName: 'मूंग दाल (धुली)', category: 'pulses', purchasePrice: 105, sellingPrice: 125, stockQty: 25, unit: 'kg', minStockThreshold: 8, isLoose: true },
+  { name: 'Masoor Daal', hindiName: 'लाल मसूर दाल', category: 'pulses', purchasePrice: 85, sellingPrice: 100, stockQty: 25, unit: 'kg', minStockThreshold: 10, isLoose: true },
   { name: 'Kala Chana', hindiName: 'देसी काला चना', category: 'pulses', purchasePrice: 65, sellingPrice: 80, stockQty: 30, unit: 'kg', minStockThreshold: 10, isLoose: true },
+  { name: 'Safed Chhole Chana', hindiName: 'सफेद छोले (काबुली चना)', category: 'pulses', purchasePrice: 120, sellingPrice: 145, stockQty: 20, unit: 'kg', minStockThreshold: 8, isLoose: true },
+  { name: 'Soyabean Badi (Chunks 200g)', hindiName: 'सोयाबीन बड़ी पाउच', category: 'pulses', purchasePrice: 22, sellingPrice: 30, stockQty: 30, unit: 'packet', minStockThreshold: 10, isLoose: false, barcode: '8906001239991' },
+  { name: 'Sabudana (Loose)', hindiName: 'साबूदाना (खुला)', category: 'staples', purchasePrice: 62, sellingPrice: 75, stockQty: 15, unit: 'kg', minStockThreshold: 5, isLoose: true },
 
   // Oils & Ghee
   { name: 'Sarson Tel (Mustard Loose)', hindiName: 'सरसों तेल (खुला)', category: 'oils', purchasePrice: 125, sellingPrice: 145, stockQty: 45, unit: 'liter', minStockThreshold: 15, isLoose: true },
   { name: 'Soyabean Tel (Pouch 1L)', hindiName: 'सोयाबीन तेल (पाउच)', category: 'oils', purchasePrice: 108, sellingPrice: 122, stockQty: 24, unit: 'packet', minStockThreshold: 10, isLoose: false },
+  { name: 'Fortune Sarson Tel (1L Pouch)', hindiName: 'फॉर्च्यून सरसों तेल (1L)', category: 'oils', purchasePrice: 135, sellingPrice: 152, stockQty: 24, unit: 'packet', minStockThreshold: 8, isLoose: false, barcode: '8906007280111' },
   { name: 'Desi Ghee (Pouch 200ml)', hindiName: 'देसी घी पाउच', category: 'oils', purchasePrice: 110, sellingPrice: 130, stockQty: 12, unit: 'pouch', minStockThreshold: 5, isLoose: false },
 
   // Spices & Sugar
@@ -89,7 +95,12 @@ export const INITIAL_PRODUCTS: Omit<Product, 'id'>[] = [
   { name: 'Mirch Powder (200g)', hindiName: 'लाल मिर्च पाउडर', category: 'spices', purchasePrice: 60, sellingPrice: 75, stockQty: 16, unit: 'packet', minStockThreshold: 6, isLoose: false, barcode: '8901262010111' },
   { name: 'Haldi Powder (200g)', hindiName: 'हल्दी पाउडर', category: 'spices', purchasePrice: 48, sellingPrice: 60, stockQty: 18, unit: 'packet', minStockThreshold: 6, isLoose: false, barcode: '8901262010222' },
   { name: 'Dhaniya Powder (200g)', hindiName: 'धनिया पाउडर', category: 'spices', purchasePrice: 42, sellingPrice: 55, stockQty: 15, unit: 'packet', minStockThreshold: 6, isLoose: false, barcode: '8901262010333' },
+  { name: 'Garam Masala (50g)', hindiName: 'गरम मसाला पाउच', category: 'spices', purchasePrice: 25, sellingPrice: 35, stockQty: 20, unit: 'packet', minStockThreshold: 6, isLoose: false, barcode: '8901262010444' },
   { name: 'Jeera (Loose)', hindiName: 'जीरा (खुला)', category: 'spices', purchasePrice: 320, sellingPrice: 390, stockQty: 6, unit: 'kg', minStockThreshold: 2, isLoose: true },
+  { name: 'Rai / Sarson Dana', hindiName: 'राई / सरसों दाना', category: 'spices', purchasePrice: 85, sellingPrice: 110, stockQty: 8, unit: 'kg', minStockThreshold: 3, isLoose: true },
+  { name: 'Methi Dana (Loose)', hindiName: 'मेथी दाना (खुला)', category: 'spices', purchasePrice: 90, sellingPrice: 115, stockQty: 6, unit: 'kg', minStockThreshold: 2, isLoose: true },
+  { name: 'Ajwain (Loose)', hindiName: 'देसी अजवाइन (खुला)', category: 'spices', purchasePrice: 240, sellingPrice: 300, stockQty: 5, unit: 'kg', minStockThreshold: 2, isLoose: true },
+  { name: 'Hing Powder (25g)', hindiName: 'हींग डिब्बी (25g)', category: 'spices', purchasePrice: 42, sellingPrice: 55, stockQty: 15, unit: 'piece', minStockThreshold: 5, isLoose: false, barcode: '8901262010555' },
 
   // Tea & Snacks
   { name: 'Chai Patti (Red Label 250g)', hindiName: 'चाय पत्ती (रेड लेबल)', category: 'snacks', purchasePrice: 115, sellingPrice: 130, stockQty: 14, unit: 'packet', minStockThreshold: 5, isLoose: false, barcode: '8901030381234' },
@@ -101,7 +112,10 @@ export const INITIAL_PRODUCTS: Omit<Product, 'id'>[] = [
 
   // Hygiene & Cleaning
   { name: 'Ghari Detergent Powder (1kg)', hindiName: 'घड़ी डिटर्जेंट पाउडर', category: 'hygiene', purchasePrice: 62, sellingPrice: 72, stockQty: 30, unit: 'packet', minStockThreshold: 10, isLoose: false, barcode: '8906010500010' },
+  { name: 'Wheel Soap Bar (₹10)', hindiName: 'व्हील कपड़ा साबुन', category: 'hygiene', purchasePrice: 8.5, sellingPrice: 10, stockQty: 60, unit: 'piece', minStockThreshold: 20, isLoose: false, barcode: '8901030018038' },
   { name: 'Rin Soap Bar (₹10)', hindiName: 'रिन साबुन टिकी', category: 'hygiene', purchasePrice: 8.5, sellingPrice: 10, stockQty: 50, unit: 'piece', minStockThreshold: 15, isLoose: false, barcode: '8901030018021' },
+  { name: 'Vim Dishwash Bar (₹10)', hindiName: 'विम बर्तन साबुन', category: 'hygiene', purchasePrice: 8.4, sellingPrice: 10, stockQty: 40, unit: 'piece', minStockThreshold: 15, isLoose: false, barcode: '8901030018045' },
+  { name: 'Surf Excel Quick Wash (500g)', hindiName: 'सर्फ एक्सेल (500g)', category: 'hygiene', purchasePrice: 65, sellingPrice: 75, stockQty: 18, unit: 'packet', minStockThreshold: 6, isLoose: false, barcode: '8901030018052' },
   { name: 'Lifebuoy Soap (₹10)', hindiName: 'लाइफबॉय साबुन', category: 'hygiene', purchasePrice: 8.4, sellingPrice: 10, stockQty: 45, unit: 'piece', minStockThreshold: 15, isLoose: false, barcode: '8901030019035' },
   { name: 'Clinic Plus Sachet (₹1)', hindiName: 'क्लिनिक प्लस पाउच', category: 'hygiene', purchasePrice: 0.75, sellingPrice: 1, stockQty: 240, unit: 'pouch', minStockThreshold: 60, isLoose: false, barcode: '8901030020048' },
   { name: 'Colgate Strong Teeth (50g)', hindiName: 'कोलगेट पेस्ट (50g)', category: 'hygiene', purchasePrice: 28, sellingPrice: 34, stockQty: 18, unit: 'piece', minStockThreshold: 6, isLoose: false, barcode: '8901314010528' },
@@ -114,9 +128,14 @@ export const INITIAL_PRODUCTS: Omit<Product, 'id'>[] = [
   // Rural Special Items
   { name: 'Bidi Bundle (Chhap 502)', hindiName: 'बीड़ी बंडल (502 छाप)', category: 'rural_special', purchasePrice: 16, sellingPrice: 20, stockQty: 90, unit: 'packet', minStockThreshold: 30, isLoose: false },
   { name: 'Cheeta Matchbox (माचिस)', hindiName: 'चीता माचिस बॉक्स', category: 'rural_special', purchasePrice: 0.8, sellingPrice: 1, stockQty: 150, unit: 'piece', minStockThreshold: 50, isLoose: false },
+  { name: 'Good Knight Mosquito Coil', hindiName: 'मच्छर कॉइल / अगरबत्ती', category: 'rural_special', purchasePrice: 32, sellingPrice: 40, stockQty: 25, unit: 'packet', minStockThreshold: 8, isLoose: false, barcode: '8901117002012' },
   { name: 'Dhoopbatti / Agarbatti', hindiName: 'धूपबत्ती / अगरबत्ती', category: 'rural_special', purchasePrice: 12, sellingPrice: 18, stockQty: 30, unit: 'packet', minStockThreshold: 10, isLoose: false },
+  { name: 'Sukha Nariyal / Khopra Gola', hindiName: 'सूखा नारियल (गोला)', category: 'rural_special', purchasePrice: 180, sellingPrice: 220, stockQty: 10, unit: 'kg', minStockThreshold: 3, isLoose: true },
   { name: 'Saridon / Paracetamol Strip', hindiName: 'दर्द की गोली (सैरिडॉन)', category: 'rural_special', purchasePrice: 38, sellingPrice: 48, stockQty: 12, unit: 'packet', minStockThreshold: 4, isLoose: false, expiryDate: '2026-12-31' }
 ];
+
+// Re-export as RURAL_ESSENTIALS_50 for onboarding wizard
+export const RURAL_ESSENTIALS_50 = INITIAL_PRODUCTS;
 
 // Empty arrays for initial customers and spoilage in production
 export const INITIAL_CUSTOMERS: Omit<Customer, 'id'>[] = [];
@@ -162,6 +181,27 @@ export async function initializeDatabaseIfEmpty() {
       });
     }
   }
+}
+
+/**
+ * 1-Click Store Onboarding: Seed standard 52 rural essentials into the store catalog.
+ * Skips items that already exist by name to prevent duplication.
+ */
+export async function seedStandardRuralEssentials(): Promise<{ added: number; total: number }> {
+  let added = 0;
+  for (const p of INITIAL_PRODUCTS) {
+    const existing = await db.products.where('name').equalsIgnoreCase(p.name).first();
+    if (!existing) {
+      await db.products.add({
+        ...p,
+        id: 'prod_' + Math.random().toString(36).substring(2, 9),
+        updatedAt: new Date().toISOString()
+      });
+      added++;
+    }
+  }
+  const total = await db.products.count();
+  return { added, total };
 }
 
 export async function seedDemoSandboxData() {

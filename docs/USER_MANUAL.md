@@ -21,6 +21,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Harvest & Scheme Repayment Dates (धान खरीदी / महतारी वंदन)](#harvest--scheme-repayment-dates-धान-खरीदी--महतारी-वंदन)
    - [Recording Payments Received (जमा) & New Credit (उधार)](#recording-payments-received-जमा--new-credit-उधार)
    - [WhatsApp Payment Receipts & Reminders (जमा रसीद व तगादा)](#whatsapp-payment-receipts--reminders-जमा-रसीद-व-तगादा)
+   - [Customer Digital Khata Passbook & Direct UPI Payments (ग्राहक डिजिटल पासबुक व तुरंत UPI भुगतान)](#customer-digital-khata-passbook--direct-upi-payments-ग्राहक-डिजिटल-पासबुक-व-तुरंत-upi-भुगतान)
    - [Direct Phone Dialing & Safe Customer Guard (कॉल व खाता सुरक्षा)](#direct-phone-dialing--safe-customer-guard-कॉल-व-खाता-सुरक्षा)
    - [Viewing Customer Transaction History](#viewing-customer-transaction-history)
 4. [Mandi Restock Planner (मंडी / शहर खरीदारी लिस्ट)](#4-mandi-restock-planner-मंडी--शहर-खरीदारी-लिस्ट)
@@ -46,6 +47,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Installing App on Phone or PC (PWA होमस्क्रीन ऐप)](#installing-app-on-phone-or-pc-pwa-होमस्क्रीन-ऐप)
 9. [Store Login & Multi-Staff Access (दुकानदार लॉगिन व मुनीम खाता)](#9-store-login--multi-staff-access-दुकानदार-लॉगिन-व-मुनीम-खाता)
    - [Registering Your Store & PIN Recovery Helpline](#registering-your-store--pin-recovery-helpline)
+   - [1-Click Store Onboarding Wizard & 52 Rural Kirana Essentials (दुकान सेटअप विज़ार्ड व 52 किराना सामान)](#1-click-store-onboarding-wizard--52-rural-kirana-essentials-दुकान-सेटअप-विज़ार्ड-व-52-किराना-सामान)
    - [Roles & Sensitive Data Privacy Guardrails](#roles--sensitive-data-privacy-guardrails)
    - [1-Click Logout & Safe Munim Shift Exit (1-क्लिक लॉगआउट व मुनीम सत्र समाप्ति)](#1-click-logout--safe-munim-shift-exit-1-क्लिक-लॉगआउट-व-मुनीम-सत्र-समाप्ति)
 10. [Automatic Cloud Sync & Multi-Store Isolation (क्लाउड ऑटो-सिंक व सुरक्षा)](#10-automatic-cloud-sync--multi-store-isolation-क्लाउड-ऑटो-सिंक-व-सुरक्षा)
@@ -203,6 +205,13 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 - **1-टैप जमा रसीद (Instant Repayment Receipt):** Whenever you record a payment (`जमा (+)`) from a customer, a prompt offers to send an immediate WhatsApp receipt directly to the customer confirming the received amount and their newly reduced balance.
 - **उधार तगादा (Polite Balance Reminder):** Click the **WhatsApp तगादा** button on any customer card to send a respectful reminder in Hindi detailing their pending balance and agreed repayment festival/scheme date.
 
+### Customer Digital Khata Passbook & Direct UPI Payments (ग्राहक डिजिटल पासबुक व तुरंत UPI भुगतान)
+- **पारदर्शी डिजिटल पासबुक (Transparent Passbook):** बही-खाता स्क्रीन में प्रत्येक ग्राहक कार्ड पर **"📖 डिजिटल पासबुक"** बटन दिया गया है। इस पर टैप करते ही ग्राहक का पूरा खाता एक आधुनिक डिजिटल बैंक पासबुक की तरह खुल जाता है।
+- **तिथि-वार लेन-देन व चालू शेष (Running Balance Ledger):** पासबुक में हर तारीख का उधार (+ लाल रंग में) और जमा चुकाया गया रुपया (- हरे रंग में), खरीदे गए सामान का संक्षिप्त विवरण, तथा प्रत्येक लेन-देन के बाद बचा हुआ शुद्ध चालू शेष (Running Balance) बिल्कुल साफ दिखता है।
+- **सीधे दुकान खाते में UPI भुगतान QR कोड (Direct UPI Settlement):** यदि ग्राहक पर बकाया बाकी है, तो पासबुक विंडो में सीधे दुकानदार के बैंक खाते का सुरक्षित QR कोड प्रदर्शित होता है। ग्राहक अपने मोबाइल से PhonePe, Google Pay, Paytm या BHIM द्वारा स्कैन करके तुरंत अपने बकाये का पूरा या आंशिक भुगतान कर सकता है।
+- **1-क्लिक व्हाट्सएप पासबुक लिंक (WhatsApp Passbook Link):** दुकानदार जब भी ग्राहक को तगादा या जमा रसीद भेजता है, तो व्हाट्सएप संदेश में ग्राहक की अपनी पासबुक का सीधा वेब लिंक स्वतः शामिल रहता है। गाँव के ग्राहक अपने स्मार्टफोन पर वह लिंक खोलकर अपना पूरा हिसाब-किताब कभी भी घर बैठे देख सकते हैं।
+- **58mm पर्ची प्रिंटिंग व शेयरिंग:** पासबुक विंडो से दुकानदार या ग्राहक सीधे 1-टैप में पूरा खाता विवरण 58mm ब्लूटूथ थर्मल प्रिंटर पर प्रिंट कर सकते हैं या पासबुक का लिंक कॉपी कर सकते हैं।
+
 ### Direct Phone Dialing & Safe Customer Guard (कॉल व खाता सुरक्षा)
 - **1-टैप फोन कॉल (Direct Calling):** Tap the green telephone icon directly beside any customer's name on their card to dial their mobile number instantly without manual copy-pasting.
 - **बकाया खाता सुरक्षा (Protection Against Accidental Deletion):** If a customer has an active outstanding balance (`₹1` or more), the red delete button is locked. You can only remove a customer card once their balance is completely paid up (`₹0`), guarding your store from accidental loss of credit records.
@@ -343,6 +352,22 @@ Gramin Kirana supports distinct operational roles and multi-store privacy to ens
   - **🏪 दुकान का नाम व गाँव:** Displays your store name and village/district location so you always know which shop ledger is active.
   - **👑 पदवी बैज (Role Badge):** Clearly indicates whether you are logged in as **दुकानदार (Owner)** or **मुनीम (Cashier)**.
   - **🎪 नमूना मोड (Demo Mode):** If you are browsing via the *"🎪 लाइव डेमो"* option, a warm amber banner shows sample data with an easy 1-click button to return to the **"🏠 मुख्य पेज / लॉगिन"** screen or register your own shop.
+
+### 1-Click Store Onboarding Wizard & 52 Rural Kirana Essentials (दुकान सेटअप विज़ार्ड व 52 किराना सामान)
+- **30 सेकंड में दुकान की शुरुआत:** नई दुकान पंजीकृत करते समय या खाली दुकान शुरू करते समय, दुकानदार को एक-एक सामान हाथ से टाइप करने की आवश्यकता नहीं होती। 1-क्लिक ऑनबोर्डिंग विज़ार्ड तुरंत खुलकर दुकान तैयार कर देता है।
+- **चरण 1: दुकान व UPI विवरण:**
+  - दुकानदार अपनी दुकान का नाम और गाँव का नाम सत्यापित करते हैं।
+  - दुकान का UPI ID (GooglePay, PhonePe, Paytm या BHIM) दर्ज किया जाता है, जिससे काउंटर बिलिंग और ग्राहक पासबुक में डायनामिक QR कोड से सीधे बैंक खाते में भुगतान आ सके।
+- **चरण 2: 52 आवश्यक ग्रामीण सामान लोड करें (1-Tap Catalog Populator):**
+  - **"🌾 52 आवश्यक किराना सामानों के साथ दुकान लोड करें"** बटन दबाते ही छत्तीसगढ़ व ग्रामीण भारत के 52 सबसे लोकप्रिय सामान असली थोक व खुदरा भावों, यूनिट और बारकोड के साथ दुकान स्टॉक में स्वतः जुड़ जाते हैं।
+  - **शामिल वस्तुएं:** 
+    - *अनाज व आटा:* अरवा चावल, गेहूं आटा (चक्की), चना बेसन, सूजी, मैदा, पोहा, साबूदाना
+    - *दालें:* तुअर (रहर), चना दाल, उड़द, मूंग दाल (धुली), लाल मसूर, काला चना, सफेद काबुली छोले, सोयाबीन बड़ी
+    - *तेल व घी:* सरसों तेल (खुला व पाउच), सोयाबीन तेल (पाउच), देसी घी
+    - *मसाले व शक्कर:* शक्कर, देसी गुड़ भेली, टाटा नमक, खुला नमक, हल्दी, लाल मिर्च, धनिया पाउडर, गरम मसाला, जीरा, राई, मेथी दाना, अजवाइन, हींग
+    - *साबुन व डिटर्जेंट:* घड़ी डिटर्जेंट पाउडर, व्हील साबुन, रिन, विम बर्तन बार, सर्फ एक्सेल, लाइफबॉय, क्लिनिक प्लस पाउच, कोलगेट पेस्ट
+    - *ग्रामीण दैनिक वस्तुएं:* पारले-जी, टाइगर, मैगी, बीड़ी (502 छाप), चीता माचिस, अगरबत्ती, मच्छर कॉइल, सूखा नारियल गोला, दर्द की गोली (सैरिडॉन)
+- **चरण 3: तुरंत काउंटर बिलिंग शुरू:** सामान लोड होते ही दुकानदार सीधे तुरंत बिलिंग (POS) काउंटर पर पहुँचकर ग्राहकों का बिल बनाना शुरू कर सकते हैं।
 
 ### Roles & Sensitive Data Privacy Guardrails
 - **दुकानदार (Store Owner):**

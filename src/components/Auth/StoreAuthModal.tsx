@@ -5,9 +5,10 @@ import { syncService, type SyncStatus } from '../../services/syncService';
 interface StoreAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenWizard?: () => void;
 }
 
-export const StoreAuthModal: React.FC<StoreAuthModalProps> = ({ isOpen, onClose }) => {
+export const StoreAuthModal: React.FC<StoreAuthModalProps> = ({ isOpen, onClose, onOpenWizard }) => {
   const [isLoginView, setIsLoginView] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(syncService.isLoggedIn());
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ isSyncing: false });
@@ -65,6 +66,9 @@ export const StoreAuthModal: React.FC<StoreAuthModalProps> = ({ isOpen, onClose 
       setStoreInfo(syncService.getStoreInfo());
       setUserInfo(syncService.getUserInfo());
       onClose();
+      if (onOpenWizard) {
+        onOpenWizard();
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'दुकान पंजीकरण विफल रहा');
     } finally {
