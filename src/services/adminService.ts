@@ -148,12 +148,13 @@ class AdminService {
   public async updateStoreSubscription(
     storeId: string, 
     plan: TenantPlan, 
-    status: 'ACTIVE' | 'EXPIRED' = 'ACTIVE'
+    status: 'ACTIVE' | 'EXPIRED' = 'ACTIVE',
+    durationMonths?: number
   ): Promise<void> {
     const res = await fetch(`${API_BASE}/admin/stores/${storeId}/subscription`, {
       method: 'PATCH',
       headers: this.getAuthHeaders(),
-      body: JSON.stringify({ plan, status }),
+      body: JSON.stringify({ plan, status, durationMonths }),
     });
 
     await this.parseResponse(res, 'Failed to update store subscription');

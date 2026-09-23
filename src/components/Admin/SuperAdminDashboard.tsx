@@ -58,17 +58,26 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
 
   const handleSubscriptionToggle = async (store: AdminStoreSummary) => {
     const newPlan = store.subscription.plan === 'PRO' ? 'FREE' : 'PRO';
-    const confirmMsg = newPlan === 'PRO'
-      ? `क्या आप ${store.storeName} को 'ग्रामिन प्रो' (PRO) प्लान में अपग्रेड करना चाहते हैं?`
-      : `क्या आप ${store.storeName} को 'गाँव स्टार्टर' (FREE) प्लान में बदलना चाहते हैं?`;
+    let durationMonths = 1;
 
-    if (!window.confirm(confirmMsg)) return;
+    if (newPlan === 'PRO') {
+      const input = window.prompt(
+        `'${store.storeName}' के लिए कितने महीने का प्रो प्लान सक्रिय करना है?\n\n1 = 1 महीना (₹99)\n3 = 3 महीने (₹279)\n12 = 1 वर्ष (वार्षिक लाइसेंस ₹999)`,
+        '1'
+      );
+      if (input === null) return;
+      durationMonths = Math.max(1, parseInt(input, 10) || 1);
+    } else {
+      const ok = window.confirm(`क्या आप ${store.storeName} को 'गाँव स्टार्टर' (FREE) प्लान में बदलना चाहते हैं?`);
+      if (!ok) return;
+    }
 
     try {
-      await adminService.updateStoreSubscription(store.id, newPlan, 'ACTIVE');
+      await adminService.updateStoreSubscription(store.id, newPlan, 'ACTIVE', durationMonths);
+      const planExpiryDate = newPlan === 'PRO' ? new Date(Date.now() + durationMonths * 30 * 86400000).toISOString() : undefined;
       setStores(prev => prev.map(s => s.id === store.id ? {
         ...s,
-        subscription: { plan: newPlan, status: 'ACTIVE' }
+        subscription: { plan: newPlan, status: 'ACTIVE', planExpiryDate }
       } : s));
       // Refresh metrics
       adminService.getOverview().then(setOverview).catch(console.error);
@@ -402,6 +411,11 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                           <span>पंजीकरण: {new Date(store.createdAt).toLocaleDateString('hi-IN')}</span>
                           <span>खातेदार: <b className="text-stone-800">{store.customerCount}</b></span>
                           <span>कुल उधारी: <b className="text-rose-700">{formatINR(store.totalDebt)}</b></span>
+                          {isPro && store.subscription.planExpiryDate && (
+                            <span className="text-emerald-800 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                              📅 वैधता: {new Date(store.subscription.planExpiryDate).toLocaleDateString('hi-IN')}
+                            </span>
+                          )}
                         </div>
                       </div>
 

@@ -175,6 +175,7 @@ export interface AdminStoreSummary {
   subscription: {
     plan: TenantPlan;
     status: 'ACTIVE' | 'EXPIRED';
+    planExpiryDate?: string;
   };
   customerCount: number;
   totalDebt: number;
