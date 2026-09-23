@@ -46,6 +46,13 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
   const [customUnit, setCustomUnit] = useState<string>('piece');
   const [saveCustomToCatalog, setSaveCustomToCatalog] = useState<boolean>(true);
 
+  // Dynamic Market Rate States
+  const [looseRate, setLooseRate] = useState<number | string>('');
+  const [saveLooseRateToCatalog, setSaveLooseRateToCatalog] = useState<boolean>(false);
+  const [editingCartRateIndex, setEditingCartRateIndex] = useState<number | null>(null);
+  const [tempCartRate, setTempCartRate] = useState<string>('');
+  const [saveCartRateToCatalog, setSaveCartRateToCatalog] = useState<boolean>(false);
+
   // Discount & Store UPI states
   const [discount, setDiscount] = useState<string>('');
   const [storeUpiId, setStoreUpiId] = useState<string>(() => localStorage.getItem('gk_store_upi_id') || '');
@@ -119,34 +126,59 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
   const handleProductClick = (product: Product) => {
     if (product.isLoose) {
       setActiveLooseProduct(product);
+      setLooseRate(product.sellingPrice);
+      setSaveLooseRateToCatalog(false);
       setSelectedWeight(1.0);
     } else {
       addToCart(product, 1);
     }
   };
 
-  const addToCart = (product: Product, qty: number) => {
+  const addToCart = (product: Product, qty: number, customRate?: number) => {
+    const effectiveRate = customRate !== undefined ? customRate : product.sellingPrice;
     setCart(prev => {
-      const existingIndex = prev.findIndex(item => item.product.id === product.id && item.product.isLoose === product.isLoose);
+      const existingIndex = prev.findIndex(item => 
+        item.product.id === product.id && 
+        item.product.isLoose === product.isLoose &&
+        (item.customRate === customRate || (item.customRate === undefined && customRate === undefined))
+      );
       if (existingIndex > -1 && !product.isLoose) {
         const updated = [...prev];
         const newQty = updated[existingIndex].quantity + qty;
         updated[existingIndex] = {
           ...updated[existingIndex],
           quantity: newQty,
-          calculatedPrice: Math.round(newQty * product.sellingPrice * 100) / 100
+          calculatedPrice: Math.round(newQty * effectiveRate * 100) / 100
         };
         return updated;
       } else {
-        const calculatedPrice = Math.round(qty * product.sellingPrice * 100) / 100;
-        return [...prev, { product, quantity: qty, calculatedPrice }];
+        const calculatedPrice = Math.round(qty * effectiveRate * 100) / 100;
+        return [...prev, { product, quantity: qty, calculatedPrice, customRate }];
       }
     });
   };
 
-  const confirmLooseAdd = () => {
+  const confirmLooseAdd = async () => {
     if (activeLooseProduct && selectedWeight > 0) {
-      addToCart(activeLooseProduct, selectedWeight);
+      const parsedRate = parseFloat(String(looseRate));
+      const effectiveRate = !isNaN(parsedRate) && parsedRate > 0 ? parsedRate : activeLooseProduct.sellingPrice;
+
+      if (saveLooseRateToCatalog && activeLooseProduct.id && effectiveRate !== activeLooseProduct.sellingPrice) {
+        try {
+          await db.products.update(activeLooseProduct.id, {
+            sellingPrice: effectiveRate,
+            updatedAt: new Date().toISOString()
+          });
+        } catch (err) {
+          console.error('Failed to update catalog product sellingPrice:', err);
+        }
+      }
+
+      addToCart(
+        activeLooseProduct, 
+        selectedWeight, 
+        effectiveRate !== activeLooseProduct.sellingPrice ? effectiveRate : undefined
+      );
       setActiveLooseProduct(null);
     }
   };
@@ -192,14 +224,43 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
     setCart(prev => {
       const updated = [...prev];
       const item = updated[index];
+      const effectiveRate = item.customRate !== undefined ? item.customRate : item.product.sellingPrice;
       const roundedQty = Math.round(newQty * 100) / 100;
       updated[index] = {
         ...item,
         quantity: roundedQty,
-        calculatedPrice: Math.round(roundedQty * item.product.sellingPrice * 100) / 100
+        calculatedPrice: Math.round(roundedQty * effectiveRate * 100) / 100
       };
       return updated;
     });
+  };
+
+  const handleUpdateCartItemRate = async (index: number, newRate: number, saveToCatalog: boolean) => {
+    const item = cart[index];
+    if (!item) return;
+
+    setCart(prev => {
+      const updated = [...prev];
+      const current = updated[index];
+      const roundedPrice = Math.round(current.quantity * newRate * 100) / 100;
+      updated[index] = {
+        ...current,
+        customRate: newRate,
+        calculatedPrice: roundedPrice
+      };
+      return updated;
+    });
+
+    if (saveToCatalog && item.product.id) {
+      try {
+        await db.products.update(item.product.id, {
+          sellingPrice: newRate,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error('Failed to update product rate in db:', err);
+      }
+    }
   };
 
   const removeFromCart = (index: number) => {
@@ -279,7 +340,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           hindiName: it.product.hindiName,
           quantity: it.quantity,
           unit: it.product.unit,
-          unitPrice: it.product.sellingPrice,
+          unitPrice: it.customRate !== undefined ? it.customRate : it.product.sellingPrice,
           total: it.calculatedPrice,
         })),
         totalAmount: finalBillAmount,
@@ -294,7 +355,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           updatedAt: timestamp
         });
 
-        const itemsSummary = cart.map(it => `${it.product.hindiName || it.product.name} (${it.quantity}${it.product.unit})`).join(', ');
+        const itemsSummary = cart.map(it => `${it.product.hindiName || it.product.name} (${it.quantity}${it.product.unit}${it.customRate !== undefined ? ` @₹${it.customRate}` : ''})`).join(', ');
         await db.transactions.add({
           id: 'txn_' + Math.random().toString(36).substring(2, 9),
           customerId: selectedCustomer.id,
@@ -361,7 +422,8 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
     }
     text += `---------------------------\n`;
     items.forEach((it, idx) => {
-      text += `${idx + 1}. ${it.product.hindiName || it.product.name} - ${it.quantity} ${it.product.unit} = ₹${it.calculatedPrice}\n`;
+      const rate = it.customRate !== undefined ? it.customRate : it.product.sellingPrice;
+      text += `${idx + 1}. ${it.product.hindiName || it.product.name} - ${it.quantity} ${it.product.unit} (@₹${rate}) = ₹${it.calculatedPrice}\n`;
     });
     text += `---------------------------\n`;
     if (billDiscount && billDiscount > 0) {
@@ -438,59 +500,138 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           cart.map((item, idx) => (
             <div
               key={`${item.product.id}-${idx}`}
-              className="p-2.5 rounded-xl bg-[#faf8f3] border border-amber-200/50 flex items-center justify-between gap-2 shadow-2xs"
+              className="p-2.5 rounded-xl bg-[#faf8f3] border border-amber-200/50 flex flex-col gap-1.5 shadow-2xs"
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="font-bold text-stone-900 text-xs sm:text-sm truncate">
-                    {language === 'hi' ? item.product.hindiName : item.product.name}
-                  </span>
-                  {item.product.stockQty <= 0 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-300 shrink-0" title="स्टॉक में 0 है — अतिरिक्त बिक्री">
-                      ⚠️ 0 स्टॉक
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-stone-900 text-xs sm:text-sm truncate">
+                      {language === 'hi' ? item.product.hindiName : item.product.name}
                     </span>
-                  )}
+                    {item.product.stockQty <= 0 && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-300 shrink-0" title="स्टॉक में 0 है — अतिरिक्त बिक्री">
+                        ⚠️ 0 स्टॉक
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    <span className="text-[11px] text-stone-600 font-medium">
+                      ₹{item.customRate !== undefined ? item.customRate : item.product.sellingPrice} /{item.product.unit}
+                    </span>
+                    {item.customRate !== undefined && item.customRate !== item.product.sellingPrice && (
+                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
+                        नया भाव
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editingCartRateIndex === idx) {
+                          setEditingCartRateIndex(null);
+                        } else {
+                          setEditingCartRateIndex(idx);
+                          setTempCartRate(String(item.customRate !== undefined ? item.customRate : item.product.sellingPrice));
+                          setSaveCartRateToCatalog(false);
+                        }
+                      }}
+                      className="text-[10px] text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer"
+                      title="दर बदलें"
+                    >
+                      {editingCartRateIndex === idx ? 'बंद करें ✕' : '✏️ भाव बदलें'}
+                    </button>
+                  </div>
                 </div>
-                <div className="text-[11px] text-stone-500 font-medium">
-                  ₹{item.product.sellingPrice} /{item.product.unit}
-                </div>
-              </div>
 
-              {/* Quantity Stepper */}
-              <div className="flex items-center gap-1">
+                {/* Quantity Stepper */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => updateCartQty(idx, item.quantity - (item.product.isLoose ? 0.25 : 1))}
+                    className="w-7 h-7 rounded-lg bg-stone-200/90 hover:bg-stone-300 flex items-center justify-center font-black text-stone-800 text-sm cursor-pointer active:scale-95"
+                    aria-label="Decrease quantity"
+                  >
+                    -
+                  </button>
+                  <span className="text-xs font-black text-stone-900 w-14 text-center">
+                    {item.quantity} {item.product.unit}
+                  </span>
+                  <button
+                    onClick={() => updateCartQty(idx, item.quantity + (item.product.isLoose ? 0.25 : 1))}
+                    className="w-7 h-7 rounded-lg bg-stone-200/90 hover:bg-stone-300 flex items-center justify-center font-black text-stone-800 text-sm cursor-pointer active:scale-95"
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Price */}
+                <div className="text-right min-w-[55px]">
+                  <div className="font-black text-stone-950 text-sm">
+                    ₹{item.calculatedPrice}
+                  </div>
+                </div>
+
                 <button
-                  onClick={() => updateCartQty(idx, item.quantity - (item.product.isLoose ? 0.25 : 1))}
-                  className="w-7 h-7 rounded-lg bg-stone-200/90 hover:bg-stone-300 flex items-center justify-center font-black text-stone-800 text-sm cursor-pointer active:scale-95"
-                  aria-label="Decrease quantity"
+                  onClick={() => removeFromCart(idx)}
+                  className="text-stone-400 hover:text-rose-600 p-1 cursor-pointer"
+                  title="हटाएं"
                 >
-                  -
-                </button>
-                <span className="text-xs font-black text-stone-900 w-14 text-center">
-                  {item.quantity} {item.product.unit}
-                </span>
-                <button
-                  onClick={() => updateCartQty(idx, item.quantity + (item.product.isLoose ? 0.25 : 1))}
-                  className="w-7 h-7 rounded-lg bg-stone-200/90 hover:bg-stone-300 flex items-center justify-center font-black text-stone-800 text-sm cursor-pointer active:scale-95"
-                  aria-label="Increase quantity"
-                >
-                  +
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Price */}
-              <div className="text-right min-w-[55px]">
-                <div className="font-black text-stone-950 text-sm">
-                  ₹{item.calculatedPrice}
+              {/* Inline Rate Editor */}
+              {editingCartRateIndex === idx && (
+                <div className="p-2 bg-amber-50 rounded-xl border border-amber-300/80 space-y-1.5 animate-fade-in text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-stone-700 text-[11px]">
+                      {t.pos.todayRate || 'आज का भाव'} (₹/{item.product.unit}):
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="font-black text-stone-700">₹</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.1"
+                        autoFocus
+                        value={tempCartRate}
+                        onChange={e => setTempCartRate(e.target.value)}
+                        className="w-20 p-1 bg-white border border-amber-400 rounded-lg font-black text-amber-950 text-right outline-hidden focus:border-amber-600 shadow-2xs"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-[10px] font-bold text-amber-950 select-none">
+                    <input
+                      type="checkbox"
+                      checked={saveCartRateToCatalog}
+                      onChange={e => setSaveCartRateToCatalog(e.target.checked)}
+                      className="rounded text-amber-600 focus:ring-amber-500 scale-90"
+                    />
+                    <span>💾 {t.pos.saveToCatalog || 'आगे के लिए भी सुरक्षित करें'}</span>
+                  </label>
+                  <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-amber-200">
+                    <button
+                      type="button"
+                      onClick={() => setEditingCartRateIndex(null)}
+                      className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-stone-100 text-stone-600 hover:bg-stone-200 cursor-pointer"
+                    >
+                      रद्द
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const parsed = parseFloat(tempCartRate);
+                        if (!isNaN(parsed) && parsed > 0) {
+                          await handleUpdateCartItemRate(idx, parsed, saveCartRateToCatalog);
+                        }
+                        setEditingCartRateIndex(null);
+                      }}
+                      className="px-2.5 py-0.5 text-[10px] font-black rounded-md bg-emerald-700 text-white hover:bg-emerald-600 cursor-pointer shadow-2xs"
+                    >
+                      लागू करें ✓
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              <button
-                onClick={() => removeFromCart(idx)}
-                className="text-stone-400 hover:text-rose-600 p-1 cursor-pointer"
-                title="हटाएं"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              )}
             </div>
           ))
         )}
@@ -1014,9 +1155,38 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs text-stone-500 mb-4 font-medium">
-              दर: ₹{activeLooseProduct.sellingPrice} /{activeLooseProduct.unit}
-            </p>
+            {/* Dynamic Market Rate for Loose Item */}
+            <div className="bg-[#faf8f3] p-2.5 rounded-2xl border border-amber-200/80 mb-3 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-bold text-stone-700 flex items-center gap-1">
+                  <span>🏷️ {t.pos.todayRate || 'आज का भाव'}:</span>
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-black text-stone-700">₹</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0.1"
+                    value={looseRate}
+                    onChange={e => setLooseRate(e.target.value)}
+                    className="w-20 p-1.5 bg-white border border-amber-300 rounded-xl text-xs sm:text-sm font-black text-amber-950 text-right outline-hidden focus:border-amber-500 shadow-2xs"
+                  />
+                  <span className="text-xs font-bold text-stone-600">/{activeLooseProduct.unit}</span>
+                </div>
+              </div>
+
+              {Number(looseRate) > 0 && Number(looseRate) !== activeLooseProduct.sellingPrice && (
+                <label className="flex items-center gap-2 pt-1.5 border-t border-amber-200/60 cursor-pointer text-[11px] font-bold text-amber-950 select-none">
+                  <input
+                    type="checkbox"
+                    checked={saveLooseRateToCatalog}
+                    onChange={e => setSaveLooseRateToCatalog(e.target.checked)}
+                    className="rounded text-amber-600 focus:ring-amber-500 scale-95"
+                  />
+                  <span>💾 {t.pos.saveToCatalog || 'आगे के लिए भी नया भाव सुरक्षित करें'}</span>
+                </label>
+              )}
+            </div>
 
             <label className="text-xs font-bold text-stone-700 block mb-2">
               {t.pos.looseSelector}
@@ -1067,7 +1237,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
               <div className="text-right">
                 <span className="text-[11px] text-stone-600 font-medium">कुल कीमत:</span>
                 <div className="font-black text-emerald-800 text-lg">
-                  ₹{Math.round(selectedWeight * activeLooseProduct.sellingPrice * 100) / 100}
+                  ₹{Math.round(selectedWeight * (Number(looseRate) > 0 ? Number(looseRate) : activeLooseProduct.sellingPrice) * 100) / 100}
                 </div>
               </div>
             </div>
@@ -1122,7 +1292,10 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
               <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                 {lastCompletedBill.items.map((it, i) => (
                   <div key={i} className="flex justify-between text-stone-800">
-                    <span>{it.product.hindiName || it.product.name} ({it.quantity} {it.product.unit})</span>
+                    <span>
+                      {it.product.hindiName || it.product.name} ({it.quantity} {it.product.unit}
+                      {it.customRate !== undefined ? ` @₹${it.customRate}` : ''})
+                    </span>
                     <span className="font-bold">₹{it.calculatedPrice}</span>
                   </div>
                 ))}

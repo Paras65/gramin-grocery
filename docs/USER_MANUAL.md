@@ -10,6 +10,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
 2. [Quick Billing & POS (तुरंत बिलिंग)](#2-quick-billing--pos-तुरंत-बिलिंग)
    - [Selecting Items & Categories](#selecting-items--categories)
    - [Loose Weight Pricing (खुला सामान: पाव, आधा किलो)](#loose-weight-pricing-खुला-सामान-पाव-आधा-किलो)
+   - [Dynamic Market Rate Adjustments (मंडी व बाज़ार दैनिक दर बदलाव)](#dynamic-market-rate-adjustments-मंडी-व-बाज़ार-दैनिक-दर-बदलाव)
    - [Payment Options: Cash, Udhaar, and UPI](#payment-options-cash-udhaar-and-upi)
    - [Dynamic Offline UPI Payment QR Code (स्वचालित UPI QR कोड)](#dynamic-offline-upi-payment-qr-code-स्वचालित-upi-qr-कोड)
    - [Bill Discount & Round-Off Chips (छूट / बट्टा व सिक्के छोड़ें)](#bill-discount--round-off-chips-छूट--बट्टा-व-सिक्के-छोड़ें)
@@ -134,6 +135,19 @@ Gramin Kirana is built to run **100% offline** without needing a continuous inte
   - **1 kg (एक किलो)**
   - **2 kg & 5 kg**
 - The total price calculates automatically based on your store's per-kg rate.
+
+### Dynamic Market Rate Adjustments (मंडी व बाज़ार दैनिक दर बदलाव)
+- **बदलते मंडी भाव (Fluctuating Commodity Rates):** किराना दुकान में सब्ज़ी, तेल, चीनी और दालों के थोक व खुदरा भाव रोज़ाना बदलते हैं। दुकानदार को इन्वेंटरी में जाकर रेट बदलने की ज़रूरत नहीं है—काउंटर पर बिलिंग करते समय ही सीधे दर बदली जा सकती है।
+- **खुला सामान तौलते समय दर बदलाव (Loose Modal Rate Edit):**
+  - जब आप किसी खुले सामान (जैसे: चीनी, तेल, आलू) पर क्लिक करते हैं, तो तौल स्क्रीन पर **"🏷️ आज का भाव"** का संपादन योग्य फ़ील्ड मिलता है।
+  - यदि आज बाज़ार में भाव बदल गया है, तो तुरंत नया भाव दर्ज करें। पाव, आधा किलो व किलो की कुल कीमत नए भाव के अनुसार तुरंत बन जाएगी।
+  - **आगे के लिए सुरक्षित करें (Save to Catalog):** नीचे दिया गया चेकबॉक्स टिक करने पर यह नया भाव हमेशा के लिए इन्वेंटरी में सुरक्षित हो जाता है, ताकि अगले ग्राहकों के लिए भी नया भाव खुद ब खुद लागू रहे।
+- **बिलिंग कार्ट में सीधे दर संपादन (Inline Cart Rate Edit):**
+  - कार्ट में दर्ज किसी भी सामान की दर के बगल में लगे **"✏️ भाव बदलें"** लिंक पर टैप करें।
+  - नया प्रति-इकाई भाव लिखकर **"लागू करें ✓"** दबाते ही उस आइटम की कुल रकम दोबारा सही से जुड़ जाती है।
+  - बिल में *"नया भाव"* का स्पष्ट बैज दिखाई देता है।
+  - यह सुविधा मोल-भाव करने वाले ग्राहकों को रियायत देने या आज के मंडी भाव पर तुरंत बिल काटने के लिए अत्यंत उपयोगी है।
+- **पर्ची व व्हाट्सएप रसीद पारदर्शिता:** बदले गए भाव के अनुसार ही थर्मल पर्ची और व्हाट्सएप बिल में सही दर (`@₹XX`) और कुल रकम दर्ज होती है।
 
 ### Payment Options: Cash, Udhaar, and UPI
 1. **Cash (नकद):** Standard cash purchase.

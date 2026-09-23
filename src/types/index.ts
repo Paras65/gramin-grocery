@@ -48,6 +48,7 @@ export interface CartItem {
   product: Product;
   quantity: number;
   calculatedPrice: number;
+  customRate?: number;
 }
 
 export interface Sale {

@@ -47,7 +47,11 @@ export const translations = {
       finishBill: 'बिल पूरा करें (पर्ची बनाएं)',
       billSuccess: 'बिल सफलतापूर्वक दर्ज हो गया!',
       printShare: 'व्हाट्सएप पर पर्ची भेजें',
-      clearCart: 'बिल रद्द करें'
+      clearCart: 'बिल रद्द करें',
+      editRate: 'दर बदलें',
+      todayRate: 'आज का भाव (दर)',
+      saveToCatalog: 'आगे के लिए भी नया भाव सुरक्षित करें',
+      ratePerUnit: 'प्रति'
     },
     khata: {
       title: 'ग्राहक उधार (बही-खाता)',
@@ -252,7 +256,11 @@ export const translations = {
       finishBill: 'बिल पूरा करव (पर्ची बनाव)',
       billSuccess: 'बिल बढ़िया से दर्ज हो गे!',
       printShare: 'व्हाट्सएप म पर्ची भेजव',
-      clearCart: 'बिल रद्द करव'
+      clearCart: 'बिल रद्द करव',
+      editRate: 'भाव बदलव',
+      todayRate: 'आज के भाव',
+      saveToCatalog: 'आगे बर घलोक नवा भाव रखव',
+      ratePerUnit: 'प्रति'
     },
     khata: {
       title: 'ग्राहक के उधार (बही-खाता)',
@@ -457,7 +465,11 @@ export const translations = {
       finishBill: 'Complete Bill & Receipt',
       billSuccess: 'Bill saved successfully!',
       printShare: 'Share Bill via WhatsApp',
-      clearCart: 'Clear Bill'
+      clearCart: 'Clear Bill',
+      editRate: 'Edit Rate',
+      todayRate: "Today's Rate",
+      saveToCatalog: 'Save new price to catalog',
+      ratePerUnit: 'per'
     },
     khata: {
       title: 'Customer Udhaar (Credit Ledger)',
