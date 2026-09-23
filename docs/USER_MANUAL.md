@@ -30,8 +30,11 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
 4. [Mandi Restock Planner (मंडी / शहर खरीदारी लिस्ट)](#4-mandi-restock-planner-मंडी--शहर-खरीदारी-लिस्ट)
    - [Auto-Generated Low Stock List](#auto-generated-low-stock-list)
    - [Calculating Cash Needed for Mandi Trip](#calculating-cash-needed-for-mandi-trip)
+   - [Department Category & Search Filtering (श्रेणी व सामान खोज)](#department-category--search-filtering-श्रेणी-व-सामान-खोज)
    - [Sending Purchase Order to Town Wholesaler](#sending-purchase-order-to-town-wholesaler)
-   - [Wholesaler Directory & Bulk Stock Receiving (थोक व्यापारी व माल आया स्टॉक अपडेट)](#wholesaler-directory--bulk-stock-receiving-थोक-व्यापारी-व-माल-आया-स्टॉक-अपडेट)
+   - [Multi-Wholesaler Directory & 1-Tap Switching (थोक व्यापारी डायरी व त्वरित चुनाव)](#multi-wholesaler-directory--1-tap-switching-थोक-व्यापारी-डायरी-व-त्वरित-चुनाव)
+   - [Bulk Stock Receiving & Auto-Cataloging (मंडी से माल आया व नया सामान इन्वेंटरी में जोड़ें)](#bulk-stock-receiving--auto-cataloging-मंडी-से-माल-आया-व-नया-सामान-इन्वेंटरी-में-जोड़ें)
+   - [Inverted Price & Margin Loss Guard on Stock Intake (थोक खरीद दर व मार्जिन नुकसान सुरक्षा)](#inverted-price--margin-loss-guard-on-stock-intake-थोक-खरीद-दर-व-मार्जिन-नुकसान-सुरक्षा)
    - [Daily Morning Rate Sheet (दुकानदार त्वरित दैनिक मंडी भाव शीट)](#daily-morning-rate-sheet-दुकानदार-त्वरित-दैनिक-मंडी-भाव-शीट)
 5. [Spoilage & Expiry Guard (खराबी व एक्सपायरी गार्ड)](#5-spoilage--expiry-guard-खराबी-व-एक्सपायरी-गार्ड)
    - [Logging Power-Cut & Heat Losses (दूध/दही/कोल्ड ड्रिंक)](#logging-power-cut--heat-losses-दूधदहीकोल्ड-ड्रिंक)
@@ -251,16 +254,29 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 - The planner calculates the **total wholesale cash budget** needed before traveling 20–30 km to the tehsil or district wholesale mandi.
 - You can adjust the quantities or add one-off seasonal festival items manually.
 
-### Sending Purchase Order to Town Wholesaler
-- Enter the town wholesaler's mobile number and click **"व्हाट्सएप पर लिस्ट भेजें"**.
-- Your complete shopping list is formatted cleanly and sent in advance so the wholesaler can pack the bags before you arrive.
+### Department Category & Search Filtering (श्रेणी व सामान खोज)
+- **आइसल-वार वर्गीकरण:** मंडी लिस्ट में सामानों की संख्या अधिक होने पर आप श्रेणी चिप्स (*अनाज, दालें, तेल/घी, मसाले, नाश्ता, साबुन, डेयरी, अन्य जोड़े*) दबाकर संबंधित विभाग के सामानों को अलग देख सकते हैं।
+- **त्वरित खोज:** सर्च बार में किसी भी सामान का नाम लिखकर उसकी मात्रा व थोक दर तुरंत जांची जा सकती है।
 
-### Wholesaler Directory & Bulk Stock Receiving (थोक व्यापारी व माल आया स्टॉक अपडेट)
-- **Wholesaler Contact Memory:** Enter your primary wholesaler's name and mobile number (*e.g., साहू ट्रेडर्स, 98271XXXXX*). The app remembers these details on your device so you do not have to type the wholesaler's phone number repeatedly every week.
-- **मंडी से माल आया (One-Tap Restock Checklist):** When you return from town with purchased bags, click **"मंडी से माल आया"**.
-  - A clean checklist displays all items ordered from the mandi with their incoming quantities and purchase rates.
-  - You can adjust the exact quantities that arrived and update purchase rates if wholesale prices changed.
-  - Tap **"पुष्टि करें व स्टॉक में जोड़ें"** to instantly increment your shop's inventory stock in a single batch, eliminating the need to manually edit dozens of items individually.
+### Multi-Wholesaler Directory & 1-Tap Switching (थोक व्यापारी डायरी व त्वरित चुनाव)
+- **कमोडिटी अनुसार अलग-अलग व्यापारी:** गाँव के दुकानदार गल्ला मंडी से अनाज, तेल डिपो से खाद्य तेल, और शहर की एजेंसी से साबुन/बिस्कुट अलग-अलग व्यापारियों से खरीदते हैं।
+- **डिजिटल व्यापारी डायरी (Wholesaler Directory):** शीर्ष बार में **"डायरी ✏️"** बटन दबाकर आप अपने सभी थोक व्यापारियों के नाम, 10-अंकों का मोबाइल नंबर, मंडी का पता (उदा. *तहसील मंडी, गंज बाज़ार*) और श्रेणी सुरक्षित रख सकते हैं।
+- **1-टैप चुनाव व कॉल:** ड्रॉपडाउन से किसी भी व्यापारी को चुनते ही उनका नाम, नंबर और मंडी स्थान स्वतः सक्रिय हो जाता है।
+
+### Sending Purchase Order to Town Wholesaler
+- चुनिंदा व्यापारी के लिए **"व्हाट्सएप पर लिस्ट भेजें"** दबाते ही दुकान के नाम, गाँव के पते, तारीख और व्यापारी के नाम के साथ एक सुव्यवस्थित आर्डर लिस्ट तैयार हो जाती है।
+- इसे व्यापारी को पहले से भेज देने पर वे आपके पहुँचने से पहले बोरियाँ व कार्टन पैक करके तैयार रखते हैं।
+
+### Bulk Stock Receiving & Auto-Cataloging (मंडी से माल आया व नया सामान इन्वेंटरी में जोड़ें)
+- **1-क्लिक बल्क स्टॉक अपडेट:** जब आप मंडी से खरीदारी करके दुकान लौटें, तो **"मंडी से माल आया"** बटन दबाएं।
+- **आई हुई मात्रा व दर मिलान:** चेकलिस्ट में आई हुई मात्रा और बिल अनुसार थोक भाव की जांच करें।
+- **✨ नए सामान का स्वतः इन्वेंटरी में जुड़ाव:** यदि आपने मंडी लिस्ट में कोई अनलिस्टेड सामान (उदा. देसी गुड़ या त्यौहार का नया सामान) जोड़ा था, तो चेकलिस्ट में वह *✨ नया सामान* बैज के साथ दिखता है। पुष्टि करते ही वह सीधे दुकान की मुख्य इन्वेंटरी में 15% सुरक्षित मुनाफ़ा मार्जिन के साथ जुड़ जाता है, जिससे दोबारा अलग से डेटा एंट्री नहीं करनी पड़ती।
+- **"पुष्टि करें व स्टॉक में जोड़ें"** दबाते ही सभी चयनित सामानों का स्टॉक एक साथ बढ़ जाता है।
+
+### Inverted Price & Margin Loss Guard on Stock Intake (थोक खरीद दर व मार्जिन नुकसान सुरक्षा)
+- **मंडी में थोक भाव बढ़ने पर सुरक्षा:** यदि मंडी में किसी सामान का थोक भाव बढ़कर दुकान की वर्तमान बिक्री दर के बराबर या उससे अधिक हो गया है (उदा. थोक खरीद ₹155 हो गई और दुकान में बिक्री दर ₹150 है), तो चेकलिस्ट में तुरंत लाल चेतावनी दिखाई देती है:
+  *⚠️ खरीद दर (₹155) दुकान की बिक्री दर (₹150) से अधिक/बराबर है! घाटा होगा।*
+- **तुरंत नई बिक्री दर सेट करें:** पंक्ति में ही **"नई बिक्री दर ₹"** का बॉक्स मिलता है, जहाँ दुकानदार तुरंत सही खुदरा भाव (उदा. ₹170) दर्ज कर सकता है। स्टॉक जुड़ते ही काउंटर पर नया भाव स्वतः लागू हो जाता है।
 
 ### Daily Morning Rate Sheet (दुकानदार त्वरित दैनिक मंडी भाव शीट)
 - **रोज़ सुबह 30-सेकंड में भाव बदलाव:** तेल, चीनी, गुड़, आलू, प्याज और दालों जैसे मुख्य राशन के खुदरा भाव रोज़ाना बदलते हैं। हर सामान को अलग-अलग एडिट करने के बजाय, **"🌅 दैनिक भाव शीट"** बटन दबाकर सभी मुख्य वस्तुओं की सूची एक साथ खुल जाती है।

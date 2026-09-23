@@ -122,6 +122,14 @@ export interface TenantInfo {
   munimPin?: string; // 4-digit munim/staff PIN (local only, hashed)
 }
 
+export interface Wholesaler {
+  id: string;
+  name: string;
+  phone: string;
+  mandiLocation?: string; // e.g. तहसील मंडी, गंज बाज़ार
+  category?: string; // e.g. 'अनाज व किराना', 'तेल व वनस्पति', 'मसाले', 'FMCG'
+}
+
 export interface PlatformMetrics {
   totalStores: number;
   proStores: number;
