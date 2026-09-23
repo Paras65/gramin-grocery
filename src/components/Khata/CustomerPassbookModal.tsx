@@ -33,6 +33,7 @@ export const CustomerPassbookModal: React.FC<CustomerPassbookModalProps> = ({
   const storeUpi = localStorage.getItem('gk_store_upi_id') || '';
 
   const [copiedLink, setCopiedLink] = useState(false);
+  const [statementFilter, setStatementFilter] = useState<'ALL' | '30DAYS'>('ALL');
   const [payAmount, setPayAmount] = useState<string>(
     customer.balanceDue > 0 ? String(customer.balanceDue) : ''
   );
@@ -51,9 +52,16 @@ export const CustomerPassbookModal: React.FC<CustomerPassbookModalProps> = ({
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
-  // Compute running balances
+  // Filter based on selected date range (All vs Last 30 Days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const filteredSortedTxns = statementFilter === '30DAYS'
+    ? sortedTxns.filter(t => new Date(t.timestamp) >= thirtyDaysAgo)
+    : sortedTxns;
+
+  // Compute running balances across full history
   let running = 0;
-  const ledgerRows = sortedTxns.map((t: Transaction) => {
+  const ledgerRowsWithRunning = sortedTxns.map((t: Transaction) => {
     if (t.type === 'UDHAAR') {
       running += t.amount;
     } else {
@@ -63,13 +71,19 @@ export const CustomerPassbookModal: React.FC<CustomerPassbookModalProps> = ({
       ...t,
       runningBalance: running,
     };
-  }).reverse(); // Display newest on top for immediate glance
+  });
 
-  const totalUdhaarGiven = sortedTxns
+  // Filter displayed rows
+  const ledgerRows = (statementFilter === '30DAYS'
+    ? ledgerRowsWithRunning.filter(t => new Date(t.timestamp) >= thirtyDaysAgo)
+    : ledgerRowsWithRunning
+  ).reverse(); // Display newest on top for immediate glance
+
+  const totalUdhaarGiven = filteredSortedTxns
     .filter((t) => t.type === 'UDHAAR')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalJamaRepaid = sortedTxns
+  const totalJamaRepaid = filteredSortedTxns
     .filter((t) => t.type === 'JAMA')
     .reduce((sum, t) => sum + t.amount, 0);
 
@@ -87,16 +101,33 @@ export const CustomerPassbookModal: React.FC<CustomerPassbookModalProps> = ({
   };
 
   const handleShareWhatsApp = () => {
+    // Recent 5 transactions itemized list for WhatsApp text
+    const recentTxns = [...sortedTxns].reverse().slice(0, 5);
+    const txnLines = recentTxns.map(t => {
+      const d = t.timestamp.split('T')[0];
+      const typeLabel = t.type === 'UDHAAR' ? 'उधार (+)' : 'जमा (-)';
+      const noteStr = t.note ? ` (${t.note})` : '';
+      return `• ${d}: ${typeLabel} ₹${t.amount}${noteStr}`;
+    }).join('\n');
+
     const msg =
-      `📖 *डिजिटल बही-खाता पासबुक*\n` +
-      `दुकान: ${storeName}\n` +
-      `ग्राहक: ${customer.name}\n` +
-      `कुल बकाया राशि: ${formatINR(customer.balanceDue)}\n` +
-      `--------------------\n` +
-      `अपना पूरा लेन-देन हिसाब और रसीदें यहाँ देखें:\n` +
+      `📖 *बही-खाता पर्ची — ${storeName}*\n` +
+      `📍 गाँव: ${village}\n` +
+      `👤 खाताधारक: *${customer.name}*${customer.para ? ` (${customer.para})` : ''}\n` +
+      `📅 दिनांक: ${new Date().toLocaleDateString('hi-IN')}\n` +
+      `--------------------------------\n` +
+      `*हालिया लेन-देन हिसाब (Recent Transactions):*\n` +
+      `${txnLines || '• कोई पूर्व लेन-देन दर्ज नहीं'}\n` +
+      `--------------------------------\n` +
+      `कुल उधार: ₹${totalUdhaarGiven}\n` +
+      `कुल जमा: ₹${totalJamaRepaid}\n` +
+      `*कुल अंतिम बाकी: ${formatINR(customer.balanceDue)}*\n` +
+      `--------------------------------\n` +
+      (storeUpi ? `📲 UPI भुगतान ID: *${storeUpi}*\n\n` : '') +
+      `🌐 संपूर्ण पासबुक व रसीदें यहाँ देखें:\n` +
       `${passbookUrl}\n\n` +
-      (storeUpi ? `UPI द्वारा भुगतान हेतु ID: ${storeUpi}\n` : '') +
-      `धन्यवाद!`;
+      `धन्यवाद! शुद्ध ग्रामीण हिसाब 🙏`;
+
     openWhatsApp(customer.phone, msg);
   };
 
@@ -288,13 +319,39 @@ export const CustomerPassbookModal: React.FC<CustomerPassbookModalProps> = ({
 
           {/* Passbook Ledger Table */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h4 className="text-sm font-black text-stone-900 flex items-center gap-2">
                 <span>लेन-देन विवरण (Passbook Ledger)</span>
                 <span className="text-xs font-normal text-stone-500">
                   ({ledgerRows.length} प्रविष्टियां)
                 </span>
               </h4>
+
+              {/* Statement Filter Selector (All vs Last 30 Days) */}
+              <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-xl border border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setStatementFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    statementFilter === 'ALL'
+                      ? 'bg-white text-stone-900 shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  सभी ({sortedTxns.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatementFilter('30DAYS')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    statementFilter === '30DAYS'
+                      ? 'bg-white text-stone-900 shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  पिछले 30 दिन
+                </button>
+              </div>
             </div>
 
             {ledgerRows.length === 0 ? (
@@ -395,11 +452,13 @@ export const CustomerPassbookModal: React.FC<CustomerPassbookModalProps> = ({
               type="button"
               onClick={() => printCustomerStatement({
                 storeName,
-                date: new Date().toLocaleDateString('hi-IN'),
+                date: statementFilter === '30DAYS' 
+                  ? `${new Date().toLocaleDateString('hi-IN')} (पिछले 30 दिन)` 
+                  : new Date().toLocaleDateString('hi-IN'),
                 customerName: customer.name,
                 customerPara: customer.para,
                 customerPhone: customer.phone,
-                transactions: sortedTxns.map(t => ({
+                transactions: filteredSortedTxns.map(t => ({
                   date: t.timestamp,
                   type: t.type,
                   amount: t.amount,
@@ -412,7 +471,7 @@ export const CustomerPassbookModal: React.FC<CustomerPassbookModalProps> = ({
               className="py-2 px-3 bg-stone-800 hover:bg-stone-900 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
             >
               <Printer className="w-3.5 h-3.5 text-amber-400" />
-              <span>प्रिंट पर्ची (Print)</span>
+              <span>{statementFilter === '30DAYS' ? '30-दिन पर्ची प्रिंट' : 'प्रिंट पर्ची (All)'}</span>
             </button>
             {!isStandalone && (
               <button

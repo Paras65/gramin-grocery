@@ -266,15 +266,23 @@ export const KhataLedger: React.FC = () => {
       ? 'महतारी वंदन / सरकारी DBT' 
       : 'नियत तारीख';
 
+    const store = syncService.getStoreInfo();
+    const sName = store?.storeName || (store as any)?.name || 'ग्रामीण किराना स्टोर';
+    const sVillage = store?.village ? ` (${store.village})` : '';
+    const storeUpi = localStorage.getItem('gk_store_upi_id') || '';
+
     const passbookLink = `${window.location.origin}${window.location.pathname}#passbook=${customer.id}`;
     let text = `नमस्ते ${customer.name} जी,\n`;
     text += `दुकान के बही-खाते अनुसार आपका कुल बकाया *₹${customer.balanceDue}* है।\n`;
     if (customer.dueDate) {
       text += `📅 भुगतान का वादा: ${customer.dueDate} (${reasonText})\n`;
     }
+    if (storeUpi) {
+      text += `📲 ऑनलाइन UPI भुगतान ID: *${storeUpi}*\n`;
+    }
     text += `\n📖 अपनी डिजिटल पासबुक और लेन-देन पर्ची यहाँ देखें:\n${passbookLink}\n\n`;
     text += `कृपया समय पर भुगतान कर दुकान संचालन में सहयोग दें।\n`;
-    text += `🙏 धन्यवाद! - ग्रामीण किराना स्टोर`;
+    text += `🙏 धन्यवाद! - ${sName}${sVillage}`;
 
     openWhatsApp(customer.phone, text);
   };

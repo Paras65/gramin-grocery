@@ -96,10 +96,11 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Torch Light & Night Counter Usability (टॉर्च लाइट व रात की बिलिंग)](#torch-light--night-counter-usability-टॉर्च-लाइट-व-रात-की-बिलिंग)
    - [Camera Permission Guide & Quick Retry (कैमरा अनुमति व सुधार)](#camera-permission-guide--quick-retry-कैमरा-अनुमति-व-सुधार)
    - [USB Handheld Barcode Reader Compatibility (USB स्कैनर सपोर्ट)](#usb-handheld-barcode-reader-compatibility-usb-स्कैनर-सपोर्ट)
-15. [Customer Khata Statement Slip (ग्राहक खाता पर्ची प्रिंट व व्हाट्सएप)](#15-customer-khata-statement-slip-ग्राहक-खाता-पर्ची-प्रिंट-व-व्हाट्सएप)
+15. [Customer Khata Statement Slip & WhatsApp (ग्राहक खाता पर्ची प्रिंट व विस्तृत व्हाट्सएप)](#15-customer-khata-statement-slip--whatsapp-ग्राहक-खाता-पर्ची-प्रिंट-व-विस्तृत-व्हाट्सएप)
    - [Date-Wise Udhaar & Jama Statement (तारीखवार बही-खाता पर्ची)](#date-wise-udhaar--jama-statement-तारीखवार-बही-खाता-पर्ची)
-   - [Bluetooth Thermal Statement Slip (58mm पर्ची प्रिंट)](#bluetooth-thermal-statement-slip-58mm-पर्ची-प्रिंट)
-   - [1-Click Detailed WhatsApp Statement (व्हाट्सएप पर पूरी पर्ची)](#1-click-detailed-whatsapp-statement-व्हाट्सएप-पर-पूरी-पर्ची)
+   - [Date Range Filtering (सभी हिसाब बनाम 30-दिन पर्ची)](#date-range-filtering-सभी-हिसाब-बनाम-30-दिन-पर्ची)
+   - [Bluetooth Thermal Statement Slip (58mm/80mm पर्ची प्रिंट)](#bluetooth-thermal-statement-slip-58mm80mm-पर्ची-प्रिंट)
+   - [Itemized Detailed WhatsApp Statement (व्हाट्सएप पर विस्तृत तारीखवार पर्ची)](#itemized-detailed-whatsapp-statement-व्हाट्सएप-पर-विस्तृत-तारीखवार-पर्ची)
 16. [Weekly Haat-Bazaar High-Speed Mode (साप्ताहिक हाट-बाजार मोड)](#16-weekly-haat-bazaar-high-speed-mode-साप्ताहिक-हाट-बाजार-मोड)
    - [Top 12 Extra-Large Touch Tiles & Low-Stock Radar (मोटी टच बटन व स्टॉक सूचना)](#top-12-extra-large-touch-tiles--low-stock-radar-मोटी-टच-बटन-व-स्टॉक-सूचना)
    - [Ad-Hoc Produce & Miscellaneous Quick-Add (त्वरित खुला सामान व मौसमी भाजी)](#ad-hoc-produce--miscellaneous-quick-add-त्वरित-खुला-सामान-व-मौसमी-भाजी)
@@ -664,23 +665,41 @@ Gramin Kirana turns any standard Android phone, iPhone, or laptop webcam into a 
 
 ---
 
-## 15. Customer Khata Statement Slip (ग्राहक खाता पर्ची प्रिंट व व्हाट्सएप)
+## 15. Customer Khata Statement Slip & WhatsApp (ग्राहक खाता पर्ची प्रिंट व विस्तृत व्हाट्सएप)
 
 To prevent credit misunderstandings and provide 100% transparency between storekeeper and villager:
 
 ### Date-Wise Udhaar & Jama Statement (तारीखवार बही-खाता पर्ची)
-- In the **📒 बही-खाता (Khata)** ledger, tap any customer card to open their account history.
+- In the **📒 बही-खाता (Khata)** ledger, tap any customer card to open their account passbook.
 - The statement displays every past transaction with exact dates:
   - **उधार (+):** Goods taken on credit with item notes.
   - **जमा (-):** Cash or scheme DBT repayments received.
   - **कुल अंतिम बाकी:** Accurate net outstanding balance due.
 
-### Bluetooth Thermal Statement Slip (58mm पर्ची प्रिंट)
-- Tap **🖨️ पर्ची प्रिंट** inside the customer's ledger modal.
-- Prints a neat, physical 58mm paper receipt slip on your Bluetooth thermal printer to hand directly to the customer or family member.
+### Date Range Filtering (सभी हिसाब बनाम 30-दिन पर्ची)
+- For regular customers who have months or years of ledger entries, printing the entire history can waste paper rolls.
+- In the passbook header, switch between **"सभी हिसाब"** and **"पिछले 30 दिन"** with 1 tap.
+- When **"पिछले 30 दिन"** is selected, both printed thermal slips and calculations focus on current month activity, saving paper and keeping the receipt concise.
 
-### 1-Click Detailed WhatsApp Statement (व्हाट्सएप पर पूरी पर्ची)
-- Tap **📲 खाता पर्ची** to generate a formatted date-wise statement and send it directly to the customer’s WhatsApp phone number in seconds.
+### Bluetooth Thermal Statement Slip (58mm/80mm पर्ची प्रिंट)
+- Tap **🖨️ पर्ची प्रिंट** inside the customer's passbook modal.
+- Prints a neat, physical paper receipt slip on your paired Bluetooth thermal printer (58mm or 80mm).
+- **Printed Statement Includes:**
+  - Store Name, Village Address & Custom Slogan
+  - Customer Name, Para & Mobile Number
+  - Date-wise transaction rows with Udhaar (+) and Jama (-) amounts and notes
+  - Grand total Udhaar, total Jama, and final net balance due in bold
+  - Store gratitude message or custom footer
+
+### Itemized Detailed WhatsApp Statement (व्हाट्सएप पर विस्तृत तारीखवार पर्ची)
+- Tap **📲 WhatsApp पर भेजें** to generate an itemized text statement sent directly to the customer’s phone.
+- **Message Includes:**
+  - Store Name & Village Location
+  - Customer Name & Mohalla/Para
+  - Recent 5 transactions itemized directly in the text (*e.g., 12/03: +₹250 उधार - 5kg आटा*) so customers on basic phones or slow 2G data can read their exact ledger without loading web links
+  - Total credit taken, total repayment, and current net balance due
+  - Store UPI ID for 1-tap digital repayment via PhonePe, GPay, or Paytm
+  - Secure digital passbook link for full interactive history inspection
 
 ---
 

@@ -304,6 +304,8 @@ function buildDaySummaryBytes(data: PrintDaySummaryData): Uint8Array {
 function buildCustomerStatementBytes(data: PrintCustomerStatementData): Uint8Array {
   const W = getReceiptLineWidth();
   const parts: (number[] | string)[] = [];
+  const customHeader = typeof window !== 'undefined' ? localStorage.getItem('gk_receipt_header') : '';
+  const customFooter = typeof window !== 'undefined' ? localStorage.getItem('gk_receipt_footer') : '';
 
   parts.push(CMD.INIT);
   parts.push(CMD.ALIGN_CENTER);
@@ -311,6 +313,9 @@ function buildCustomerStatementBytes(data: PrintCustomerStatementData): Uint8Arr
   parts.push(CMD.DOUBLE_HEIGHT);
   parts.push(line(data.storeName));
   parts.push(CMD.NORMAL_SIZE);
+  parts.push(CMD.BOLD_OFF);
+  if (customHeader) parts.push(line(customHeader));
+  parts.push(CMD.BOLD_ON);
   parts.push(line('ग्राहक खाता पर्ची (Statement)'));
   parts.push(CMD.BOLD_OFF);
   parts.push(line(`तारीख: ${data.date}`));
@@ -351,7 +356,7 @@ function buildCustomerStatementBytes(data: PrintCustomerStatementData): Uint8Arr
   parts.push(dashes(W));
 
   parts.push(CMD.ALIGN_CENTER);
-  parts.push(line('धन्यवाद! शुद्ध ग्रामीण हिसाब 🙏'));
+  parts.push(line(customFooter || 'धन्यवाद! शुद्ध ग्रामीण हिसाब 🙏'));
   parts.push(CMD.LINE_FEED);
   parts.push(CMD.LINE_FEED);
   parts.push(CMD.LINE_FEED);
@@ -638,6 +643,9 @@ export async function printDaySummary(data: PrintDaySummaryData): Promise<'bluet
 }
 
 function customerStatementToHTML(data: PrintCustomerStatementData): string {
+  const customHeader = typeof window !== 'undefined' ? localStorage.getItem('gk_receipt_header') : '';
+  const customFooter = typeof window !== 'undefined' ? localStorage.getItem('gk_receipt_footer') : '';
+
   const txRows = data.transactions.map(tx => {
     const d = tx.date.split('T')[0];
     const typeLabel = tx.type === 'UDHAAR' ? 'उधार' : 'जमा';
@@ -656,6 +664,7 @@ function customerStatementToHTML(data: PrintCustomerStatementData): string {
 
   return `
     <div class="center bold big">${data.storeName}</div>
+    ${customHeader ? `<div class="center">${customHeader}</div>` : ''}
     <div class="center bold">ग्राहक खाता पर्ची (Statement)</div>
     <div class="center">${data.date}</div>
     <div class="dashes"></div>
@@ -672,7 +681,7 @@ function customerStatementToHTML(data: PrintCustomerStatementData): string {
     <div class="dashes"></div>
     <div class="row bold big" style="padding:2px 0;"><span>कुल बाकी:</span><span style="color:#dc2626">₹${data.netBalance}</span></div>
     <div class="dashes"></div>
-    <div class="center">धन्यवाद! शुद्ध ग्रामीण हिसाब 🙏</div>
+    <div class="center">${customFooter || 'धन्यवाद! शुद्ध ग्रामीण हिसाब 🙏'}</div>
   `;
 }
 
