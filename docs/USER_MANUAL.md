@@ -57,6 +57,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
     - [Cash Reconciliation & Difference (गल्ला अंतर व मिलान)](#cash-reconciliation--difference-गल्ला-अंतर-व-मिलान)
     - [1-Click WhatsApp Day Summary (व्हाट्सएप पर दिन सारांश)](#1-click-whatsapp-day-summary-व्हाट्सएप-पर-दिन-सारांश)
     - [Past Cash Drawer Archive & Historical Slips (पिछला गल्ला इतिहास व पुरानी पर्ची)](#past-cash-drawer-archive--historical-slips-पिछला-गल्ला-इतिहास-व-पुरानी-पर्ची)
+    - [Automated 30-Day Storage Maintenance (स्वचालित 30-दिन बैकग्राउंड सफाई)](#automated-30-day-storage-maintenance-स्वचालित-30-दिन-बैकग्राउंड-सफाई)
 13. [Bluetooth Thermal Printing (ब्लूटूथ व 58mm थर्मल प्रिंटर)](#13-bluetooth-thermal-printing-ब्लूटूथ-व-58mm-थर्मल-प्रिंटर)
     - [Connecting Inexpensive Bluetooth Printers](#connecting-inexpensive-bluetooth-printers)
     - [Top Bar Quick Connection Indicator (शीर्ष प्रिंटर स्थिति)](#top-bar-quick-connection-indicator-शीर्ष-प्रिंटर-स्थिति)
@@ -281,10 +282,13 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 
 ### Fiscal Year Archiving & Local Storage Cleanup (वित्तीय वर्ष डेटा आर्काइव व स्थानीय स्टोरेज सफाई)
 - **तेज़ काउंटर स्पीड बनाए रखें (Maintain Superfast Billing):** As your village store records thousands of bills over months, storing years of past sales in the main active billing screen can slow down older phones or budget tablets.
-- **180-Day Rolling Storage Window (180 दिन से पुराने बिल आर्काइव करें):** Under the **सेटिंग्स व बैकअप (Settings)** tab, store owners can view a live counter of **सक्रिय बिल**, **आर्काइव बिल**, and estimated phone storage.
+- **180-Day Rolling Storage Window (180 दिन से पुराने बिल आर्काइव करें):** Under the **सेटिंग्स व बैकअप (Settings)** tab, store owners can view a live counter of **सक्रिय बिल**, **आर्काइव बिल**, **आर्काइव खाता लेन-देन**, and estimated phone storage.
   - Tapping **"📦 180 दिन से पुराने बिल आर्काइव करें"** safely moves past sales older than 6 months into offline cold storage.
   - Active billing and daily cash summaries remain lightning fast, while older sales are kept 100% safe and accessible on your device.
-- **Download Fiscal Year Archive (आर्काइव डेटा डाउनलोड करें):** Store owners can export their cold archive sales into a separate permanent backup file to preserve for long-term tax or village audit records.
+- **Settled Khata Archiving (निपट चुके पुराने खाते आर्काइव करें):**
+  - Tapping **"📒 निपट चुके पुराने खाते आर्काइव करें"** finds customers who have completely paid off their loans (`₹0 बकाया`) and archives their older historical payment lines (>180 days) into cold storage.
+  - **पूर्ण वित्तीय सुरक्षा (Active Debt Safety):** Active debtor balances are **never modified or touched**, guaranteeing absolute ledger accuracy.
+- **Download Cold Archives (आर्काइव डेटा डाउनलोड करें):** Store owners can download separate JSON backup files for both past sales archives and settled Khata archives to preserve for long-term tax or village records.
 
 ### Installing App on Phone or PC (PWA होमस्क्रीन ऐप)
 - Gramin Kirana can be installed as a full standalone application on your Android smartphone, iPhone, tablet, or Windows computer without downloading from app stores.
@@ -416,6 +420,11 @@ Village store owners and counter staff often finish long days without knowing th
   - Color-coded reconciliation badge (Green for matched, Blue for surplus, Red for shortage).
   - Any notes recorded during closing.
 - **1-Tap Past Actions:** Every past card has dedicated **📲 WhatsApp** and **🖨️ पर्ची प्रिंट** buttons so you can reprint previous day slips or resend summaries at any time.
+
+### Automated 30-Day Storage Maintenance (स्वचालित 30-दिन बैकग्राउंड सफाई)
+- **शून्य रखरखाव (Zero Maintenance Effort):** Store owners never have to worry about device slowdowns or full memory.
+- **स्वचालित बैकग्राउंड सफाई (Silent Background Cleanup):** Whenever you tap **"दिन बंद करें व सुरक्षित करें"** to finalize the evening till, the app automatically checks if 30 days have elapsed since the last sales cleanup.
+- If due, it quietly moves historical sales older than 180 days into offline cold storage without freezing the screen, delaying your WhatsApp summary, or interrupting your counter workflow.
 
 ---
 

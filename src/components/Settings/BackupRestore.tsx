@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, ShieldCheck, RefreshCw, Sparkles, Printer, Smartphone, CheckCircle2, Bluetooth, LogOut, QrCode, Archive } from 'lucide-react';
-import { exportDatabaseToJSON, importDatabaseFromJSON, initializeDatabaseIfEmpty, db, archiveOldSales, exportFiscalYearArchiveJSON, getStorageStats } from '../../db';
+import { Download, Upload, ShieldCheck, RefreshCw, Sparkles, Printer, Smartphone, CheckCircle2, Bluetooth, LogOut, QrCode, Archive, BookOpen } from 'lucide-react';
+import { exportDatabaseToJSON, importDatabaseFromJSON, initializeDatabaseIfEmpty, db, archiveOldSales, exportFiscalYearArchiveJSON, getStorageStats, archiveSettledKhata, exportArchivedKhataJSON } from '../../db';
 import { useLanguage } from '../../context/LanguageContext';
 import { syncService } from '../../services/syncService';
 import { SubscriptionModal } from '../Subscription/SubscriptionModal';
@@ -41,6 +41,7 @@ export const BackupRestore: React.FC = () => {
     customersCount: number;
     productsCount: number;
     transactionsCount: number;
+    archivedTransactionsCount: number;
     estimatedSizeKB: number;
   }>({
     activeSalesCount: 0,
@@ -48,6 +49,7 @@ export const BackupRestore: React.FC = () => {
     customersCount: 0,
     productsCount: 0,
     transactionsCount: 0,
+    archivedTransactionsCount: 0,
     estimatedSizeKB: 0,
   });
 
@@ -269,6 +271,56 @@ export const BackupRestore: React.FC = () => {
     }
   };
 
+  const handleArchiveSettledKhata = async () => {
+    const confirm = window.confirm(
+      language === 'hi'
+        ? 'क्या आप शून्य बाकी (0 रुपया) वाले ग्राहकों के 180 दिन से पुराने लेन-देन को कोल्ड आर्काइव में सहेजना चाहते हैं? सक्रिय बकायेदारों का कोई हिसाब नहीं बदलेगा।'
+        : 'Do you want to archive ledger transactions older than 180 days for fully settled customers (0 balance)? Active debtor balances will not be altered.'
+    );
+    if (!confirm) return;
+
+    try {
+      setIsProcessing(true);
+      const res = await archiveSettledKhata(180);
+      await loadStats();
+      if (res.archivedCount > 0) {
+        setStatusMessage(`✅ ${res.affectedCustomers} ग्राहकों के ${res.archivedCount} पुराने लेन-देन सुरक्षित खाता आर्काइव में डाल दिए गए!`);
+      } else {
+        setStatusMessage('ℹ️ 180 दिन पुराना कोई निपटा हुआ खाता नहीं मिला। सभी खाते हाल के हैं या बकाया बाकी है।');
+      }
+    } catch (err: any) {
+      setStatusMessage('❌ खाता आर्काइव करने में त्रुटि: ' + (err.message || 'Error'));
+    } finally {
+      setIsProcessing(false);
+      setTimeout(() => setStatusMessage(''), 4000);
+    }
+  };
+
+  const handleExportKhataArchive = async () => {
+    try {
+      setIsProcessing(true);
+      const jsonStr = await exportArchivedKhataJSON();
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const dateStr = new Date().toISOString().split('T')[0];
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GraminKirana_KhataArchive_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setStatusMessage('✅ खाता आर्काइव डेटा फ़ाइल सफलतापूर्वक डाउनलोड हो गई!');
+    } catch (err) {
+      setStatusMessage('❌ खाता आर्काइव डाउनलोड करने में त्रुटि हुई।');
+    } finally {
+      setIsProcessing(false);
+      setTimeout(() => setStatusMessage(''), 3500);
+    }
+  };
+
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
       {/* Privacy & Offline Guarantee Card with Village Forest Theme */}
@@ -433,7 +485,7 @@ export const BackupRestore: React.FC = () => {
         </div>
 
         {/* Storage stats badges */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
           <div className="bg-[#faf8f3] border border-amber-200/80 p-3 rounded-2xl">
             <span className="text-[11px] font-bold text-stone-500 block">{t.backup.activeSales}</span>
             <span className="text-base font-black text-stone-900">{storageStats.activeSalesCount}</span>
@@ -442,13 +494,17 @@ export const BackupRestore: React.FC = () => {
             <span className="text-[11px] font-bold text-stone-500 block">{t.backup.archivedSales}</span>
             <span className="text-base font-black text-stone-900">{storageStats.archivedSalesCount}</span>
           </div>
-          <div className="bg-[#faf8f3] border border-amber-200/80 p-3 rounded-2xl col-span-2 sm:col-span-1">
+          <div className="bg-[#faf8f3] border border-amber-200/80 p-3 rounded-2xl">
+            <span className="text-[11px] font-bold text-stone-500 block">{t.backup.archivedTxns}</span>
+            <span className="text-base font-black text-stone-900">{storageStats.archivedTransactionsCount}</span>
+          </div>
+          <div className="bg-[#faf8f3] border border-amber-200/80 p-3 rounded-2xl">
             <span className="text-[11px] font-bold text-stone-500 block">{t.backup.estimatedStorage}</span>
             <span className="text-base font-black text-amber-900">~{storageStats.estimatedSizeKB} KB</span>
           </div>
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons: Row 1 - Sales Archive */}
         <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
           <button
             type="button"
@@ -467,6 +523,28 @@ export const BackupRestore: React.FC = () => {
           >
             <Download className="w-4 h-4" />
             <span>{t.backup.exportArchiveBtn}</span>
+          </button>
+        </div>
+
+        {/* Action buttons: Row 2 - Settled Khata Archive */}
+        <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+          <button
+            type="button"
+            onClick={handleArchiveSettledKhata}
+            disabled={isProcessing || storageStats.transactionsCount === 0}
+            className="flex-1 px-4 py-2.5 rounded-2xl bg-stone-800 hover:bg-stone-900 disabled:opacity-50 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition active:scale-95"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>{t.backup.archiveKhataBtn}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleExportKhataArchive}
+            disabled={isProcessing || storageStats.archivedTransactionsCount === 0}
+            className="px-4 py-2.5 rounded-2xl border border-stone-300 hover:border-amber-500 disabled:opacity-50 text-stone-800 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer bg-white transition active:scale-95"
+          >
+            <Download className="w-4 h-4" />
+            <span>{t.backup.exportKhataArchiveBtn}</span>
           </button>
         </div>
       </div>

@@ -119,9 +119,12 @@ export const translations = {
       archiveSubtitle: 'पुराने बिलों को सुरक्षित कोल्ड स्टोरेज में सहेजें ताकि ऐप हमेशा सुपरफ़ास्ट चले',
       activeSales: 'सक्रिय बिल (POS)',
       archivedSales: 'आर्काइव बिल',
+      archivedTxns: 'आर्काइव खाता',
       estimatedStorage: 'अनुमानित डिवाइस स्टोरेज',
       archiveBtn: '📦 180 दिन से पुराने बिल आर्काइव करें',
-      exportArchiveBtn: '📥 आर्काइव डेटा डाउनलोड करें (JSON)'
+      exportArchiveBtn: '📥 बिल आर्काइव डाउनलोड करें',
+      archiveKhataBtn: '📒 निपट चुके पुराने खाते आर्काइव करें',
+      exportKhataArchiveBtn: '📥 खाता आर्काइव डाउनलोड करें'
     },
     cloudSync: {
       syncNow: 'क्लाउड सिंक करें',
@@ -320,9 +323,12 @@ export const translations = {
       archiveSubtitle: 'पुरना बिल मन ला सुरक्षित कोल्ड स्टोरेज म सहेजव जेकर ले ऐप सुपरफ़ास्ट चले',
       activeSales: 'चालू बिल (POS)',
       archivedSales: 'आर्काइव बिल',
+      archivedTxns: 'आर्काइव खाता',
       estimatedStorage: 'मोबाइल स्टोरेज नाप',
       archiveBtn: '📦 180 दिन ले पुरना बिल आर्काइव करव',
-      exportArchiveBtn: '📥 आर्काइव डेटा डाउनलोड करव (JSON)'
+      exportArchiveBtn: '📥 बिल आर्काइव डाउनलोड करव',
+      archiveKhataBtn: '📒 निपट गे पुरना खाता ला आर्काइव करव',
+      exportKhataArchiveBtn: '📥 खाता आर्काइव डाउनलोड करव'
     },
     cloudSync: {
       syncNow: 'क्लाउड सिंक करव',
@@ -521,9 +527,12 @@ export const translations = {
       archiveSubtitle: 'Archive older sales into cold storage to keep your app superfast',
       activeSales: 'Active Sales (POS)',
       archivedSales: 'Archived Sales',
+      archivedTxns: 'Archived Khata',
       estimatedStorage: 'Estimated Local Storage',
       archiveBtn: '📦 Archive Sales Older Than 180 Days',
-      exportArchiveBtn: '📥 Download Fiscal Archive (JSON)'
+      exportArchiveBtn: '📥 Download Sales Archive',
+      archiveKhataBtn: '📒 Archive Settled Khata (Cleared Dues)',
+      exportKhataArchiveBtn: '📥 Download Khata Archive'
     },
     cloudSync: {
       syncNow: 'Cloud Sync Now',

@@ -9,6 +9,7 @@ export class GraminKiranaDB extends Dexie {
   spoilageLogs!: Table<SpoilageLog, string>;
   dailyCashClose!: Table<DailyCashClose, string>;
   archivedSales!: Table<Sale & { fiscalYear?: string }, string>;
+  archivedTransactions!: Table<Transaction & { fiscalYear?: string }, string>;
 
   constructor() {
     super('GraminKiranaDB');
@@ -43,6 +44,16 @@ export class GraminKiranaDB extends Dexie {
       spoilageLogs: 'id, reason, timestamp',
       dailyCashClose: 'id, date, closedAt',
       archivedSales: 'id, timestamp, paymentMode, customerId, fiscalYear'
+    });
+    this.version(5).stores({
+      products: 'id, name, hindiName, category, stockQty, expiryDate, barcode, updatedAt',
+      customers: 'id, name, phone, para, balanceDue, dueDate, updatedAt',
+      transactions: 'id, customerId, type, timestamp',
+      sales: 'id, timestamp, paymentMode, customerId',
+      spoilageLogs: 'id, reason, timestamp',
+      dailyCashClose: 'id, date, closedAt',
+      archivedSales: 'id, timestamp, paymentMode, customerId, fiscalYear',
+      archivedTransactions: 'id, customerId, type, timestamp, fiscalYear'
     });
   }
 }
@@ -212,8 +223,8 @@ export async function importDatabaseFromJSON(jsonString: string): Promise<boolea
  */
 export async function clearDatabase(includeProducts: boolean = false) {
   const tables = includeProducts
-    ? [db.products, db.customers, db.transactions, db.sales, db.spoilageLogs, db.dailyCashClose, db.archivedSales]
-    : [db.customers, db.transactions, db.sales, db.spoilageLogs, db.dailyCashClose, db.archivedSales];
+    ? [db.products, db.customers, db.transactions, db.sales, db.spoilageLogs, db.dailyCashClose, db.archivedSales, db.archivedTransactions]
+    : [db.customers, db.transactions, db.sales, db.spoilageLogs, db.dailyCashClose, db.archivedSales, db.archivedTransactions];
 
   await db.transaction('rw', tables, async () => {
     if (includeProducts) await db.products.clear();
@@ -223,6 +234,7 @@ export async function clearDatabase(includeProducts: boolean = false) {
     await db.spoilageLogs.clear();
     await db.dailyCashClose.clear();
     await db.archivedSales.clear();
+    await db.archivedTransactions.clear();
   });
 }
 
@@ -256,6 +268,71 @@ export async function archiveOldSales(retentionDays = 180): Promise<{ archivedCo
 }
 
 /**
+ * Silent background maintenance: check if rolling sales archive is due (> 30 days since last check).
+ */
+export async function autoArchiveIfDue(): Promise<{ ran: boolean; archivedCount?: number }> {
+  try {
+    const lastArchiveStr = localStorage.getItem('gk_last_auto_archive');
+    const now = Date.now();
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    if (lastArchiveStr && (now - parseInt(lastArchiveStr, 10) < thirtyDaysMs)) {
+      return { ran: false };
+    }
+    const res = await archiveOldSales(180);
+    localStorage.setItem('gk_last_auto_archive', now.toString());
+    return { ran: true, archivedCount: res.archivedCount };
+  } catch (err) {
+    console.warn('Auto-archive check encountered error:', err);
+    return { ran: false };
+  }
+}
+
+/**
+ * Archive settled customer transactions (balanceDue === 0, older than retentionDays) into cold archive.
+ * Protects ledger integrity: active debt is never touched, only fully cleared historical transactions are moved.
+ */
+export async function archiveSettledKhata(retentionDays = 180): Promise<{ archivedCount: number; affectedCustomers: number }> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - retentionDays);
+  const cutoffStr = cutoff.toISOString();
+
+  // Find customers whose balance is fully paid up / 0
+  const settledCustomers = await db.customers.filter((c) => (c.balanceDue || 0) === 0).toArray();
+  if (settledCustomers.length === 0) {
+    return { archivedCount: 0, affectedCustomers: 0 };
+  }
+
+  const settledCustomerIds = new Set(settledCustomers.map((c) => c.id).filter(Boolean) as string[]);
+  
+  // Find transactions belonging to settled customers older than cutoff
+  const candidateTxns = await db.transactions
+    .where('timestamp')
+    .below(cutoffStr)
+    .filter((t) => settledCustomerIds.has(t.customerId))
+    .toArray();
+
+  if (candidateTxns.length === 0) {
+    return { archivedCount: 0, affectedCustomers: 0 };
+  }
+
+  await db.transaction('rw', db.transactions, db.archivedTransactions, async () => {
+    const toArchive = candidateTxns.map((t) => {
+      const d = new Date(t.timestamp);
+      const year = d.getFullYear();
+      const month = d.getMonth();
+      const fiscalYear = month >= 3 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+      return { ...t, fiscalYear };
+    });
+    await db.archivedTransactions.bulkPut(toArchive);
+    const ids = candidateTxns.map((t) => t.id!).filter(Boolean);
+    await db.transactions.bulkDelete(ids);
+  });
+
+  const uniqueAffectedCustomers = new Set(candidateTxns.map((t) => t.customerId)).size;
+  return { archivedCount: candidateTxns.length, affectedCustomers: uniqueAffectedCustomers };
+}
+
+/**
  * Export cold archive bills into a downloadable JSON file for long-term fiscal backup.
  */
 export async function exportFiscalYearArchiveJSON(fiscalYear?: string): Promise<string> {
@@ -271,6 +348,21 @@ export async function exportFiscalYearArchiveJSON(fiscalYear?: string): Promise<
 }
 
 /**
+ * Export cold archive Khata ledger into a downloadable JSON file.
+ */
+export async function exportArchivedKhataJSON(fiscalYear?: string): Promise<string> {
+  const allArchived = await db.archivedTransactions.toArray();
+  const filtered = fiscalYear ? allArchived.filter((t) => t.fiscalYear === fiscalYear) : allArchived;
+  return JSON.stringify({
+    exportType: 'GRAMIN_KIRANA_KHATA_COLD_ARCHIVE',
+    fiscalYear: fiscalYear || 'ALL_TIME_COLD_ARCHIVE',
+    exportedAt: new Date().toISOString(),
+    recordCount: filtered.length,
+    transactions: filtered,
+  }, null, 2);
+}
+
+/**
  * Calculate client IndexedDB storage summary and records breakdown.
  */
 export async function getStorageStats(): Promise<{
@@ -279,14 +371,16 @@ export async function getStorageStats(): Promise<{
   customersCount: number;
   productsCount: number;
   transactionsCount: number;
+  archivedTransactionsCount: number;
   estimatedSizeKB: number;
 }> {
-  const [activeSalesCount, archivedSalesCount, customersCount, productsCount, transactionsCount] = await Promise.all([
+  const [activeSalesCount, archivedSalesCount, customersCount, productsCount, transactionsCount, archivedTransactionsCount] = await Promise.all([
     db.sales.count(),
     db.archivedSales.count(),
     db.customers.count(),
     db.products.count(),
     db.transactions.count(),
+    db.archivedTransactions.count(),
   ]);
 
   // Rough estimation based on average record sizes
@@ -295,7 +389,8 @@ export async function getStorageStats(): Promise<{
     (archivedSalesCount * 700) + 
     (customersCount * 300) + 
     (productsCount * 350) + 
-    (transactionsCount * 250);
+    (transactionsCount * 250) +
+    (archivedTransactionsCount * 250);
 
   return {
     activeSalesCount,
@@ -303,6 +398,7 @@ export async function getStorageStats(): Promise<{
     customersCount,
     productsCount,
     transactionsCount,
+    archivedTransactionsCount,
     estimatedSizeKB: Math.round(estimatedBytes / 1024),
   };
 }

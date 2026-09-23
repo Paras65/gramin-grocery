@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { db } from '../../db';
+import { db, autoArchiveIfDue } from '../../db';
 import { useLanguage } from '../../context/LanguageContext';
 import type { DailyCashClose as DailyCashCloseType, DailyExpense } from '../../types';
 import {
@@ -158,6 +158,9 @@ export const DailyCashClose: React.FC = () => {
     };
 
     await db.dailyCashClose.put(record);
+    // Silent background maintenance: check if rolling sales archive is due (>30 days)
+    autoArchiveIfDue().catch(console.warn);
+
     setSavedRecord(record);
     setSaveSuccess(true);
     loadHistory();
