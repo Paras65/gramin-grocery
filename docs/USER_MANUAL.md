@@ -38,8 +38,10 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Daily Morning Rate Sheet (दुकानदार त्वरित दैनिक मंडी भाव शीट)](#daily-morning-rate-sheet-दुकानदार-त्वरित-दैनिक-मंडी-भाव-शीट)
 5. [Spoilage & Expiry Guard (खराबी व एक्सपायरी गार्ड)](#5-spoilage--expiry-guard-खराबी-व-एक्सपायरी-गार्ड)
    - [Logging Power-Cut & Heat Losses (दूध/दही/कोल्ड ड्रिंक)](#logging-power-cut--heat-losses-दूधदहीकोल्ड-ड्रिंक)
-   - [Cause-Wise Loss Breakdown (कारण अनुसार नुकसान वर्गीकरण)](#cause-wise-loss-breakdown-कारण-अनुसार-नुकसान-वर्गीकरण)
-   - [Tracking Upcoming Expiry Items](#tracking-upcoming-expiry-items)
+   - [Cause-Wise Loss Breakdown & History Filtering (कारण अनुसार वर्गीकरण व फ़िल्टर)](#cause-wise-loss-breakdown--history-filtering-कारण-अनुसार-वर्गीकरण-व-फ़िल्टर)
+   - [Tracking Upcoming Expiry Items & Clearance Pricing (एक्सपायरी रडार व रियायती बिक्री)](#tracking-upcoming-expiry-items--clearance-pricing-एक्सपायरी-रडार-व-रियायती-बिक्री)
+   - [1-Click WhatsApp Distributor Return Claim (डिस्ट्रीब्यूटर वापसी क्लेम)](#1-click-whatsapp-distributor-return-claim-डिस्ट्रीब्यूटर-वापसी-क्लेम)
+   - [Safe Spoilage Deletion & Stock Restoration (गलती से हटाए रिकॉर्ड पर स्टॉक बहाली)](#safe-spoilage-deletion--stock-restoration-गलती-से-हटाए-रिकॉर्ड-पर-स्टॉक-बहाली)
 6. [Inventory Management (दुकान का पूरा स्टॉक)](#6-inventory-management-दुकान-का-पूरा-स्टॉक)
    - [Updating Rates, Profit Margins & Loss Alert (दरें, मार्जिन व नुकसान सुरक्षा)](#updating-rates-profit-margins--loss-alert-दरें-मार्जिन-व-नुकसान-सुरक्षा)
    - [Barcode Management & Strict Duplicate Block (बारकोड व डुप्लीकेट रोक)](#barcode-management--strict-duplicate-block-बारकोड-व-डुप्लीकेट-रोक)
@@ -290,21 +292,31 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 ## 5. Spoilage & Expiry Guard (खराबी व एक्सपायरी गार्ड)
 
 ### Logging Power-Cut & Heat Losses (दूध/दही/कोल्ड ड्रिंक)
-- Unstable electricity and load-shedding can spoil dairy and beverages.
-- Click **"+ नुकसान दर्ज करें" (Log Loss)** to record spoiled milk, curd, or broken bottles, specifying the reason (⚡ *बिजली कटौती*, ☀️ *गर्मी*, 🐀 *चूहा/कीड़ा*).
-- **ऑटो-स्टॉक कटौती (Automatic Stock Deduction):** When you select an item from your inventory, the system automatically suggests the purchase rate and calculates the loss. With the **"दुकान स्टॉक में से भी घटाएं"** option enabled, the spoiled count is automatically subtracted from your store inventory so your stock counts remain accurate without manual adjustment.
-- Keeps an accurate tally of total financial losses.
+- **गाँव की बिजली कटौती व गर्मी से नुकसान:** गाँव में अनियमित बिजली कटौती या अत्यधिक गर्मी के कारण दूध, दही, पनीर, मक्खन, आइसक्रीम और कोल्ड ड्रिंक्स खराब होने का जोखिम बना रहता है।
+- **त्वरित नुकसान प्रविष्टि (+ नुकसान दर्ज करें):** खराब हुए सामान की मात्रा, इकाई और थोक खरीद दर दर्ज करके तुरंत नुकसान का रिकॉर्ड बनाएं। 
+- **स्वचालित स्टॉक कटौती (Automatic Stock Deduction):** इन्वेंट्री से सामान चुनते ही सिस्टम उसकी थोक खरीद दर स्वतः सुझाता है और कुल नुकसान की गणना करता है। यदि **"दुकान स्टॉक में से भी घटाएं"** विकल्प चुना जाता है, तो खराब हुआ माल दुकान के मुख्य स्टॉक में से अपने-आप घट जाता है ताकि इन्वेंट्री हमेशा 100% सटीक रहे।
 
-### Cause-Wise Loss Breakdown (कारण अनुसार नुकसान वर्गीकरण)
-- Displays four clear loss breakdown cards:
-  - ⚡ **बिजली कटौती (Power Cut):** Cold chain losses (milk, curd, ice-cream, cold drinks).
-  - ☀️ **गर्मी व धूप (Heat):** Melted sweets, confectionery, or sun-damaged packaging.
-  - 🐀 **चूहा व कीट (Rodent/Pest):** Damaged bags, spillage, and vermin losses.
-  - ⏳ **तारीख समाप्त (Expired):** Stock unsold before distributor return deadlines.
-- Helps village store owners monitor exact electricity load-shedding costs and store insulation needs.
+### Cause-Wise Loss Breakdown & History Filtering (कारण अनुसार वर्गीकरण व फ़िल्टर)
+- **4 मुख्य ग्रामीण कारण कार्ड:**
+  - ⚡ **बिजली कटौती (Power Cut):** डीप फ्रीजर बंद होने से दूध, दही, लस्सी व कोल्ड ड्रिंक का नुकसान।
+  - ☀️ **गर्मी व धूप (Heat):** धूप या तेज गर्मी से पिघली चॉकलेट, बिस्कुट, तेल व कन्फेक्शनरी।
+  - 🐀 **चूहा व कीट (Rodents/Pests):** बोरियों में चूहे का काटना, अनाज की बर्बादी व पैकेट फटना।
+  - ⏳ **तारीख समाप्त (Expired):** समय पर न बिक पाने के कारण एक्सपायर हुआ पैकेटबंद सामान।
+- **इतिहास फ़िल्टरिंग चिप्स (History Filter Chips):** नुकसान इतिहास सूची के ऊपर दिए गए त्वरित फ़िल्टर चिप्स (`सभी`, `⚡ बिजली कटौती`, `☀️ गर्मी व धूप`, `🐀 चूहे व कीट`, `⏳ तारीख समाप्त`) से दुकानदार किसी एक विशेष कारण से हुए नुकसान का अलग से हिसाब देख सकता है।
 
-### Tracking Upcoming Expiry Items
-- Shows an alert radar of packaged FMCG items expiring in the next 7 to 30 days so you can discount or return them before distributor deadlines.
+### Tracking Upcoming Expiry Items & Clearance Pricing (एक्सपायरी रडार व रियायती बिक्री)
+- **एक्सपायरी रडार (Expiry Radar):** अगले 7 से 30 दिनों में एक्सपायर होने वाले पैकेटबंद सामानों (जैसे ब्रेड, बिस्कुट, नमकीन, मसाले) की सूची सीधे अलर्ट कार्ड्स में दिखाई देती है।
+- **🏷️ रियायती दर (Clearance Sale Shortcut):** जो सामान जल्दी एक्सपायर होने वाला है, उसे फेंकने या नुकसान में डालने के बजाय दुकानदार कार्ड पर ही दिए गए **"🏷️ रियायती दर"** बटन को दबाकर तुरंत बिक्री दर घटा सकता है (उदा. ₹50 वाले पैकेट को ₹40 कर देना)। यह नया भाव सीधे काउंटर बिलिंग में सक्रिय हो जाता है ताकि सामान समय रहते बिक जाए।
+- **⚡ खराबी दर्ज (Quick Spoilage Log):** यदि कोई सामान पूरी तरह खराब हो चुका है, तो कार्ड से ही 1-क्लिक में खराबी दर्ज करने वाला फॉर्म खुल जाता है जिसमें सामान का नाम, मात्रा व थोक भाव पहले से भरे रहते हैं।
+
+### 1-Click WhatsApp Distributor Return Claim (डिस्ट्रीब्यूटर वापसी क्लेम)
+- **शहर के डिस्ट्रीब्यूटर को एक्सपायरी माल की वापसी:** किराना स्टोर में एक्सपायर या एक्सपायरी के नजदीक माल की वापसी (Credit Note / Replacement) के लिए डिस्ट्रीब्यूटर को लिखित लिस्ट देनी होती है।
+- **📲 डिस्ट्रीब्यूटर वापसी क्लेम भेजें (WhatsApp Claim):** एक्सपायरी रडार के ऊपर दिए गए बटन पर टैप करते ही सिस्टम सभी एक्सपायर व एक्सपायरी के नजदीक सामानों की सुव्यवस्थित, क्रमबद्ध सूची तैयार करता है।
+- **विस्तृत विवरण के साथ संदेश:** इस व्हाट्सएप संदेश में दुकान का नाम, गाँव का पता, प्रत्येक सामान का नाम, बैच/मात्रा, एक्सपायरी तारीख और थोक खरीद मूल्य स्पष्ट लिखा होता है ताकि शहर की एजेंसी बिना किसी विवाद के क्रेडिट नोट या रिप्लेसमेंट जारी कर सके।
+
+### Safe Spoilage Deletion & Stock Restoration (गलती से हटाए रिकॉर्ड पर स्टॉक बहाली)
+- **गलती से रिकॉर्ड डिलीट होने पर सुरक्षा:** यदि दुकानदार या मुनीम से कोई पुराना खराबी रिकॉर्ड गलती से डिलीट हो जाता है, तो सिस्टम पुष्टि मांगता है।
+- **स्टॉक स्वतः वापस जोड़ना (Stock Restoration):** यदि उस खराबी रिकॉर्ड को दर्ज करते समय दुकान की इन्वेंट्री में से माल घटाया गया था, तो रिकॉर्ड हटाते ही सिस्टम घटी हुई मात्रा को वापस इन्वेंट्री स्टॉक में जोड़ देता है। इससे दुकान के स्टॉक में कोई अंतर (Inventory Leakage) नहीं आता।
 
 ---
 

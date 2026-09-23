@@ -83,6 +83,8 @@ export interface SpoilageLog {
   estimatedLoss: number;
   timestamp: string;
   note?: string;
+  deductedProductId?: string;
+  deductedQty?: number;
 }
 
 export interface DailyExpense {
