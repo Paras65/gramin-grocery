@@ -86,8 +86,10 @@ export interface PrintReceiptData {
 export interface PrintDaySummaryData {
   storeName: string;
   date: string;
+  openingCash?: number;
   cashSales: number;
   jamaCollected: number;
+  upiSales?: number;
   totalExpenses: number;
   expenses: { description: string; amount: number }[];
   physicalCash: number;
@@ -230,8 +232,14 @@ function buildDaySummaryBytes(data: PrintDaySummaryData): Uint8Array {
   parts.push(dashes(W));
 
   parts.push(CMD.BOLD_ON);
+  if (data.openingCash !== undefined && data.openingCash > 0) {
+    parts.push(col2('प्रारंभिक नकद:', `₹${data.openingCash}`, W));
+  }
   parts.push(col2('नकद बिक्री:', `₹${data.cashSales}`, W));
   parts.push(col2('जमा (Udhaar):', `₹${data.jamaCollected}`, W));
+  if (data.upiSales !== undefined && data.upiSales > 0) {
+    parts.push(col2('UPI / ऑनलाइन:', `₹${data.upiSales}`, W));
+  }
   parts.push(CMD.BOLD_OFF);
   parts.push(dashes(W));
 

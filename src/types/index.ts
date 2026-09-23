@@ -97,6 +97,7 @@ export interface DailyExpense {
 export interface DailyCashClose {
   id?: string;
   date: string; // YYYY-MM-DD
+  openingCash?: number;
   physicalCashInDrawer: number;
   totalCashSalesDay: number;
   totalJamaCollectedDay: number;
@@ -104,8 +105,19 @@ export interface DailyCashClose {
   expenses: DailyExpense[];
   calculatedExpectedCash: number;
   cashDifference: number; // positive = excess, negative = shortage
+  totalUpiSalesDay?: number;
+  totalUdhaarSalesDay?: number;
   note?: string;
   closedAt: string; // ISO timestamp
+  denominations?: {
+    d500?: number;
+    d200?: number;
+    d100?: number;
+    d50?: number;
+    d20?: number;
+    d10?: number;
+    coins?: number;
+  };
 }
 
 export type TenantPlan = 'FREE' | 'PRO';

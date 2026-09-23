@@ -10,6 +10,7 @@ import {
 } from '../../utils/thermalPrint';
 import { formatINR, getTodayISODate, formatTime } from '../../utils/formatters';
 import { openWhatsApp } from '../../utils/whatsapp';
+import { syncService } from '../../services/syncService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const todayStr = getTodayISODate;
@@ -26,14 +27,37 @@ export const DailyCashClose: React.FC = () => {
   // Auto-fetched totals
   const [cashSalesTotal, setCashSalesTotal] = useState<number>(0);
   const [jamaTotal, setJamaTotal] = useState<number>(0);
+  const [upiSalesTotal, setUpiSalesTotal] = useState<number>(0);
+  const [udhaarSalesTotal, setUdhaarSalesTotal] = useState<number>(0);
   const [loadingTotals, setLoadingTotals] = useState<boolean>(true);
 
   // Form state
+  const [openingCash, setOpeningCash] = useState<string>('');
   const [physicalCash, setPhysicalCash] = useState<string>('');
   const [expenses, setExpenses] = useState<DailyExpense[]>([]);
   const [expDesc, setExpDesc] = useState<string>('');
   const [expAmt, setExpAmt] = useState<string>('');
   const [note, setNote] = useState<string>('');
+
+  // Currency Denominations state
+  const [showDenomModal, setShowDenomModal] = useState<boolean>(false);
+  const [denom, setDenom] = useState<{
+    d500: string;
+    d200: string;
+    d100: string;
+    d50: string;
+    d20: string;
+    d10: string;
+    coins: string;
+  }>({
+    d500: '',
+    d200: '',
+    d100: '',
+    d50: '',
+    d20: '',
+    d10: '',
+    coins: '',
+  });
 
   // Saved record
   const [savedRecord, setSavedRecord] = useState<DailyCashCloseType | null>(null);
@@ -80,11 +104,28 @@ export const DailyCashClose: React.FC = () => {
         )
         .toArray();
 
-      // Filter by payment mode in JS (including split cash payments on credit bills)
+      // Cash sales (including cash portion of split payment)
       const cashSales = todaySales
         .reduce((sum, s) => {
           if (s.paymentMode === 'CASH') return sum + s.totalAmount;
           if (s.paymentMode === 'UDHAAR' && s.splitPayment?.cash) return sum + s.splitPayment.cash;
+          return sum;
+        }, 0);
+
+      // UPI / Online sales
+      const upiSales = todaySales
+        .reduce((sum, s) => {
+          if (s.paymentMode === 'UPI') return sum + s.totalAmount;
+          return sum;
+        }, 0);
+
+      // New Udhaar sales today (for gross daily business volume)
+      const udhaarSales = todaySales
+        .reduce((sum, s) => {
+          if (s.paymentMode === 'UDHAAR') {
+            const creditPart = s.splitPayment ? s.splitPayment.udhaar : s.totalAmount;
+            return sum + creditPart;
+          }
           return sum;
         }, 0);
 
@@ -103,13 +144,32 @@ export const DailyCashClose: React.FC = () => {
         .reduce((sum, tx) => sum + tx.amount, 0);
 
       setCashSalesTotal(Math.round(cashSales * 100) / 100);
+      setUpiSalesTotal(Math.round(upiSales * 100) / 100);
+      setUdhaarSalesTotal(Math.round(udhaarSales * 100) / 100);
       setJamaTotal(Math.round(jamaCollected * 100) / 100);
 
       // Check if already closed today
       const existing = await db.dailyCashClose
         .where('date').equals(today)
         .first();
-      if (existing) setSavedRecord(existing);
+      if (existing) {
+        setSavedRecord(existing);
+        if (existing.openingCash) setOpeningCash(String(existing.openingCash));
+        if (existing.physicalCashInDrawer) setPhysicalCash(String(existing.physicalCashInDrawer));
+        if (existing.expenses) setExpenses(existing.expenses);
+        if (existing.note) setNote(existing.note);
+        if (existing.denominations) {
+          setDenom({
+            d500: existing.denominations.d500 ? String(existing.denominations.d500) : '',
+            d200: existing.denominations.d200 ? String(existing.denominations.d200) : '',
+            d100: existing.denominations.d100 ? String(existing.denominations.d100) : '',
+            d50: existing.denominations.d50 ? String(existing.denominations.d50) : '',
+            d20: existing.denominations.d20 ? String(existing.denominations.d20) : '',
+            d10: existing.denominations.d10 ? String(existing.denominations.d10) : '',
+            coins: existing.denominations.coins ? String(existing.denominations.coins) : '',
+          });
+        }
+      }
 
     } finally {
       setLoadingTotals(false);
@@ -121,8 +181,37 @@ export const DailyCashClose: React.FC = () => {
   // ─── Computed values ─────────────────────────────────────────────────────
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const physical = parseFloat(physicalCash) || 0;
-  const expectedCash = cashSalesTotal + jamaTotal - totalExpenses;
+  const opening = parseFloat(openingCash) || 0;
+  const expectedCash = opening + cashSalesTotal + jamaTotal - totalExpenses;
   const difference = physical - expectedCash;
+  const grossDayTurnover = cashSalesTotal + upiSalesTotal + udhaarSalesTotal;
+
+  // Denominations live sum
+  const denomTotal = 
+    (parseInt(denom.d500) || 0) * 500 +
+    (parseInt(denom.d200) || 0) * 200 +
+    (parseInt(denom.d100) || 0) * 100 +
+    (parseInt(denom.d50) || 0) * 50 +
+    (parseInt(denom.d20) || 0) * 20 +
+    (parseInt(denom.d10) || 0) * 10 +
+    (parseFloat(denom.coins) || 0);
+
+  const applyDenomToPhysicalCash = () => {
+    setPhysicalCash(String(denomTotal));
+    setShowDenomModal(false);
+  };
+
+  const handleReopenDay = () => {
+    if (window.confirm(tc.reopenConfirm || 'क्या आप आज के गल्ला रिकॉर्ड को पुनः खोलकर सुधारना चाहते हैं?')) {
+      if (savedRecord) {
+        setPhysicalCash(String(savedRecord.physicalCashInDrawer));
+        if (savedRecord.openingCash) setOpeningCash(String(savedRecord.openingCash));
+        if (savedRecord.expenses) setExpenses(savedRecord.expenses);
+        if (savedRecord.note) setNote(savedRecord.note);
+      }
+      setSavedRecord(null);
+    }
+  };
 
   // ─── Expense helpers ─────────────────────────────────────────────────────
   const addExpense = () => {
@@ -146,9 +235,19 @@ export const DailyCashClose: React.FC = () => {
   const closeDay = async () => {
     if (!physicalCash || isNaN(parseFloat(physicalCash))) return;
 
+    const d500 = parseInt(denom.d500) || undefined;
+    const d200 = parseInt(denom.d200) || undefined;
+    const d100 = parseInt(denom.d100) || undefined;
+    const d50 = parseInt(denom.d50) || undefined;
+    const d20 = parseInt(denom.d20) || undefined;
+    const d10 = parseInt(denom.d10) || undefined;
+    const coins = parseFloat(denom.coins) || undefined;
+    const hasDenom = d500 || d200 || d100 || d50 || d20 || d10 || coins;
+
     const record: DailyCashCloseType = {
       id: 'cashclose_' + today,
       date: today,
+      openingCash: opening > 0 ? opening : undefined,
       physicalCashInDrawer: physical,
       totalCashSalesDay: cashSalesTotal,
       totalJamaCollectedDay: jamaTotal,
@@ -156,6 +255,9 @@ export const DailyCashClose: React.FC = () => {
       expenses,
       calculatedExpectedCash: expectedCash,
       cashDifference: difference,
+      totalUpiSalesDay: upiSalesTotal > 0 ? upiSalesTotal : undefined,
+      totalUdhaarSalesDay: udhaarSalesTotal > 0 ? udhaarSalesTotal : undefined,
+      denominations: hasDenom ? { d500, d200, d100, d50, d20, d10, coins } : undefined,
       note: note.trim() || undefined,
       closedAt: new Date().toISOString(),
     };
@@ -172,6 +274,10 @@ export const DailyCashClose: React.FC = () => {
 
   // ─── Past Record WhatsApp & Print ──────────────────────────────────────────
   const sendPastRecordWhatsApp = (rec: DailyCashCloseType) => {
+    const storeInfo = syncService.getStoreInfo();
+    const storeDisplayName = storeInfo?.storeName?.trim() || 'ग्रामीण किराना';
+    const storeVillage = storeInfo?.village?.trim() ? ` (${storeInfo.village})` : '';
+
     const displayDate = new Date(rec.date).toLocaleDateString('hi-IN', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
@@ -184,11 +290,13 @@ export const DailyCashClose: React.FC = () => {
     const closedTime = rec.closedAt ? new Date(rec.closedAt).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }) : '';
 
     const msg = [
-      `🏪 *ग्रामीण किराना — दैनिक गल्ला हिसाब (इतिहास)*`,
+      `🏪 *${storeDisplayName}${storeVillage} — दैनिक गल्ला हिसाब (इतिहास)*`,
       `📅 ${displayDate}`,
       ``,
+      rec.openingCash ? `💵 शुरुआती रोकड़ (Float): *${fmtINR(rec.openingCash)}*` : '',
       `💰 नकद बिक्री: *${fmtINR(rec.totalCashSalesDay)}*`,
       `📥 जमा उधार: *${fmtINR(rec.totalJamaCollectedDay)}*`,
+      rec.totalUpiSalesDay ? `📲 UPI / ऑनलाइन: *${fmtINR(rec.totalUpiSalesDay)}*` : '',
       rec.totalExpenses > 0 ? `\n📤 खर्चे:\n${expLines}\n   कुल खर्च: *${fmtINR(rec.totalExpenses)}*` : '',
       ``,
       `🧾 अपेक्षित नकद: *${fmtINR(rec.calculatedExpectedCash)}*`,
@@ -204,11 +312,16 @@ export const DailyCashClose: React.FC = () => {
   };
 
   const printPastRecord = async (rec: DailyCashCloseType) => {
+    const storeInfo = syncService.getStoreInfo();
+    const storeDisplayName = storeInfo?.storeName?.trim() || 'ग्रामीण किराना';
+
     await printDaySummary({
-      storeName: 'ग्रामीण किराना',
+      storeName: storeDisplayName,
       date: new Date(rec.date).toLocaleDateString('hi-IN'),
+      openingCash: rec.openingCash,
       cashSales: rec.totalCashSalesDay,
       jamaCollected: rec.totalJamaCollectedDay,
+      upiSales: rec.totalUpiSalesDay,
       totalExpenses: rec.totalExpenses,
       expenses: (rec.expenses || []).map(e => ({ description: e.description, amount: e.amount })),
       physicalCash: rec.physicalCashInDrawer,
@@ -221,6 +334,10 @@ export const DailyCashClose: React.FC = () => {
 
   // ─── WhatsApp Day Summary ─────────────────────────────────────────────────
   const sendWhatsApp = () => {
+    const storeInfo = syncService.getStoreInfo();
+    const storeDisplayName = storeInfo?.storeName?.trim() || 'ग्रामीण किराना';
+    const storeVillage = storeInfo?.village?.trim() ? ` (${storeInfo.village})` : '';
+
     const displayDate = new Date(today).toLocaleDateString('hi-IN', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
@@ -232,14 +349,17 @@ export const DailyCashClose: React.FC = () => {
     const expLines = expenses.map(e => `   • ${e.description}: ${fmtINR(e.amount)}`).join('\n');
 
     const msg = [
-      `🏪 *ग्रामीण किराना — दैनिक गल्ला हिसाब*`,
+      `🏪 *${storeDisplayName}${storeVillage} — दैनिक गल्ला हिसाब*`,
       `📅 ${displayDate}`,
       ``,
+      opening > 0 ? `💵 शुरुआती रोकड़ (Float): *${fmtINR(opening)}*` : '',
       `💰 नकद बिक्री: *${fmtINR(cashSalesTotal)}*`,
       `📥 जमा उधार: *${fmtINR(jamaTotal)}*`,
+      upiSalesTotal > 0 ? `📲 UPI / ऑनलाइन: *${fmtINR(upiSalesTotal)}*` : '',
+      udhaarSalesTotal > 0 ? `📒 आज की नई उधारी: *${fmtINR(udhaarSalesTotal)}*` : '',
       expenses.length > 0 ? `\n📤 खर्चे:\n${expLines}\n   कुल खर्च: *${fmtINR(totalExpenses)}*` : '',
       ``,
-      `🧾 अपेक्षित नकद: *${fmtINR(expectedCash)}*`,
+      `🧾 कुल अपेक्षित नकद: *${fmtINR(expectedCash)}*`,
       `💵 गल्ले में नकद: *${fmtINR(physical)}*`,
       `${diffLine}`,
       note ? `\n📝 ${note}` : '',
@@ -253,11 +373,16 @@ export const DailyCashClose: React.FC = () => {
 
   // ─── Thermal Print ────────────────────────────────────────────────────────
   const handlePrint = async () => {
+    const storeInfo = syncService.getStoreInfo();
+    const storeDisplayName = storeInfo?.storeName?.trim() || 'ग्रामीण किराना';
+
     await printDaySummary({
-      storeName: 'ग्रामीण किराना',
+      storeName: storeDisplayName,
       date: new Date(today).toLocaleDateString('hi-IN'),
+      openingCash: opening > 0 ? opening : undefined,
       cashSales: cashSalesTotal,
       jamaCollected: jamaTotal,
+      upiSales: upiSalesTotal > 0 ? upiSalesTotal : undefined,
       totalExpenses,
       expenses: expenses.map(e => ({ description: e.description, amount: e.amount })),
       physicalCash: physical,
@@ -422,10 +547,20 @@ export const DailyCashClose: React.FC = () => {
                     <div className="bg-[#faf8f3] p-2.5 rounded-xl border border-stone-200">
                       <span className="text-stone-500 block text-[10px]">नकद बिक्री</span>
                       <span className="font-black text-stone-900 text-xs sm:text-sm">{fmtINR(rec.totalCashSalesDay)}</span>
+                      {rec.openingCash ? (
+                        <span className="text-[9px] text-amber-800 font-semibold block mt-0.5">
+                          (प्रारंभिक: {fmtINR(rec.openingCash)})
+                        </span>
+                      ) : null}
                     </div>
                     <div className="bg-[#faf8f3] p-2.5 rounded-xl border border-stone-200">
                       <span className="text-stone-500 block text-[10px]">जमा वसूली</span>
                       <span className="font-black text-stone-900 text-xs sm:text-sm">{fmtINR(rec.totalJamaCollectedDay)}</span>
+                      {rec.totalUpiSalesDay ? (
+                        <span className="text-[9px] text-blue-700 font-semibold block mt-0.5">
+                          (UPI: {fmtINR(rec.totalUpiSalesDay)})
+                        </span>
+                      ) : null}
                     </div>
                     <div className="bg-[#faf8f3] p-2.5 rounded-xl border border-stone-200">
                       <span className="text-stone-500 block text-[10px]">कुल खर्चे</span>
@@ -510,40 +645,108 @@ export const DailyCashClose: React.FC = () => {
               {tc.printSummary}
             </button>
           </div>
+
+          {/* Reopen / Edit Today's Closing Button */}
+          <button
+            type="button"
+            onClick={handleReopenDay}
+            className="w-full flex items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors cursor-pointer mt-3 shadow-xs active:scale-98"
+          >
+            <span>{tc.reopenDayBtn || '🔓 गल्ला पुनः खोलें / संशोधित करें'}</span>
+          </button>
         </div>
       )}
 
-      {/* Auto-fetched totals */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Auto-fetched totals — 4 Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         {/* Cash Sales Card */}
-        <div className="village-card bahi-khata-edge-green p-4">
-          <div className="text-xs font-semibold text-stone-500 mb-1">{tc.cashSalesLabel}</div>
+        <div className="village-card bahi-khata-edge-green p-3 sm:p-4">
+          <div className="text-[11px] font-bold text-stone-500 mb-0.5">{tc.cashSalesLabel}</div>
           {loadingTotals ? (
-            <div className="h-7 bg-stone-200 animate-pulse rounded w-24" />
+            <div className="h-7 bg-stone-200 animate-pulse rounded w-20" />
           ) : (
-            <div className="text-2xl font-black text-stone-900">{fmtINR(cashSalesTotal)}</div>
+            <div className="text-xl sm:text-2xl font-black text-stone-900">{fmtINR(cashSalesTotal)}</div>
           )}
-          <div className="text-[11px] text-emerald-700 mt-1">🟢 नकद (Cash) बिल्स आज</div>
+          <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">🟢 नकद काउंटर बिक्री</div>
         </div>
 
         {/* Jama Collected Card */}
-        <div className="village-card bahi-khata-edge-gold p-4">
-          <div className="text-xs font-semibold text-stone-500 mb-1">{tc.jamaLabel}</div>
+        <div className="village-card bahi-khata-edge-gold p-3 sm:p-4">
+          <div className="text-[11px] font-bold text-stone-500 mb-0.5">{tc.jamaLabel}</div>
           {loadingTotals ? (
-            <div className="h-7 bg-stone-200 animate-pulse rounded w-24" />
+            <div className="h-7 bg-stone-200 animate-pulse rounded w-20" />
           ) : (
-            <div className="text-2xl font-black text-stone-900">{fmtINR(jamaTotal)}</div>
+            <div className="text-xl sm:text-2xl font-black text-stone-900">{fmtINR(jamaTotal)}</div>
           )}
-          <div className="text-[11px] text-amber-700 mt-1">📥 उधार जमा हुई रकम</div>
+          <div className="text-[10px] text-amber-700 font-semibold mt-0.5">📥 बही-खाता वसूली</div>
+        </div>
+
+        {/* UPI / Online Sales Card */}
+        <div className="village-card p-3 sm:p-4 bg-white border border-blue-200">
+          <div className="text-[11px] font-bold text-stone-500 mb-0.5">{tc.totalUpiSalesLabel || 'UPI / ऑनलाइन'}</div>
+          {loadingTotals ? (
+            <div className="h-7 bg-stone-200 animate-pulse rounded w-20" />
+          ) : (
+            <div className="text-xl sm:text-2xl font-black text-blue-900">{fmtINR(upiSalesTotal)}</div>
+          )}
+          <div className="text-[10px] text-blue-600 font-semibold mt-0.5">📲 बैंक खाते में जमा</div>
+        </div>
+
+        {/* Gross Daily Turnover Card */}
+        <div className="village-card p-3 sm:p-4 bg-white border border-stone-300">
+          <div className="text-[11px] font-bold text-stone-500 mb-0.5">{tc.totalGrossSalesLabel || 'कुल कारोबार'}</div>
+          {loadingTotals ? (
+            <div className="h-7 bg-stone-200 animate-pulse rounded w-20" />
+          ) : (
+            <div className="text-xl sm:text-2xl font-black text-stone-900">{fmtINR(grossDayTurnover)}</div>
+          )}
+          <div className="text-[10px] text-stone-600 font-semibold mt-0.5">📊 नकद + UPI + उधार</div>
         </div>
       </div>
 
-      {/* Physical Cash Input */}
+      {/* Opening Cash (Float) Input */}
       <div className="village-card p-4 sm:p-5">
-        <label className="block text-sm font-bold text-stone-800 mb-1">
-          💵 {tc.physicalCash}
-        </label>
-        <p className="text-[11px] text-stone-500 mb-3">{tc.physicalCashHint}</p>
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-sm font-bold text-stone-800">
+            🌅 {tc.openingCashLabel || 'शुरुआती रोकड़ / सुबह का गल्ला (Float)'}
+          </label>
+          <span className="text-[11px] text-amber-800 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+            खुल्ला पैसा / Float
+          </span>
+        </div>
+        <p className="text-[11px] text-stone-500 mb-2">{tc.openingCashHint || 'सुबह गल्ले में रखा हुआ खुल्ला पैसा'}</p>
+        <div className="relative">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-black text-lg">₹</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min="0"
+            value={openingCash}
+            onChange={e => setOpeningCash(e.target.value)}
+            placeholder="0"
+            className="w-full text-2xl font-black text-stone-900 bg-stone-50 border border-stone-300 rounded-xl pl-9 pr-4 py-2.5 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 placeholder:text-stone-300 transition-all"
+          />
+        </div>
+      </div>
+
+      {/* Physical Cash Input & Denominations Counter */}
+      <div className="village-card p-4 sm:p-5 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <label className="block text-sm font-bold text-stone-800">
+              💵 {tc.physicalCash}
+            </label>
+            <p className="text-[11px] text-stone-500">{tc.physicalCashHint}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDenomModal(!showDenomModal)}
+            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-2xs"
+          >
+            <span>{showDenomModal ? '✕ ' + (tc.denominationClose || 'कैलकुलेटर छुपाएं') : '🧮 ' + (tc.denominationCounter || 'नोट व सिक्के गिनें')}</span>
+          </button>
+        </div>
+
         <input
           type="number"
           inputMode="numeric"
@@ -552,6 +755,85 @@ export const DailyCashClose: React.FC = () => {
           placeholder="0"
           className="w-full text-3xl sm:text-4xl font-black text-stone-900 bg-amber-50 border-2 border-amber-300 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 placeholder:text-stone-300 transition-all"
         />
+
+        {/* Collapsible Currency Denomination Counter */}
+        {showDenomModal && (
+          <div className="bg-stone-50 border-2 border-amber-200 rounded-xl p-3 sm:p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+              <h4 className="font-black text-stone-900 text-xs sm:text-sm m-0">
+                🧮 भारतीय मुद्रा नोट व सिक्के कैलकुलेटर
+              </h4>
+              <span className="text-xs font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                योग: {fmtINR(denomTotal)}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              {[
+                { label: '₹500 का नोट', value: 500, key: 'd500' },
+                { label: '₹200 का नोट', value: 200, key: 'd200' },
+                { label: '₹100 का नोट', value: 100, key: 'd100' },
+                { label: '₹50 का नोट', value: 50, key: 'd50' },
+                { label: '₹20 का नोट', value: 20, key: 'd20' },
+                { label: '₹10 का नोट', value: 10, key: 'd10' },
+              ].map(item => {
+                const k = item.key as keyof typeof denom;
+                const cnt = parseInt(denom[k]) || 0;
+                const sub = cnt * item.value;
+                return (
+                  <div key={item.key} className="flex items-center justify-between bg-white p-2 rounded-lg border border-stone-200">
+                    <span className="font-bold text-stone-800">{item.label}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-stone-400 font-medium">×</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        value={denom[k]}
+                        onChange={e => setDenom(prev => ({ ...prev, [k]: e.target.value }))}
+                        placeholder="0"
+                        className="w-14 text-center font-bold bg-stone-50 border border-stone-300 rounded px-1.5 py-1 text-xs focus:outline-none focus:border-amber-500"
+                      />
+                      <span className="font-black text-stone-900 w-16 text-right">
+                        {sub > 0 ? fmtINR(sub) : '₹0'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Coins / Mixed loose cash */}
+              <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-stone-200 sm:col-span-2">
+                <span className="font-bold text-stone-800">🪙 कुल सिक्के (₹1, ₹2, ₹5, ₹10, ₹20)</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-stone-400 font-bold">₹</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={denom.coins}
+                    onChange={e => setDenom(prev => ({ ...prev, coins: e.target.value }))}
+                    placeholder="0"
+                    className="w-24 text-right font-bold bg-stone-50 border border-stone-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-stone-200">
+              <div className="text-xs">
+                <span className="text-stone-500">कुल नोट व सिक्के: </span>
+                <span className="text-base font-black text-emerald-700">{fmtINR(denomTotal)}</span>
+              </div>
+              <button
+                type="button"
+                onClick={applyDenomToPhysicalCash}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition cursor-pointer shadow-xs active:scale-95"
+              >
+                💾 {tc.denominationApply || 'कुल राशि गल्ले में भरें'} ({fmtINR(denomTotal)})
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Expenses Section */}
@@ -633,13 +915,19 @@ export const DailyCashClose: React.FC = () => {
         <div className={`village-card p-4 sm:p-5 border-2 ${diffBg}`}>
           <h3 className="font-black text-stone-800 mb-4">🧾 {tc.difference}</h3>
           <div className="space-y-2 text-sm">
+            {opening > 0 && (
+              <div className="flex justify-between">
+                <span className="text-stone-600">शुरुआती रोकड़ (Float):</span>
+                <span className="font-bold text-stone-800">+ {fmtINR(opening)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-stone-600">{tc.cashSalesLabel}</span>
-              <span className="font-bold text-emerald-700">{fmtINR(cashSalesTotal)}</span>
+              <span className="font-bold text-emerald-700">+ {fmtINR(cashSalesTotal)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-stone-600">{tc.jamaLabel}</span>
-              <span className="font-bold text-amber-700">{fmtINR(jamaTotal)}</span>
+              <span className="font-bold text-amber-700">+ {fmtINR(jamaTotal)}</span>
             </div>
             {totalExpenses > 0 && (
               <div className="flex justify-between">

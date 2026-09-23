@@ -72,9 +72,11 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
     - [Mobile Floating Cart & Drawer (स्मार्टफोन पर 1-हाथ से बिलिंग)](#5-mobile-floating-cart--drawer-स्मार्टफोन-पर-1-हाथ-से-बिलिंग)
     - [Hybrid Views Across Devices (मोबाइल, टैबलेट व कंप्यूटर)](#6-hybrid-views-across-devices-मोबाइल-टैबलेट-व-कंप्यूटर)
 12. [Daily Cash Drawer Closing (दैनिक गल्ला व रोकड़ हिसाब)](#12-daily-cash-drawer-closing-दैनिक-गल्ला-व-रोकड़-हिसाब)
-    - [Evening Cash Count (शाम का गल्ला मिलान)](#evening-cash-count-शाम-का-गल्ला-मिलान)
+    - [Morning Opening Float (शुरुआती रोकड़ / सुबह का गल्ला)](#morning-opening-float-शुरुआती-रोकड़--सुबह-का-गल्ला)
+    - [Evening Cash Count & Denomination Calculator (शाम का गल्ला मिलान व नोट-सिक्के कैलकुलेटर)](#evening-cash-count--denomination-calculator-शाम-का-गल्ला-मिलान-व-नोट-सिक्के-कैलकुलेटर)
+    - [UPI & 360° Day Business Overview (डिजिटल बिक्री व कुल दिन का कारोबार)](#upi--360-day-business-overview-डिजिटल-बिक्री-व-कुल-दिन-का-कारोबार)
     - [Daily Shop Expenses & Quick Category Chips (दुकान के खर्चे व त्वरित बटन)](#daily-shop-expenses--quick-category-chips-दुकान-के-खर्चे-व-त्वरित-बटन)
-    - [Cash Reconciliation & Difference (गल्ला अंतर व मिलान)](#cash-reconciliation--difference-गल्ला-अंतर-व-मिलान)
+    - [Cash Reconciliation & Reopen Guard (गल्ला अंतर मिलान व पुनः खोलने की सुरक्षा)](#cash-reconciliation--reopen-guard-गल्ला-अंतर-मिलान-व-पुनः-खोलने-की-सुरक्षा)
     - [1-Click WhatsApp Day Summary (व्हाट्सएप पर दिन सारांश)](#1-click-whatsapp-day-summary-व्हाट्सएप-पर-दिन-सारांश)
     - [Past Cash Drawer Archive & Historical Slips (पिछला गल्ला इतिहास व पुरानी पर्ची)](#past-cash-drawer-archive--historical-slips-पिछला-गल्ला-इतिहास-व-पुरानी-पर्ची)
     - [Automated 30-Day Storage Maintenance (स्वचालित 30-दिन बैकग्राउंड सफाई)](#automated-30-day-storage-maintenance-स्वचालित-30-दिन-बैकग्राउंड-सफाई)
@@ -528,47 +530,47 @@ Gramin Kirana is crafted with a high-contrast, authentic **Village Premium (ग�
 
 ## 12. Daily Cash Drawer Closing (दैनिक गल्ला व रोकड़ हिसाब)
 
-Village store owners and counter staff often finish long days without knowing the exact cash balance in the drawer versus sales recorded. The **गल्ला हिसाब (Cash Drawer)** module solves this in under 2 minutes:
+गाँव के किराना स्टोर मालिक और काउंटर मुनीम दिनभर की भागदौड़ के बाद शाम को गल्ले में वास्तविक रोकड़, दिनभर की बिक्री और खर्चों का हिसाब 2 मिनट में बिना किसी कागजी माथापच्ची के मिला सकते हैं:
 
-### Evening Cash Count (शाम का गल्ला मिलान)
-- At the end of the business day, open the **🏦 गल्ला हिसाब** tab from the top navigation (or bottom bar on mobile).
-- The app automatically totals:
-  - **नकद बिक्री (Cash Sales):** All sales completed with cash payment today.
-  - **जमा मिला उधार (Jama Received):** Repayments collected from credit customers today.
-- In the large **💵 गल्ले में गिना हुआ नकद** field, enter the actual cash counted in your till/drawer.
+### Morning Opening Float (शुरुआती रोकड़ / सुबह का गल्ला)
+- **सुबह का खुल्ला पैसा:** दुकान खोलते समय गल्ले में ग्राहकों को छुट्टे पैसे लौटाने के लिए जो रकम (उदा. ₹500 या ₹1,000) रखी जाती है, उसे **"🌅 शुरुआती रोकड़ / सुबह का गल्ला (Float)"** बॉक्स में दर्ज करें।
+- **सटीक हिसाब:** शाम के मिलान में यह शुरुआती रकम स्वतः जुड़ जाती है, जिससे दुकानदार को अलग से घटाने की जरूरत नहीं पड़ती।
+
+### Evening Cash Count & Denomination Calculator (शाम का गल्ला मिलान व नोट-सिक्के कैलकुलेटर)
+- **सीधे कुल रकम या नोट गिनें:** शाम को गल्ले का नकद दर्ज करने के लिए सीधे राशि टाइप कर सकते हैं, या **"🧮 नोट व सिक्के गिनें"** बटन दबा सकते हैं।
+- **भारतीय मुद्रा कैलकुलेटर:** इस कैलकुलेटर में ₹500, ₹200, ₹100, ₹50, ₹20, ₹10 के नोटों की संख्या और सिक्कों की कुल रकम डालते ही सिस्टम स्वतः कुल जोड़ निकाल देता है। **"कुल राशि गल्ले में भरें"** पर टैप करते ही यह रकम सीधे गल्ला मिलान बॉक्स में आ जाती है।
+
+### UPI & 360° Day Business Overview (डिजिटल बिक्री व कुल दिन का कारोबार)
+- **4 मुख्य दैनिक कार्ड:**
+  - 🟢 **नकद बिक्री (Cash Sales):** आज काउंटर पर नकद में बिका सामान।
+  - 📥 **जमा वसूली (Jama Collected):** उधारी ग्राहकों द्वारा बही-खाते में जमा की गई पुरानी रकम।
+  - 📲 **UPI / ऑनलाइन बिक्री:** आज क्यूआर कोड या ऑनलाइन माध्यम से सीधे बैंक खाते में आई रकम।
+  - 📊 **कुल दिन का कारोबार:** दिनभर का संपूर्ण व्यापार (नकद + UPI + नई उधारी का योग)।
+- इससे दुकानदार को नकद और बैंक खाते की आवक का एक नज़र में पूरा नक्शा मिल जाता है।
 
 ### Daily Shop Expenses & Quick Category Chips (दुकान के खर्चे व त्वरित बटन)
-- Enter any daily out-of-pocket expenses paid directly from the cash till (e.g., auto/tempo fare for stock delivery, helper wages, tea/snacks for guests, electricity bulb replacement).
-- **त्वरित खर्च बटन (Quick Category Chips):** Tap common village expense chips (*सवारी/भाड़ा, मजदूरी/हमाली, चाय/नाश्ता, बिजली/दुकान खर्च, पॉलिथीन/पैकिंग*) to instantly autofill the description without manual typing.
-- Tap **+** to add each expense item. The total expenses are automatically subtracted from your expected cash balance.
+- **दुकान के दैनिक खर्चे दर्ज करना:** दिनभर में गल्ले से किए गए छोटे-बड़े खर्चे (जैसे माल ढुलाई का ऑटो भाड़ा, हमाली, मेहमानों की चाय, दुकान का बल्ब या पॉलिथीन)।
+- **त्वरित खर्च बटन:** बिना टाइप किए सीधे *सवारी/भाड़ा, मजदूरी/हमाली, चाय/नाश्ता, दुकान खर्च/बिजली, पॉलिथीन/पैकिंग* बटन दबाकर खर्च का नाम भरें, राशि लिखें और `+` दबाएं। कुल खर्च अपेक्षित नकद से अपने-आप घट जाता है।
 
-### Cash Reconciliation & Difference (गल्ला अंतर व मिलान)
-- The app calculates:
-  $$\text{अपेक्षित नकद} = \text{नकद बिक्री} + \text{जमा उधार} - \text{दैनिक खर्चे}$$
-- **गल्ला मिलान (Difference):**
-  - **✅ गल्ला बिल्कुल मिला:** Physical cash matches expected cash exactly.
-  - **📈 अतिरिक्त नकद (Surplus):** Extra cash in drawer (e.g., untracked receipts).
-  - **⚠️ नकद कम है (Deficit):** Cash shortage flagged in red for immediate investigation with counter staff.
-- Tap **💾 दिन बंद करें व सुरक्षित करें** to permanently save the day's closing record on your device.
+### Cash Reconciliation & Reopen Guard (गल्ला अंतर मिलान व पुनः खोलने की सुरक्षा)
+- **स्वचालित मिलान सूत्र:**
+  $$\text{अपेक्षित नकद} = \text{शुरुआती रोकड़} + \text{नकद बिक्री} + \text{जमा वसूली} - \text{दैनिक खर्चे}$$
+- **गल्ला मिलान संकेत (Difference):**
+  - **✅ गल्ला बिल्कुल मिला:** गल्ले का वास्तविक नकद और बही-खाता हिसाब 100% बराबर है।
+  - **📈 अतिरिक्त नकद (Surplus):** गल्ले में अधिक पैसे होने पर नीले रंग में बढ़त दिखती है।
+  - **⚠️ नकद कम है (Deficit):** गल्ले में पैसे कम होने पर लाल रंग में चेतावनी दिखती है ताकि मुनीम या स्टाफ से तुरंत जांच की जा सके।
+- **गल्ला पुनः खोलना व संशोधन (Reopen Guard):** यदि शाम को गल्ला बंद करने के बाद कोई देर रात ग्राहक आ जाए या कोई खर्च लिखना छूट गया हो, तो दुकानदार **"🔓 गल्ला पुनः खोलें / संशोधित करें"** बटन दबाकर आज के हिसाब को फिर से खोल सकता है और नया सुधार करके दोबारा सुरक्षित कर सकता है।
 
 ### 1-Click WhatsApp Day Summary (व्हाट्सएप पर दिन सारांश)
-- Tap **📲 व्हाट्सएप** to instantly generate a clean, formatted daily report sent directly to the store owner or accountant’s WhatsApp number.
-- Includes total sales, collections, itemized expenses, cash counted, and surplus/deficit status.
+- **📲 व्हाट्सएप:** 1-क्लिक में दुकान के नाम, गाँव के पते, सुबह के गल्ले, नकद बिक्री, जमा वसूली, UPI आवक, खर्चों और मिलान स्थिति के साथ एक सुंदर संदेश तैयार हो जाता है जिसे दुकान मालिक या मुनीम को भेजा जा सकता है।
 
 ### Past Cash Drawer Archive & Historical Slips (पिछला गल्ला इतिहास व पुरानी पर्ची)
-- **Archive Tab:** At the top of the **गल्ला हिसाब** module, tap the **"पिछला इतिहास (Archive)"** tab.
-- Displays a complete historical record of all past daily drawer reconciliations sorted with the most recent first.
-- **Card Breakdown:** For each past day, you see:
-  - Exact date and evening closing timestamp.
-  - Cash sales, Udhaar Jama recoveries, total expenses, and physical cash counted.
-  - Color-coded reconciliation badge (Green for matched, Blue for surplus, Red for shortage).
-  - Any notes recorded during closing.
-- **1-Tap Past Actions:** Every past card has dedicated **📲 WhatsApp** and **🖨️ पर्ची प्रिंट** buttons so you can reprint previous day slips or resend summaries at any time.
+- **पिछला इतिहास (Archive) टैब:** पिछले महीनों के किसी भी दिन का गल्ला हिसाब तारीखवार देखें।
+- प्रत्येक पिछले कार्ड में नकद बिक्री, शुरुआती रोकड़, UPI आवक, खर्चे, मिलान स्थिति और उस दिन का नोट सुरक्षित रहता है।
+- कार्ड से ही कभी भी **📲 WhatsApp** पर दोबारा भेज सकते हैं या **🖨️ पर्ची प्रिंट** निकाल सकते हैं।
 
 ### Automated 30-Day Storage Maintenance (स्वचालित 30-दिन बैकग्राउंड सफाई)
-- **शून्य रखरखाव (Zero Maintenance Effort):** Store owners never have to worry about device slowdowns or full memory.
-- **स्वचालित बैकग्राउंड सफाई (Silent Background Cleanup):** Whenever you tap **"दिन बंद करें व सुरक्षित करें"** to finalize the evening till, the app automatically checks if 30 days have elapsed since the last sales cleanup.
-- If due, it quietly moves historical sales older than 180 days into offline cold storage without freezing the screen, delaying your WhatsApp summary, or interrupting your counter workflow.
+- **शून्य रखरखाव:** दिन का गल्ला बंद करते समय सिस्टम बैकग्राउंड में स्वतः जांचता है कि क्या 30 दिन बीत चुके हैं। यदि आवश्यक हो, तो 180 दिन से पुराने बिलों को शांत रूप से डिवाइस के कोल्ड स्टोरेज में सुरक्षित कर देता है ताकि फोन कभी हैंग या धीमा न हो।
 
 ---
 
