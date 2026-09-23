@@ -972,8 +972,14 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                       finalBillAmount
                     )}
                     size={128}
-                    level="M"
+                    level="H"
                     marginSize={2}
+                    imageSettings={{
+                      src: '/icons/upi-badge.svg',
+                      height: 26,
+                      width: 26,
+                      excavate: true,
+                    }}
                     className="w-full h-full"
                   />
                 </div>

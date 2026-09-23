@@ -277,8 +277,14 @@ export const CustomerPassbookModal: React.FC<CustomerPassbookModalProps> = ({
                         <QRCodeSVG
                           value={upiPayUrl}
                           size={136}
-                          level="M"
+                          level="H"
                           marginSize={2}
+                          imageSettings={{
+                            src: '/icons/upi-badge.svg',
+                            height: 28,
+                            width: 28,
+                            excavate: true,
+                          }}
                           className="w-full h-full"
                         />
                       </div>
