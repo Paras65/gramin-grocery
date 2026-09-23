@@ -202,3 +202,23 @@ export interface PlatformAnnouncement {
   expiresAt?: string;
   createdAt: string;
 }
+
+export type MandiRateTrend = 'STABLE' | 'RISING' | 'FALLING';
+
+export interface MandiBenchmarkRate {
+  _id?: string;
+  id?: string;
+  commodity: string;
+  commodityKey: string;
+  category: 'staples' | 'pulses' | 'oils' | 'spices' | 'vegetables' | 'grains';
+  unit: string;
+  benchmarkRate: number;
+  minRate: number;
+  maxRate: number;
+  trend: MandiRateTrend;
+  advisory?: string;
+  scope: 'STATE_WIDE' | 'DISTRICT';
+  district: string;
+  updatedBy?: string;
+  updatedAt?: string;
+}

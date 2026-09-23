@@ -1,4 +1,4 @@
-import type { PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan, PlatformAnnouncement } from '../types';
+import type { PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan, PlatformAnnouncement, MandiBenchmarkRate } from '../types';
 import { API_BASE } from '../utils/apiConfig';
 
 export interface AdminUser {
@@ -260,6 +260,67 @@ class AdminService {
     } catch {
       return null;
     }
+  }
+
+  public async getAdminMandiRates(district = 'ALL', category = 'ALL'): Promise<MandiBenchmarkRate[]> {
+    const params = new URLSearchParams();
+    if (district !== 'ALL') params.append('district', district);
+    if (category !== 'ALL') params.append('category', category);
+
+    const res = await fetch(`${API_BASE}/admin/mandi-rates?${params.toString()}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    try {
+      const data = await this.parseResponse(res, 'Failed to fetch mandi rates');
+      return data.rates || [];
+    } catch (err: any) {
+      if (res.status === 401 || res.status === 403) {
+        this.logout();
+      }
+      throw err;
+    }
+  }
+
+  public async createMandiRate(payload: Partial<MandiBenchmarkRate>): Promise<MandiBenchmarkRate> {
+    const res = await fetch(`${API_BASE}/admin/mandi-rates`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    const data = await this.parseResponse(res, 'Failed to create mandi rate');
+    return data.rate;
+  }
+
+  public async updateMandiRate(id: string, payload: Partial<MandiBenchmarkRate>): Promise<MandiBenchmarkRate> {
+    const res = await fetch(`${API_BASE}/admin/mandi-rates/${id}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    const data = await this.parseResponse(res, 'Failed to update mandi rate');
+    return data.rate;
+  }
+
+  public async seedMandiRates(): Promise<MandiBenchmarkRate[]> {
+    const res = await fetch(`${API_BASE}/admin/mandi-rates/seed`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+    });
+
+    const data = await this.parseResponse(res, 'Failed to seed default mandi rates');
+    return data.rates || [];
+  }
+
+  public async deleteMandiRate(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/admin/mandi-rates/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    await this.parseResponse(res, 'Failed to delete mandi rate');
   }
 }
 

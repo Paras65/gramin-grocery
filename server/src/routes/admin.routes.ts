@@ -11,6 +11,7 @@ import { Product } from '../models/Product.js';
 import { Transaction } from '../models/Transaction.js';
 import { SpoilageLog } from '../models/SpoilageLog.js';
 import { Announcement } from '../models/Announcement.js';
+import { MandiRate } from '../models/MandiRate.js';
 import { adminAuthLimiter, requireAuth, requireRole } from '../middleware/security.js';
 import { runWithTenantContext } from '../middleware/tenantContext.js';
 
@@ -426,6 +427,292 @@ router.delete('/announcements/:id', requireAuth, requireRole('SUPER_ADMIN'), asy
     }
 
     res.json({ message: 'घोषणा सफलतापूर्वक हटा दी गई (Announcement deleted)' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Default Master Benchmark Rates for Chhattisgarh Mandis
+export const DEFAULT_CHHATTISGARH_MANDI_RATES = [
+  {
+    commodity: 'शक्कर (Sugar M-30)',
+    commodityKey: 'sugar',
+    category: 'staples',
+    unit: 'kg',
+    benchmarkRate: 40,
+    minRate: 39,
+    maxRate: 42,
+    trend: 'STABLE',
+    advisory: 'स्थानीय मिलों से पर्याप्त आपूर्ति, भाव स्थिर रहने का अनुमान है।',
+    scope: 'STATE_WIDE',
+    district: 'ALL',
+  },
+  {
+    commodity: 'सोयाबीन रिफाइंड तेल (Soybean Oil)',
+    commodityKey: 'soybean_oil',
+    category: 'oils',
+    unit: 'liter',
+    benchmarkRate: 125,
+    minRate: 120,
+    maxRate: 130,
+    trend: 'RISING',
+    advisory: 'अंतर्राष्ट्रीय तिलहन आयात शुल्क बदलाव के कारण थोक में ₹2-3 की तेज़ी।',
+    scope: 'STATE_WIDE',
+    district: 'ALL',
+  },
+  {
+    commodity: 'तुवर दाल फटका (Toor Dal Fatka)',
+    commodityKey: 'toor_dal',
+    category: 'pulses',
+    unit: 'kg',
+    benchmarkRate: 145,
+    minRate: 140,
+    maxRate: 152,
+    trend: 'FALLING',
+    advisory: 'नई देसी आवक शुरू होने से भाव में नरमी का रुख।',
+    scope: 'STATE_WIDE',
+    district: 'ALL',
+  },
+  {
+    commodity: 'चना दाल (Chana Dal)',
+    commodityKey: 'chana_dal',
+    category: 'pulses',
+    unit: 'kg',
+    benchmarkRate: 78,
+    minRate: 75,
+    maxRate: 82,
+    trend: 'STABLE',
+    advisory: 'मंडी में मांग व आपूर्ति संतुलित है।',
+    scope: 'STATE_WIDE',
+    district: 'ALL',
+  },
+  {
+    commodity: 'गेहूं आटा चक्की (Wheat Flour)',
+    commodityKey: 'wheat_flour',
+    category: 'grains',
+    unit: 'kg',
+    benchmarkRate: 28,
+    minRate: 26,
+    maxRate: 30,
+    trend: 'STABLE',
+    advisory: 'गोदामों से पर्याप्त गेहूं उपलब्ध, दरें सामान्य हैं।',
+    scope: 'STATE_WIDE',
+    district: 'ALL',
+  },
+  {
+    commodity: 'चावल मोटा / उसना (Coarse Rice)',
+    commodityKey: 'coarse_rice',
+    category: 'grains',
+    unit: 'kg',
+    benchmarkRate: 32,
+    minRate: 30,
+    maxRate: 34,
+    trend: 'STABLE',
+    advisory: 'धान खरीदी के बाद मिलों से भरपूर स्टॉक उपलब्ध।',
+    scope: 'STATE_WIDE',
+    district: 'ALL',
+  },
+  {
+    commodity: 'आलू नया (Fresh Potato)',
+    commodityKey: 'potato',
+    category: 'vegetables',
+    unit: 'kg',
+    benchmarkRate: 18,
+    minRate: 15,
+    maxRate: 22,
+    trend: 'FALLING',
+    advisory: 'लोकल बाड़ी व यूपी से बंपर आवक होने से भाव नीचे हैं।',
+    scope: 'STATE_WIDE',
+    district: 'ALL',
+  },
+  {
+    commodity: 'प्याज नासिक (Nashik Onion)',
+    commodityKey: 'onion',
+    category: 'vegetables',
+    unit: 'kg',
+    benchmarkRate: 24,
+    minRate: 22,
+    maxRate: 28,
+    trend: 'RISING',
+    advisory: 'थोक मंडी में आवक थोड़ी धीमी है, 2-3 दिन बाद खरीदारी उचित।',
+    scope: 'STATE_WIDE',
+    district: 'ALL',
+  },
+  {
+    commodity: 'सरसों तेल कच्ची घानी (Mustard Oil)',
+    commodityKey: 'mustard_oil',
+    category: 'oils',
+    unit: 'liter',
+    benchmarkRate: 140,
+    minRate: 135,
+    maxRate: 148,
+    trend: 'STABLE',
+    advisory: 'त्यौहारी मांग स्थिर है।',
+    scope: 'STATE_WIDE',
+    district: 'ALL',
+  },
+  {
+    commodity: 'लहसुन देसी (Garlic)',
+    commodityKey: 'garlic',
+    category: 'spices',
+    unit: 'kg',
+    benchmarkRate: 110,
+    minRate: 95,
+    maxRate: 130,
+    trend: 'RISING',
+    advisory: 'माल सीमित आने से थोक भाव में तेज़ी है।',
+    scope: 'STATE_WIDE',
+    district: 'ALL',
+  },
+];
+
+// 12. Get All Mandi Benchmark Rates
+router.get('/mandi-rates', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { district = 'ALL', category = 'ALL' } = req.query;
+
+    const filter: any = {};
+    if (district !== 'ALL') {
+      filter.$or = [{ district: 'ALL' }, { district: String(district) }];
+    }
+    if (category !== 'ALL') {
+      filter.category = String(category);
+    }
+
+    let rates = await MandiRate.find(filter).sort({ category: 1, commodity: 1 }).lean();
+
+    // Auto-seed if database is currently empty
+    if (rates.length === 0 && (!district || district === 'ALL') && (!category || category === 'ALL')) {
+      await MandiRate.insertMany(DEFAULT_CHHATTISGARH_MANDI_RATES);
+      rates = await MandiRate.find().sort({ category: 1, commodity: 1 }).lean();
+    }
+
+    res.json({ rates });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 13. Create Mandi Benchmark Rate
+router.post('/mandi-rates', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const {
+      commodity,
+      category = 'staples',
+      unit = 'kg',
+      benchmarkRate,
+      minRate = 0,
+      maxRate = 0,
+      trend = 'STABLE',
+      advisory = '',
+      scope = 'STATE_WIDE',
+      district = 'ALL',
+    } = req.body;
+
+    if (!commodity || benchmarkRate === undefined) {
+      return res.status(400).json({ error: 'कमोडिटी का नाम और संदर्भ दर अनिवार्य हैं।' });
+    }
+
+    const commodityKey = String(commodity).toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30);
+
+    const rate = await MandiRate.create({
+      commodity: commodity.trim(),
+      commodityKey,
+      category,
+      unit,
+      benchmarkRate: Number(benchmarkRate),
+      minRate: Number(minRate || benchmarkRate * 0.95),
+      maxRate: Number(maxRate || benchmarkRate * 1.05),
+      trend,
+      advisory: advisory.trim(),
+      scope,
+      district: district || 'ALL',
+      updatedBy: (req as any).user?.name || 'Super Admin',
+    });
+
+    res.status(201).json({
+      message: 'मंडी संदर्भ दर सफलतापूर्वक जोड़ी गई',
+      rate,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 14. 1-Click Seed Default Chhattisgarh Rates
+router.post('/mandi-rates/seed', requireAuth, requireRole('SUPER_ADMIN'), async (_req: Request, res: Response) => {
+  try {
+    for (const item of DEFAULT_CHHATTISGARH_MANDI_RATES) {
+      await MandiRate.findOneAndUpdate(
+        { commodityKey: item.commodityKey, district: item.district },
+        { ...item, updatedBy: 'Master Seed' },
+        { upsert: true, new: true }
+      );
+    }
+
+    const allRates = await MandiRate.find().sort({ category: 1, commodity: 1 }).lean();
+    res.json({
+      message: 'छत्तीसगढ़ मास्टर मंडी संदर्भ दरें सफलतापूर्वक रीसेट/सीड की गईं।',
+      rates: allRates,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 15. Update Mandi Benchmark Rate
+router.put('/mandi-rates/:id', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      commodity,
+      category,
+      unit,
+      benchmarkRate,
+      minRate,
+      maxRate,
+      trend,
+      advisory,
+      district,
+    } = req.body;
+
+    const rate = await MandiRate.findById(id);
+    if (!rate) {
+      return res.status(404).json({ error: 'मंडी दर रिकॉर्ड नहीं मिला' });
+    }
+
+    if (commodity) rate.commodity = commodity.trim();
+    if (category) rate.category = category;
+    if (unit) rate.unit = unit;
+    if (benchmarkRate !== undefined) rate.benchmarkRate = Number(benchmarkRate);
+    if (minRate !== undefined) rate.minRate = Number(minRate);
+    if (maxRate !== undefined) rate.maxRate = Number(maxRate);
+    if (trend) rate.trend = trend;
+    if (advisory !== undefined) rate.advisory = advisory.trim();
+    if (district !== undefined) rate.district = district;
+    rate.updatedBy = (req as any).user?.name || 'Super Admin';
+
+    await rate.save();
+
+    res.json({
+      message: 'मंडी संदर्भ दर सफलतापूर्वक अपडेट की गई',
+      rate,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 16. Delete Mandi Benchmark Rate
+router.delete('/mandi-rates/:id', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const deleted = await MandiRate.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'मंडी दर रिकॉर्ड नहीं मिला' });
+    }
+
+    res.json({ message: 'मंडी दर सफलतापूर्वक हटा दी गई' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

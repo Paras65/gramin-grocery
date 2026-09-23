@@ -3,14 +3,16 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { 
   ShoppingCart, Share2, Plus, Trash2, CheckSquare, X, 
   PackageCheck, Check, Sparkles, Building2, 
-  Phone, Search, AlertTriangle, BookOpen, Edit2
+  Phone, Search, AlertTriangle, BookOpen, Edit2,
+  Wheat, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { db } from '../../db';
-import type { Product, Wholesaler } from '../../types';
+import type { Product, Wholesaler, MandiBenchmarkRate } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { DailyRateSheetModal } from './DailyRateSheetModal';
 import { syncService } from '../../services/syncService';
 import { openWhatsApp } from '../../utils/whatsapp';
+import { mandiRateService } from '../../services/mandiRateService';
 
 interface MandiItemRow {
   productId?: string;
@@ -48,6 +50,15 @@ export const MandiPlanner: React.FC = () => {
   const products = useLiveQuery(() => db.products.toArray()) || [];
 
   const [qtyOverrides, setQtyOverrides] = useState<Record<string, number>>({});
+  const [rateOverrides, setRateOverrides] = useState<Record<string, number>>({});
+
+  // Mandi Benchmark Rates State
+  const [benchmarkRates, setBenchmarkRates] = useState<MandiBenchmarkRate[]>(() => mandiRateService.getCachedRates());
+  const [isBenchmarkDrawerOpen, setIsBenchmarkDrawerOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    mandiRateService.fetchBenchmarkRates().then(setBenchmarkRates).catch(console.error);
+  }, []);
 
   // Wholesaler directory state
   const [wholesalers, setWholesalers] = useState<Wholesaler[]>(() => {
@@ -116,6 +127,7 @@ export const MandiPlanner: React.FC = () => {
     ...lowStockProducts.map((p: Product) => {
       const defaultQty = Math.max(5, (p.minStockThreshold * 3) - p.stockQty);
       const activeQty = p.id && qtyOverrides[p.id] !== undefined ? qtyOverrides[p.id] : defaultQty;
+      const activeRate = p.id && rateOverrides[p.id] !== undefined ? rateOverrides[p.id] : p.purchasePrice;
       return {
         productId: p.id,
         name: p.name,
@@ -123,12 +135,25 @@ export const MandiPlanner: React.FC = () => {
         currentStock: p.stockQty,
         suggestedQty: activeQty,
         unit: p.unit,
-        wholesaleRate: p.purchasePrice,
+        wholesaleRate: activeRate,
         category: p.category
       };
     }),
-    ...customItems
+    ...customItems.map(c => {
+      const activeRate = rateOverrides[c.name] !== undefined ? rateOverrides[c.name] : c.wholesaleRate;
+      return {
+        ...c,
+        wholesaleRate: activeRate
+      };
+    })
   ];
+
+  const handleApplyBenchmarkRate = (itemKey: string, benchmarkRate: number) => {
+    setRateOverrides(prev => ({
+      ...prev,
+      [itemKey]: benchmarkRate
+    }));
+  };
 
   const filterCategories = [
     { id: 'all', label: 'सभी सामान' },
@@ -417,6 +442,84 @@ export const MandiPlanner: React.FC = () => {
         </div>
       </div>
 
+      {/* Mandi Benchmark Rates Ticker & Advisory Drawer */}
+      <div className="village-card p-3 sm:p-4 rounded-3xl bg-gradient-to-r from-amber-950 via-stone-900 to-amber-950 text-white shadow-sm border border-amber-600/40 space-y-2.5">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-xl bg-amber-500 text-stone-950 font-black shadow-xs">
+              <Wheat className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-sm font-black text-amber-300 tracking-wide">
+                  {t.mandi.benchmarkTitle || '🌾 कृषि उपज मंडी संदर्भ थोक भाव (Mandi Benchmark Guide)'}
+                </span>
+                <span className="text-[10px] bg-amber-500/20 text-amber-200 border border-amber-500/40 px-1.5 py-0.2 rounded-md font-bold">
+                  LIVE ADVISORY
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-300 font-medium m-0">
+                {t.mandi.benchmarkSubtitle || 'थोक खरीदारी में अधिक कीमत न दें — आधिकारिक मंडी दरों से मिलान करें'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsBenchmarkDrawerOpen(prev => !prev)}
+            className="text-xs font-bold px-3 py-1.5 bg-white/10 hover:bg-white/20 text-amber-200 rounded-xl cursor-pointer flex items-center gap-1.5 transition active:scale-95"
+          >
+            <span>{isBenchmarkDrawerOpen ? 'संक्षिप्त करें' : `सभी ${benchmarkRates.length} भाव देखें`}</span>
+            {isBenchmarkDrawerOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+
+        {/* Horizontal Scrolling Quick Ticker of Top Staples */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
+          {benchmarkRates.slice(0, 7).map(rate => {
+            const trendIcon = rate.trend === 'RISING' ? '📈' : rate.trend === 'FALLING' ? '📉' : '⚖️';
+            return (
+              <div
+                key={rate.id || rate._id || rate.commodity}
+                className="bg-white/10 hover:bg-white/15 border border-white/15 px-2.5 py-1.5 rounded-xl shrink-0 flex items-center gap-1.5 font-bold transition"
+              >
+                <span className="text-stone-200">{rate.commodity.split(' ')[0]}:</span>
+                <span className="text-amber-300 font-black">₹{rate.benchmarkRate}/{rate.unit}</span>
+                <span title={`रुख: ${rate.trend}`}>{trendIcon}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Expandable Full Mandi Advisory Drawer */}
+        {isBenchmarkDrawerOpen && (
+          <div className="pt-3 border-t border-white/15 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 animate-slide-down">
+            {benchmarkRates.map(rate => (
+              <div
+                key={rate.id || rate._id || rate.commodity}
+                className="bg-white/5 border border-white/10 p-2.5 rounded-xl text-xs space-y-1"
+              >
+                <div className="flex items-center justify-between gap-1 font-bold">
+                  <span className="text-stone-100">{rate.commodity}</span>
+                  <span className="text-amber-300 font-black">₹{rate.benchmarkRate}/{rate.unit}</span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-stone-400 font-semibold">
+                  <span>मंडी दायरा: ₹{rate.minRate} - ₹{rate.maxRate}</span>
+                  <span className="text-amber-200">
+                    {rate.trend === 'RISING' ? '📈 थोक में तेज़ी' : rate.trend === 'FALLING' ? '📉 थोक में मंदी' : '⚖️ भाव स्थिर'}
+                  </span>
+                </div>
+                {rate.advisory && (
+                  <p className="text-[10px] text-stone-300 m-0 italic line-clamp-2">
+                    &ldquo;{rate.advisory}&rdquo;
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Wholesaler Directory & Actions Bar */}
       <div className="village-card p-3.5 rounded-2xl bg-white space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
@@ -571,16 +674,32 @@ export const MandiPlanner: React.FC = () => {
             <div className="block md:hidden divide-y divide-stone-100 p-2 space-y-2">
               {filteredMandiRows.map((row, idx) => {
                 const lineTotal = Math.round(row.suggestedQty * row.wholesaleRate);
+                const rowKey = row.productId || row.name;
+                const matchedBenchmark = mandiRateService.matchBenchmarkRate(row.name, row.hindiName, benchmarkRates);
+                const comparison = matchedBenchmark ? mandiRateService.compareRate(row.wholesaleRate, matchedBenchmark.benchmarkRate) : null;
+
                 return (
                   <div key={row.productId || `custom-mob-${idx}`} className="p-3 bg-[#faf8f3] rounded-2xl border border-amber-200/50 space-y-2.5">
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="font-bold text-stone-950 text-sm flex items-center gap-1.5">
+                        <div className="font-bold text-stone-950 text-sm flex items-center gap-1.5 flex-wrap">
                           <span>{language === 'hi' ? row.hindiName : row.name}</span>
                           {row.category === 'custom' && (
                             <span className="px-1.5 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-black rounded-md">
                               नया
                             </span>
+                          )}
+                          {matchedBenchmark && comparison && (
+                            comparison.isHigher ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                                <AlertTriangle className="w-2.5 h-2.5 text-rose-600" />
+                                ⚠️ ₹{comparison.diff} {t.mandi.higherThanBenchmark || 'मंडी से महंगा'}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                ✅ {t.mandi.mandiOptimalRate || 'मंडी अनुकूल'} (₹{matchedBenchmark.benchmarkRate})
+                              </span>
+                            )
                           )}
                         </div>
                         <div className="text-[11px] text-stone-500 font-medium">
@@ -592,6 +711,22 @@ export const MandiPlanner: React.FC = () => {
                         <div className="font-black text-amber-900 text-base">₹{lineTotal.toLocaleString('en-IN')}</div>
                       </div>
                     </div>
+
+                    {/* Disparity Action Helper if Wholesaler Rate > Benchmark */}
+                    {matchedBenchmark && comparison && comparison.isHigher && (
+                      <div className="bg-amber-100/70 border border-amber-300 rounded-xl p-2 flex items-center justify-between gap-2 text-xs">
+                        <div className="text-[11px] text-amber-950 font-medium leading-tight">
+                          कृषि मंडी भाव: <strong className="font-black text-amber-900">₹{matchedBenchmark.benchmarkRate}/{matchedBenchmark.unit}</strong> ({matchedBenchmark.trend === 'RISING' ? '📈 तेज़ी' : matchedBenchmark.trend === 'FALLING' ? '📉 मंदी' : '⚖️ स्थिर'})
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyBenchmarkRate(rowKey, matchedBenchmark.benchmarkRate)}
+                          className="px-2 py-1 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-black text-[10px] rounded-lg shadow-2xs whitespace-nowrap cursor-pointer transition-all"
+                        >
+                          {t.mandi.applyBenchmarkRate || 'मंडी दर लगाएं'}
+                        </button>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between pt-2 border-t border-amber-100">
                       <div className="flex items-center gap-2">
@@ -646,6 +781,10 @@ export const MandiPlanner: React.FC = () => {
                 <tbody className="divide-y divide-stone-100 text-stone-800">
                   {filteredMandiRows.map((row, idx) => {
                     const lineTotal = Math.round(row.suggestedQty * row.wholesaleRate);
+                    const rowKey = row.productId || row.name;
+                    const matchedBenchmark = mandiRateService.matchBenchmarkRate(row.name, row.hindiName, benchmarkRates);
+                    const comparison = matchedBenchmark ? mandiRateService.compareRate(row.wholesaleRate, matchedBenchmark.benchmarkRate) : null;
+
                     return (
                       <tr key={row.productId || `custom-${idx}`} className="hover:bg-amber-50/40 transition-colors">
                         <td className="p-3.5 font-bold text-stone-950">
@@ -686,7 +825,30 @@ export const MandiPlanner: React.FC = () => {
                         </td>
 
                         <td className="p-3.5 text-right font-semibold text-stone-700">
-                          ₹{row.wholesaleRate}
+                          <div className="font-bold text-stone-900 text-sm">₹{row.wholesaleRate}</div>
+                          {matchedBenchmark && comparison && (
+                            <div className="mt-1 flex flex-col items-end gap-1">
+                              {comparison.isHigher ? (
+                                <>
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                    <AlertTriangle className="w-2.5 h-2.5" /> +₹{comparison.diff} {t.mandi.higherThanBenchmark || 'मंडी से महंगा'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApplyBenchmarkRate(rowKey, matchedBenchmark.benchmarkRate)}
+                                    className="text-[10px] font-bold text-amber-800 hover:text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                                    title={`आधिकारिक मंडी संदर्भ दर ₹${matchedBenchmark.benchmarkRate} लागू करें`}
+                                  >
+                                    {t.mandi.applyBenchmarkRate || 'मंडी दर लगाएं'}
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                  ✅ {t.mandi.mandiOptimalRate || 'मंडी भाव'} (₹{matchedBenchmark.benchmarkRate})
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </td>
 
                         <td className="p-3.5 text-right font-black text-amber-900 text-sm">
