@@ -30,7 +30,6 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
 4. [Mandi Restock Planner (मंडी / शहर खरीदारी लिस्ट)](#4-mandi-restock-planner-मंडी--शहर-खरीदारी-लिस्ट)
    - [Auto-Generated Low Stock List](#auto-generated-low-stock-list)
    - [Calculating Cash Needed for Mandi Trip](#calculating-cash-needed-for-mandi-trip)
-   - [Mandi Benchmark Rates Radar & Wholesale Price Disparity Alert (मंडी संदर्भ भाव रडार व अधिक कीमत चेतावनी)](#mandi-benchmark-rates-radar--wholesale-price-disparity-alert-मंडी-संदर्भ-भाव-रडार-व-अधिक-कीमत-चेतावनी)
    - [Department Category & Search Filtering (श्रेणी व सामान खोज)](#department-category--search-filtering-श्रेणी-व-सामान-खोज)
    - [Sending Purchase Order to Town Wholesaler](#sending-purchase-order-to-town-wholesaler)
    - [Multi-Wholesaler Directory & 1-Tap Switching (थोक व्यापारी डायरी व त्वरित चुनाव)](#multi-wholesaler-directory--1-tap-switching-थोक-व्यापारी-डायरी-व-त्वरित-चुनाव)
@@ -124,7 +123,6 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
     - [District Distribution & Real-Time Metrics (जिलावार दुकान आंकड़े)](#district-distribution--real-time-metrics-जिलावार-दुकान-आंकड़े)
     - [Direct Merchant Support, PIN Reset Helpline & Plan Activation (दुकानदार सहायता, PIN रीसेट हेल्पलाइन व प्रो एक्टिवेशन)](#direct-merchant-support-pin-reset-helpline--plan-activation-दुकानदार-सहायता-pin-रीसेट-हेल्पलाइन-व-प्रो-एक्टिवेशन)
     - [Global Platform Broadcast System: All vs. Selected Stores (मंच लाइव घोषणाएं व ब्रॉडकास्ट प्रणाली: सभी व चुनी गई दुकानें)](#global-platform-broadcast-system-all-vs-selected-stores-मंच-लाइव-घोषणाएं-व-ब्रॉडकास्ट-प्रणाली-सभी-व-चुनी-गई-दुकानें)
-    - [State-Wide Mandi Benchmark Rates Broadcasting (राज्य-स्तरीय मास्टर कृषि मंडी भाव प्रबंधन)](#state-wide-mandi-benchmark-rates-broadcasting-राज्य-स्तरीय-मास्टर-कृषि-मंडी-भाव-प्रबंधन)
     - [Store Registry CSV Spreadsheet Export (दुकान रजिस्ट्री CSV डाउनलोड)](#store-registry-csv-spreadsheet-export-दुकान-रजिस्ट्री-csv-डाउनलोड)
     - [Safe Store Deletion & Test Cleanup (सुरक्षित टेस्ट दुकान निष्कासन)](#safe-store-deletion--test-cleanup-सुरक्षित-टेस्ट-दुकान-निष्कासन)
     - [Store Account Security & Isolation (दुकान डेटा व खाता सुरक्षा)](#store-account-security--isolation-दुकान-डेटा-व-खाता-सुरक्षा)
@@ -272,24 +270,6 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 ### Calculating Cash Needed for Mandi Trip
 - The planner calculates the **total wholesale cash budget** needed before traveling 20–30 km to the tehsil or district wholesale mandi.
 - You can adjust the quantities or add one-off seasonal festival items manually.
-
-### Mandi Benchmark Rates Radar & Wholesale Price Disparity Alert (मंडी संदर्भ भाव रडार व अधिक कीमत चेतावनी)
-- **🌾 कृषि उपज मंडी संदर्भ थोक भाव (Live Benchmark Guide):**
-  - मंडी खरीदारी लिस्ट में शीर्ष पर आधिकारिक कृषि उपज मंडी संदर्भ थोक भाव की लाइव सूचना पट्टी दिखाई देती है।
-  - यह पट्टी छत्तीसगढ़ राज्य व आपके जिले की प्रमुख आवश्यक वस्तुओं (जैसे: शक्कर, सोयाबीन तेल, तुवर दाल, चना दाल, आटा, चावल, आलू, प्याज, लहसुन, सरसों तेल) के ताज़ा मंडी थोक भाव प्रदर्शित करती है।
-- **त्वरित मंडी भाव ड्रॉवर (1-Tap Benchmark Drawer):**
-  - **"पूरे भाव देखें ▼"** पर टैप करते ही सभी आवश्यक जिंसों के न्यूनतम भाव, अधिकतम भाव, बाज़ार का रुझान (📈 तेज़ी, 📉 मंदी, ⚖️ स्थिर) और प्रशासनिक खरीद सलाह (Advisory) एक साफ़-सुथरे ग्रिड में खुल जाते हैं।
-- **स्वचालित कीमत विषमता पहचान व अधिक कीमत अलर्ट (Smart Disparity Radar):**
-  - जब आप मंडी लिस्ट में किसी सामान की थोक दर देखते हैं, तो सिस्टम स्वतः उसकी तुलना आधिकारिक मंडी संदर्भ दर से करता है।
-  - यदि थोक व्यापारी की दर आधिकारिक मंडी भाव से अधिक है, तो सामान कार्ड पर तुरंत लाल चेतावनी बैज दिखाई देता है:
-    `⚠️ मंडी से ₹X महंगा`
-  - यदि थोक दर मंडी भाव के अनुकूल है, तो हरा बैज दिखता है:
-    `✅ मंडी अनुकूल (₹XX)`
-- **1-टैप मंडी भाव सहायक बटन (1-Tap Apply Benchmark Rate):**
-  - यदि थोक दर मंडी भाव से अधिक है, तो दुकानदार को कार्ड और टेबल दोनों में **"मंडी दर लगाएं"** बटन मिलता है।
-  - इस बटन पर एक टैप करते ही सामान की थोक दर स्वतः आधिकारिक मंडी भाव पर सेट हो जाती है, जिससे दुकानदार मंडी के आढ़तियों से सही मोल-भाव कर सकता है और खरीदारी का वास्तविक बजट निकाल सकता है।
-- **100% ऑफ़लाइन सुरक्षा व निरंतर उपलब्धता:**
-  - मंडी संदर्भ भाव आपके डिवाइस में सुरक्षित रहते हैं। यदि मंडी या रास्ते में इंटरनेट कनेक्टिविटी नहीं भी रहती, तब भी संदर्भ भाव और मूल्य विषमता चेतावनी निर्बाध रूप से काम करती है।
 
 ### Department Category & Search Filtering (श्रेणी व सामान खोज)
 - **आइसल-वार वर्गीकरण:** मंडी लिस्ट में सामानों की संख्या अधिक होने पर आप श्रेणी चिप्स (*अनाज, दालें, तेल/घी, मसाले, नाश्ता, साबुन, डेयरी, अन्य जोड़े*) दबाकर संबंधित विभाग के सामानों को अलग देख सकते हैं।
@@ -895,26 +875,6 @@ Gramin Kirana एक आधुनिक प्रोग्रेसिव वे
   - दुकानदार अपनी स्क्रीन पर घोषणा पढ़ने के बाद `✕` बटन दबाकर उसे तुरंत हटा सकते हैं। सिस्टम दुकानदार के निर्णय को याद रखता है ताकि बार-बार काम में व्यवधान न हो।
 - **तत्काल पॉज़ व डिलीट नियंत्रण:**
   - एडमिन डैशबोर्ड से किसी भी समय सक्रिय घोषणा को 1-क्लिक में रोक (Pause) या स्थायी रूप से हटा (Delete) सकते हैं।
-
-### State-Wide Mandi Benchmark Rates Broadcasting (राज्य-स्तरीय मास्टर कृषि मंडी भाव प्रबंधन)
-
-सुपर एडमिन डैशबोर्ड में राज्य के सभी ग्रामीण दुकानदारों के लिए आधिकारिक कृषि उपज मंडी थोक संदर्भ भाव (Wholesale Benchmark Rates) प्रसारित और प्रबंधित करने का केंद्रीय नियंत्रण उपलब्ध है:
-
-- **🌾 मंडी संदर्भ भाव केंद्रीय टैब (Central Mandi Benchmark Rates Tab):**
-  - शीर्ष नेविगेशन में **"🌾 मंडी संदर्भ भाव"** टैब पर क्लिक करके व्यवस्थापक राज्य व जिलेवार सभी सक्रिय जिंसों की सूची देख सकते हैं।
-  - प्रत्येक कमोडिटी कार्ड पर उसका नाम, श्रेणी (अनाज, दालें, तेल, मसाले), इकाई (kg, Litre, Quintal), वर्तमान थोक संदर्भ भाव, न्यूनतम व अधिकतम दर दायरा, बाज़ार रुझान और प्रशासनिक सलाह स्पष्ट दिखती है।
-- **त्वरित मूल्य बदलाव चिप्स (+1, +5, -1, -5 Quick Delta Adjustments):**
-  - रोज़ाना या बाज़ार में तेज़ी/मंदी आने पर व्यवस्थापक को लंबा फॉर्म खोलने की आवश्यकता नहीं होती।
-  - कार्ड पर ही दिए गए `+1`, `+5`, `-1`, `-5` त्वरित बटनों को दबाकर पलक झपकते ही संदर्भ भाव को अद्यतित किया जा सकता है।
-- **ज़िला व श्रेणी अनुसार फ़िल्टरिंग:**
-  - राज्य-स्तरीय सामान्य भावों के अतिरिक्त किसी विशिष्ट जिले (उदा: रायपुर, बिलासपुर, बस्तर) के लिए विशेष मंडी भाव सेट किए जा सकते हैं।
-  - ऊपर दिए गए जिला और श्रेणी चिप्स द्वारा चुनिंदा जिंसों को तुरंत देखा और संपादित किया जा सकता है।
-- **नई कमोडिटी जोड़ें व संपादन (Add & Edit Mandi Rates):**
-  - **"+ नया मंडी भाव जोड़ें"** बटन से किसी भी नई कृषि जिंस का नाम, श्रेणी, संदर्भ दर, न्यूनतम/अधिकतम दर, रुझान (📈 तेज़ी, 📉 मंदी, ⚖️ स्थिर), सलाह और ज़िला दायरा सेट किया जा सकता है।
-- **मानक भाव रीसेट करें (1-Click Standard Seeding):**
-  - **"मानक भाव रीसेट करें"** बटन दबाने पर छत्तीसगढ़ कृषि उपज मंडी के 10 प्रमुख आवश्यक राशन सामानों (शक्कर, सोयाबीन तेल, तुवर दाल, चना दाल, आटा, चावल, आलू, प्याज, लहसुन, सरसों तेल) के प्रामाणिक संदर्भ भाव और सलाह तुरंत रीसेट हो जाते हैं।
-- **स्वचालित ग्रामीण काउंटर सिंक (Seamless Counter Broadcasting):**
-  - जैसे ही एडमिन किसी भाव में बदलाव करते हैं, संबंधित जिले के सभी ग्रामीण किराना काउंटरों पर चल रहे मंडी प्लानर में ताज़ा भाव और मूल्य विषमता रडार स्वतः अपडेट हो जाते हैं।
 
 ### Store Registry CSV Spreadsheet Export (दुकान रजिस्ट्री CSV डाउनलोड)
 - **1-क्लिक स्प्रेडशीट निर्यात (📥 CSV डाउनलोड):**

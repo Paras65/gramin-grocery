@@ -99,12 +99,7 @@ export const translations = {
       currentRate: 'वर्तमान भाव',
       todayNewRate: 'आज का नया भाव',
       staplesOnly: '🌾 दैनिक मुख्य वस्तुएं',
-      allItems: '📦 सभी सामान',
-      benchmarkTitle: '🌾 कृषि उपज मंडी संदर्भ थोक भाव',
-      benchmarkSubtitle: 'थोक खरीदारी में अधिक कीमत न दें — आधिकारिक मंडी दरों से मिलान करें',
-      applyBenchmarkRate: 'मंडी दर लगाएं',
-      higherThanBenchmark: 'मंडी से महंगा',
-      mandiOptimalRate: 'मंडी अनुकूल'
+      allItems: '📦 सभी सामान'
     },
     spoilage: {
       title: 'खराबी व एक्सपायरी सुरक्षा गार्ड',
@@ -339,12 +334,7 @@ export const translations = {
       currentRate: 'अब्बड़ के भाव',
       todayNewRate: 'आज के नवा भाव',
       staplesOnly: '🌾 दैनिक मुख्य सामान मन',
-      allItems: '📦 सबो सामान',
-      benchmarkTitle: '🌾 कृषि उपज मंडी संदर्भ थोक भाव',
-      benchmarkSubtitle: 'थोक खरीदारी म जादा पईसा झन देवव — सरकारी मंडी भाव ले मिलान करव',
-      applyBenchmarkRate: 'मंडी भाव लगावव',
-      higherThanBenchmark: 'मंडी ले महंगा',
-      mandiOptimalRate: 'मंडी अनुसार सही'
+      allItems: '📦 सबो सामान'
     },
     spoilage: {
       title: 'खराबी अउ एक्सपायरी सुरक्षा गार्ड',
@@ -579,12 +569,7 @@ export const translations = {
       currentRate: 'Current Rate',
       todayNewRate: "Today's New Rate",
       staplesOnly: '🌾 Daily Staples Only',
-      allItems: '📦 All Products',
-      benchmarkTitle: '🌾 Mandi Benchmark Wholesale Guide',
-      benchmarkSubtitle: 'Avoid overpaying — match wholesale rates against official mandi benchmarks',
-      applyBenchmarkRate: 'Apply Mandi Rate',
-      higherThanBenchmark: 'Higher than Mandi',
-      mandiOptimalRate: 'Optimal Mandi Rate'
+      allItems: '📦 All Products'
     },
     spoilage: {
       title: 'Spoilage & Expiry Guard',

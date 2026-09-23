@@ -4,14 +4,10 @@ import {
   Search, RefreshCw, LogOut, AlertTriangle, 
   Phone, MessageSquare, MapPin, Crown,
   Download, KeyRound, Trash2, Megaphone,
-  Eye, Clock, Plus, X, Send,
-  Wheat, TrendingUp, TrendingDown, Minus, Edit
+  Eye, Clock, Plus, X, Send
 } from 'lucide-react';
 import { adminService, type PlatformOverviewResponse } from '../../services/adminService';
-import type { 
-  AdminStoreSummary, PlatformAnnouncement, AnnouncementType, 
-  AnnouncementTargetMode, MandiBenchmarkRate, MandiRateTrend 
-} from '../../types';
+import type { AdminStoreSummary, PlatformAnnouncement, AnnouncementType, AnnouncementTargetMode } from '../../types';
 import { formatINR } from '../../utils/formatters';
 import { buildWhatsAppUrl } from '../../utils/whatsapp';
 
@@ -30,33 +26,11 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
   const [selectedPlan, setSelectedPlan] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
 
-  // Navigation Tabs: STORES vs BROADCASTS vs MANDI_RATES
-  const [adminTab, setAdminTab] = useState<'STORES' | 'BROADCASTS' | 'MANDI_RATES'>('STORES');
-
   // Broadcast & Announcement States
+  const [adminTab, setAdminTab] = useState<'STORES' | 'BROADCASTS'>('STORES');
   const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([]);
   const [loadingAnnouncements, setLoadingAnnouncements] = useState<boolean>(false);
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState<boolean>(false);
-
-  // Mandi Benchmark Rates States
-  const [mandiRates, setMandiRates] = useState<MandiBenchmarkRate[]>([]);
-  const [loadingMandiRates, setLoadingMandiRates] = useState<boolean>(false);
-  const [selectedMandiDistrict, setSelectedMandiDistrict] = useState<string>('ALL');
-  const [selectedMandiCategory, setSelectedMandiCategory] = useState<string>('ALL');
-  const [isMandiModalOpen, setIsMandiModalOpen] = useState<boolean>(false);
-  const [editingMandiRate, setEditingMandiRate] = useState<MandiBenchmarkRate | null>(null);
-
-  // Mandi form states
-  const [mandiCommodity, setMandiCommodity] = useState<string>('');
-  const [mandiCategory, setMandiCategory] = useState<'staples' | 'pulses' | 'oils' | 'spices' | 'vegetables' | 'grains'>('staples');
-  const [mandiUnit, setMandiUnit] = useState<string>('kg');
-  const [mandiBenchmarkRate, setMandiBenchmarkRate] = useState<number>(0);
-  const [mandiMinRate, setMandiMinRate] = useState<number>(0);
-  const [mandiMaxRate, setMandiMaxRate] = useState<number>(0);
-  const [mandiTrend, setMandiTrend] = useState<MandiRateTrend>('STABLE');
-  const [mandiAdvisory, setMandiAdvisory] = useState<string>('');
-  const [mandiDistrictScope, setMandiDistrictScope] = useState<string>('ALL');
-  const [savingMandiRate, setSavingMandiRate] = useState<boolean>(false);
 
   // New broadcast form states
   const [newTitle, setNewTitle] = useState<string>('');
@@ -81,138 +55,6 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
       console.error('Failed to load announcements:', err);
     } finally {
       setLoadingAnnouncements(false);
-    }
-  };
-
-  const loadMandiRates = async () => {
-    try {
-      setLoadingMandiRates(true);
-      const rates = await adminService.getAdminMandiRates(selectedMandiDistrict, selectedMandiCategory);
-      setMandiRates(rates);
-    } catch (err: any) {
-      console.error('Failed to load mandi rates:', err);
-    } finally {
-      setLoadingMandiRates(false);
-    }
-  };
-
-  const handleQuickDeltaMandiRate = async (rate: MandiBenchmarkRate, delta: number) => {
-    const rateId = rate._id || rate.id;
-    if (!rateId) return;
-    const newRate = Math.max(1, rate.benchmarkRate + delta);
-    const newMin = Math.max(1, (rate.minRate || rate.benchmarkRate) + delta);
-    const newMax = Math.max(1, (rate.maxRate || rate.benchmarkRate) + delta);
-
-    // optimistic update
-    setMandiRates(prev => prev.map(r => (r._id === rateId || r.id === rateId) ? {
-      ...r,
-      benchmarkRate: newRate,
-      minRate: newMin,
-      maxRate: newMax,
-    } : r));
-
-    try {
-      await adminService.updateMandiRate(rateId, {
-        benchmarkRate: newRate,
-        minRate: newMin,
-        maxRate: newMax,
-      });
-    } catch (err: any) {
-      alert(`दर अपडेट में त्रुटि: ${err.message}`);
-      loadMandiRates();
-    }
-  };
-
-  const handleSeedMandiRates = async () => {
-    if (!window.confirm('क्या आप छत्तीसगढ़ कृषि मंडी के मानक संदर्भ भाव रीसेट / लोड करना चाहते हैं?')) return;
-    try {
-      setLoadingMandiRates(true);
-      const seeded = await adminService.seedMandiRates();
-      setMandiRates(seeded);
-      alert('छत्तीसगढ़ मास्टर मंडी दरें सफलतापूर्वक रीसेट/लोड हो गईं!');
-    } catch (err: any) {
-      alert(`त्रुटि: ${err.message}`);
-    } finally {
-      setLoadingMandiRates(false);
-    }
-  };
-
-  const handleDeleteMandiRate = async (rate: MandiBenchmarkRate) => {
-    const rateId = rate._id || rate.id;
-    if (!rateId) return;
-    if (!window.confirm(`क्या आप '${rate.commodity}' को हटाना चाहते हैं?`)) return;
-    try {
-      await adminService.deleteMandiRate(rateId);
-      setMandiRates(prev => prev.filter(r => r._id !== rateId && r.id !== rateId));
-    } catch (err: any) {
-      alert(`हटाने में त्रुटि: ${err.message}`);
-    }
-  };
-
-  const handleOpenAddMandiModal = () => {
-    setEditingMandiRate(null);
-    setMandiCommodity('');
-    setMandiCategory('staples');
-    setMandiUnit('kg');
-    setMandiBenchmarkRate(40);
-    setMandiMinRate(38);
-    setMandiMaxRate(42);
-    setMandiTrend('STABLE');
-    setMandiAdvisory('');
-    setMandiDistrictScope('ALL');
-    setIsMandiModalOpen(true);
-  };
-
-  const handleOpenEditMandiModal = (rate: MandiBenchmarkRate) => {
-    setEditingMandiRate(rate);
-    setMandiCommodity(rate.commodity);
-    setMandiCategory(rate.category);
-    setMandiUnit(rate.unit);
-    setMandiBenchmarkRate(rate.benchmarkRate);
-    setMandiMinRate(rate.minRate);
-    setMandiMaxRate(rate.maxRate);
-    setMandiTrend(rate.trend);
-    setMandiAdvisory(rate.advisory || '');
-    setMandiDistrictScope(rate.district || 'ALL');
-    setIsMandiModalOpen(true);
-  };
-
-  const handleSaveMandiRate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!mandiCommodity.trim() || !mandiBenchmarkRate) {
-      alert('कृपया वस्तु का नाम और संदर्भ दर दर्ज करें।');
-      return;
-    }
-    setSavingMandiRate(true);
-    try {
-      const payload: Partial<MandiBenchmarkRate> = {
-        commodity: mandiCommodity.trim(),
-        category: mandiCategory,
-        unit: mandiUnit,
-        benchmarkRate: Number(mandiBenchmarkRate),
-        minRate: Number(mandiMinRate || mandiBenchmarkRate * 0.95),
-        maxRate: Number(mandiMaxRate || mandiBenchmarkRate * 1.05),
-        trend: mandiTrend,
-        advisory: mandiAdvisory.trim(),
-        district: mandiDistrictScope,
-      };
-
-      if (editingMandiRate) {
-        const id = editingMandiRate._id || editingMandiRate.id;
-        if (!id) return;
-        const updated = await adminService.updateMandiRate(id, payload);
-        setMandiRates(prev => prev.map(r => (r._id === id || r.id === id) ? updated : r));
-      } else {
-        const created = await adminService.createMandiRate(payload);
-        setMandiRates(prev => [created, ...prev]);
-      }
-
-      setIsMandiModalOpen(false);
-      setEditingMandiRate(null);
-    } catch (err: any) {
-      alert(`सेव करने में त्रुटि: ${err.message}`);
-    } finally {
-      setSavingMandiRate(false);
     }
   };
 
@@ -291,17 +133,15 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
       else setLoading(true);
       setError('');
 
-      const [overviewData, storesData, announcementsData, mandiRatesData] = await Promise.all([
+      const [overviewData, storesData, announcementsData] = await Promise.all([
         adminService.getOverview(),
         adminService.getStores(searchQuery, selectedPlan, selectedDistrict),
-        adminService.getAnnouncements().catch(() => []),
-        adminService.getAdminMandiRates(selectedMandiDistrict, selectedMandiCategory).catch(() => [])
+        adminService.getAnnouncements().catch(() => [])
       ]);
 
       setOverview(overviewData);
       setStores(storesData);
       setAnnouncements(announcementsData);
-      setMandiRates(mandiRatesData);
     } catch (err: any) {
       setError(err.message || 'डेटा लोड करने में असमर्थ');
     } finally {
@@ -313,12 +153,6 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
   useEffect(() => {
     loadData();
   }, [selectedPlan, selectedDistrict]);
-
-  useEffect(() => {
-    if (adminTab === 'MANDI_RATES') {
-      loadMandiRates();
-    }
-  }, [selectedMandiDistrict, selectedMandiCategory, adminTab]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -620,8 +454,8 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
           </div>
         ) : null}
 
-        {/* Navigation Tabs: Stores vs Broadcasts vs Mandi Benchmark Rates */}
-        <div className="flex items-center gap-2 border-b border-amber-200/80 pb-2 flex-wrap">
+        {/* Navigation Tabs: Stores Directory vs Platform Broadcasts */}
+        <div className="flex items-center gap-2 border-b border-amber-200/80 pb-2">
           <button
             type="button"
             onClick={() => setAdminTab('STORES')}
@@ -650,26 +484,9 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
             <Megaphone className="w-4 h-4" />
             <span>📢 मंच घोषणाएं व ब्रॉडकास्ट ({announcements.length})</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setAdminTab('MANDI_RATES');
-              if (mandiRates.length === 0) loadMandiRates();
-            }}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm cursor-pointer transition-all ${
-              adminTab === 'MANDI_RATES'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
-            }`}
-          >
-            <Wheat className="w-4 h-4" />
-            <span>🌾 मंडी संदर्भ भाव ({mandiRates.length})</span>
-          </button>
         </div>
 
-        {/* TAB 1: STORES DIRECTORY */}
-        {adminTab === 'STORES' && (
+        {adminTab === 'STORES' ? (
           <>
             {/* District Breakdown Quick Bar */}
             {overview && overview.districtBreakdown.length > 0 && (
@@ -919,10 +736,8 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
               )}
             </div>
           </>
-        )}
-
-        {/* TAB 2: PLATFORM BROADCASTS & ANNOUNCEMENTS */}
-        {adminTab === 'BROADCASTS' && (
+        ) : (
+          /* PLATFORM BROADCASTS & ANNOUNCEMENTS MANAGER */
           <div className="village-card p-4 sm:p-6 rounded-3xl bg-white border border-amber-200 shadow-2xs space-y-5">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-stone-200">
               <div>
@@ -1086,259 +901,6 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                             title="घोषणा हटाएं"
                           >
                             <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 3: MANDI BENCHMARK RATES (मंडी संदर्भ भाव प्रसारण) */}
-        {adminTab === 'MANDI_RATES' && (
-          <div className="village-card p-4 sm:p-6 rounded-3xl bg-white border border-amber-200 shadow-2xs space-y-5">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-stone-200">
-              <div>
-                <h2 className="text-base sm:text-lg font-black text-stone-950 m-0 flex items-center gap-2">
-                  <Wheat className="w-5 h-5 text-amber-600" />
-                  <span>राज्य-स्तरीय मास्टर मंडी भाव प्रसारण ({mandiRates.length})</span>
-                </h2>
-                <p className="text-xs text-stone-500 m-0 font-medium">
-                  छत्तीसगढ़ कृषि उपज मंडी के थोक संदर्भ भाव निर्धारित करें — सभी दुकानों के मंडी प्लानर पर रीयल-टाइम दिखेंगे
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={handleSeedMandiRates}
-                  className="bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer shadow-xs border border-stone-300 flex items-center gap-1.5 active:scale-95 transition-all"
-                  title="छत्तीसगढ़ के मानक खाद्यान्न मंडी भाव रीसेट/लोड करें"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 text-stone-600" />
-                  <span>मानक भाव रीसेट करें</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleOpenAddMandiModal}
-                  className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm px-4 py-2 rounded-xl cursor-pointer shadow-xs flex items-center gap-1.5 active:scale-95 transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>नई वस्तु जोड़ें</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Filter Pills: District & Category */}
-            <div className="space-y-2.5">
-              {/* Category Filters */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-                {[
-                  { id: 'ALL', label: 'सभी श्रेणियां' },
-                  { id: 'staples', label: '📦 सामान्य किराना' },
-                  { id: 'grains', label: '🌾 अनाज (Grains)' },
-                  { id: 'pulses', label: '🥣 दालें (Pulses)' },
-                  { id: 'oils', label: '🛢️ तेल (Oils)' },
-                  { id: 'vegetables', label: '🥔 सब्ज़ियां (Produce)' },
-                  { id: 'spices', label: '🧂 मसाले (Spices)' },
-                ].map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedMandiCategory(c.id)}
-                    className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer shrink-0 border ${
-                      selectedMandiCategory === c.id
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                        : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* District Filter Chips if available */}
-              {overview?.districtBreakdown && overview.districtBreakdown.length > 0 && (
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-                  <span className="text-[11px] font-bold text-stone-500 shrink-0">जिला दायरा:</span>
-                  <button
-                    onClick={() => setSelectedMandiDistrict('ALL')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer shrink-0 ${
-                      selectedMandiDistrict === 'ALL'
-                        ? 'bg-stone-900 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
-                  >
-                    पूरा राज्य (Universal)
-                  </button>
-                  {overview.districtBreakdown.map(d => (
-                    <button
-                      key={d.district}
-                      onClick={() => setSelectedMandiDistrict(d.district)}
-                      className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer shrink-0 ${
-                        selectedMandiDistrict === d.district
-                          ? 'bg-stone-900 text-white'
-                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                      }`}
-                    >
-                      📍 {d.district}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Mandi Rates Cards Grid */}
-            {loadingMandiRates ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 animate-pulse">
-                {[1, 2, 3, 4, 5, 6].map(n => (
-                  <div key={n} className="h-44 bg-stone-100 rounded-2xl" />
-                ))}
-              </div>
-            ) : mandiRates.length === 0 ? (
-              <div className="text-center py-14 bg-stone-50 rounded-2xl border border-dashed border-stone-200 p-6">
-                <Wheat className="w-12 h-12 text-stone-400 mx-auto mb-3 opacity-60" />
-                <h3 className="text-sm font-bold text-stone-800">इस श्रेणी में कोई मंडी दर नहीं मिली</h3>
-                <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
-                  आप ऊपर दिए बटन से छत्तीसगढ़ के मानक थोक भाव लोड कर सकते हैं या नई वस्तु जोड़ सकते हैं।
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSeedMandiRates}
-                  className="mt-4 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>मानक मंडी भाव लोड करें</span>
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                {mandiRates.map(rate => {
-                  const rateId = rate._id || rate.id || '';
-                  const trendConfig = {
-                    RISING: {
-                      icon: <TrendingUp className="w-3.5 h-3.5 text-rose-600" />,
-                      label: '📈 थोक में तेज़ी',
-                      badge: 'bg-rose-50 text-rose-700 border-rose-200',
-                    },
-                    FALLING: {
-                      icon: <TrendingDown className="w-3.5 h-3.5 text-emerald-600" />,
-                      label: '📉 थोक में मंदी',
-                      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                    },
-                    STABLE: {
-                      icon: <Minus className="w-3.5 h-3.5 text-stone-500" />,
-                      label: '⚖️ भाव स्थिर',
-                      badge: 'bg-stone-100 text-stone-700 border-stone-200',
-                    },
-                  }[rate.trend || 'STABLE'];
-
-                  return (
-                    <div
-                      key={rateId}
-                      className="p-4 rounded-2xl bg-white border border-amber-200/90 shadow-2xs hover:border-amber-400 transition-all flex flex-col justify-between space-y-3"
-                    >
-                      <div>
-                        {/* Top: Commodity & Trend Badge */}
-                        <div className="flex items-start justify-between gap-2 mb-1.5">
-                          <h3 className="text-sm font-black text-stone-950 m-0 leading-snug">
-                            {rate.commodity}
-                          </h3>
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 flex items-center gap-1 ${trendConfig.badge}`}>
-                            {trendConfig.icon}
-                            <span>{trendConfig.label}</span>
-                          </span>
-                        </div>
-
-                        {/* Benchmark Price in Large Bold */}
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-2xl font-black text-stone-900">
-                            ₹{rate.benchmarkRate}
-                          </span>
-                          <span className="text-xs text-stone-500 font-bold">
-                            / {rate.unit}
-                          </span>
-                        </div>
-
-                        {/* Prevailing Range & Scope */}
-                        <div className="mt-1 flex items-center justify-between text-[11px] text-stone-500">
-                          <span>
-                            मंडी सीमा: <strong className="text-stone-700">₹{rate.minRate} - ₹{rate.maxRate}</strong>
-                          </span>
-                          <span className="bg-stone-100 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-stone-600">
-                            {rate.district === 'ALL' ? 'पूरा राज्य' : `📍 ${rate.district}`}
-                          </span>
-                        </div>
-
-                        {/* Advisory Quote if present */}
-                        {rate.advisory && (
-                          <div className="mt-2.5 p-2 bg-[#fcfbf7] rounded-xl border border-amber-100 text-stone-600 text-[11px] leading-relaxed italic">
-                            💬 &ldquo;{rate.advisory}&rdquo;
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Bottom Controls: Quick Delta Adjusters + Edit/Delete */}
-                      <div className="pt-2 border-t border-stone-100 space-y-2">
-                        {/* 1-Click Quick Delta Adjusters */}
-                        <div className="flex items-center justify-between gap-1 text-[11px]">
-                          <span className="text-stone-400 font-bold">त्वरित दर:</span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleQuickDeltaMandiRate(rate, -5)}
-                              className="px-2 py-0.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-md cursor-pointer active:scale-95 transition"
-                              title="₹5 कम करें"
-                            >
-                              -5
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleQuickDeltaMandiRate(rate, -1)}
-                              className="px-2 py-0.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-md cursor-pointer active:scale-95 transition"
-                              title="₹1 कम करें"
-                            >
-                              -1
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleQuickDeltaMandiRate(rate, +1)}
-                              className="px-2 py-0.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-md cursor-pointer active:scale-95 transition"
-                              title="₹1 बढ़ाएं"
-                            >
-                              +1
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleQuickDeltaMandiRate(rate, +5)}
-                              className="px-2 py-0.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-md cursor-pointer active:scale-95 transition"
-                              title="₹5 बढ़ाएं"
-                            >
-                              +5
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Edit & Delete Action Buttons */}
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditMandiModal(rate)}
-                            className="px-2.5 py-1 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg cursor-pointer flex items-center gap-1 transition"
-                          >
-                            <Edit className="w-3 h-3" />
-                            <span>संशोधन</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteMandiRate(rate)}
-                            className="p-1 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
-                            title="हटाएं"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -1701,218 +1263,6 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                   >
                     <Send className="w-4 h-4" />
                     <span>{creatingBroadcast ? 'प्रसारित किया जा रहा है...' : '🚀 घोषणा प्रसारित करें'}</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* ADD / EDIT MANDI BENCHMARK RATE MODAL */}
-        {isMandiModalOpen && (
-          <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden border border-amber-300 animate-slide-down my-auto">
-              <div className="p-4 sm:p-5 border-b border-stone-200 bg-[#faf8f3] flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-amber-500 text-stone-950 font-black">
-                    <Wheat className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black text-stone-950 m-0">
-                      {editingMandiRate ? 'मंडी संदर्भ दर संशोधित करें' : 'नई मंडी वस्तु व दर जोड़ें'}
-                    </h3>
-                    <p className="text-xs text-stone-500 m-0 font-medium">
-                      छत्तीसगढ़ थोक मंडी का आधिकारिक संदर्भ भाव
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsMandiModalOpen(false)}
-                  className="p-1.5 text-stone-400 hover:text-stone-700 rounded-xl hover:bg-stone-100 transition cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveMandiRate} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-                {/* Commodity Name */}
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">
-                    वस्तु का नाम (Commodity) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={mandiCommodity}
-                    onChange={(e) => setMandiCommodity(e.target.value)}
-                    placeholder="उदा: शक्कर (Sugar M-30), तुवर दाल, सोयाबीन तेल"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                  />
-                </div>
-
-                {/* Category & Unit */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      श्रेणी (Category)
-                    </label>
-                    <select
-                      value={mandiCategory}
-                      onChange={(e) => setMandiCategory(e.target.value as any)}
-                      className="w-full px-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-medium"
-                    >
-                      <option value="staples">सामान्य किराना</option>
-                      <option value="grains">अनाज (Grains)</option>
-                      <option value="pulses">दालें (Pulses)</option>
-                      <option value="oils">तेल व घी (Oils)</option>
-                      <option value="vegetables">सब्ज़ियां (Vegetables)</option>
-                      <option value="spices">मसाले (Spices)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      इकाई (Unit)
-                    </label>
-                    <select
-                      value={mandiUnit}
-                      onChange={(e) => setMandiUnit(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-medium"
-                    >
-                      <option value="kg">प्रति किलोग्राम (kg)</option>
-                      <option value="liter">प्रति लीटर (liter)</option>
-                      <option value="tin-15kg">15kg टीन (tin)</option>
-                      <option value="bag-50kg">50kg बोरी (bag)</option>
-                      <option value="quintal">प्रति क्विंटल (qtl)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Benchmark Rate & Min-Max Range */}
-                <div className="grid grid-cols-3 gap-2.5">
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      संदर्भ दर (₹) *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min={0}
-                      step="0.5"
-                      value={mandiBenchmarkRate || ''}
-                      onChange={(e) => setMandiBenchmarkRate(parseFloat(e.target.value) || 0)}
-                      placeholder="40"
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-sm font-black text-stone-900 focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      न्यूनतम सीमा (₹)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.5"
-                      value={mandiMinRate || ''}
-                      onChange={(e) => setMandiMinRate(parseFloat(e.target.value) || 0)}
-                      placeholder="38"
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      अधिकतम सीमा (₹)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.5"
-                      value={mandiMaxRate || ''}
-                      onChange={(e) => setMandiMaxRate(parseFloat(e.target.value) || 0)}
-                      placeholder="42"
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                    />
-                  </div>
-                </div>
-
-                {/* Market Trend */}
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                    बाज़ार का रुख (Market Trend)
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'STABLE', label: '⚖️ भाव स्थिर', color: 'border-stone-300 bg-stone-50 text-stone-800' },
-                      { id: 'RISING', label: '📈 थोक में तेज़ी', color: 'border-rose-300 bg-rose-50 text-rose-800' },
-                      { id: 'FALLING', label: '📉 थोक में मंदी', color: 'border-emerald-300 bg-emerald-50 text-emerald-800' },
-                    ].map(t => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setMandiTrend(t.id as MandiRateTrend)}
-                        className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
-                          mandiTrend === t.id
-                            ? `${t.color} ring-2 ring-amber-500 font-black shadow-xs`
-                            : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50'
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Hindi Advisory */}
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">
-                    व्यापारिक टिप्पणी / सलाह (Advisory)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={mandiAdvisory}
-                    onChange={(e) => setMandiAdvisory(e.target.value)}
-                    placeholder="उदा: स्थानीय मिलों से पर्याप्त आपूर्ति, भाव स्थिर रहने का अनुमान है।"
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                  />
-                </div>
-
-                {/* District Scope */}
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">
-                    लागू क्षेत्र (District Scope)
-                  </label>
-                  <select
-                    value={mandiDistrictScope}
-                    onChange={(e) => setMandiDistrictScope(e.target.value)}
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-medium"
-                  >
-                    <option value="ALL">पूरा छत्तीसगढ़ (State-Wide / Universal)</option>
-                    {overview?.districtBreakdown.map(d => (
-                      <option key={d.district} value={d.district}>
-                        {d.district} जिला
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Footer */}
-                <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setIsMandiModalOpen(false)}
-                    className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-50 cursor-pointer"
-                  >
-                    रद्द करें
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={savingMandiRate}
-                    className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black shadow-md cursor-pointer active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <span>{savingMandiRate ? 'सहेज रहे हैं...' : 'सहेजें (Save Rate)'}</span>
                   </button>
                 </div>
               </form>

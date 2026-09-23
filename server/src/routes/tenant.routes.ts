@@ -6,7 +6,6 @@ import { Tenant } from '../models/Tenant.js';
 import { Customer } from '../models/Customer.js';
 import { Sale } from '../models/Sale.js';
 import { Announcement } from '../models/Announcement.js';
-import { MandiRate } from '../models/MandiRate.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'gk_default_secret_key_2026';
@@ -166,39 +165,6 @@ router.get('/announcement/active', async (req: Request, res: Response) => {
       .lean();
 
     res.json({ announcement: announcement || null });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 7. Get Applicable Mandi Benchmark Rates for Store
-router.get('/mandi-rates', async (req: Request, res: Response) => {
-  try {
-    let storeDistrict = 'ALL';
-
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as any;
-        if (decoded?.tenantId) {
-          const tenant = await Tenant.findById(decoded.tenantId).select('address.district').lean();
-          if (tenant?.address?.district) {
-            storeDistrict = tenant.address.district;
-          }
-        }
-      } catch {
-        // demo / guest fallback
-      }
-    }
-
-    const rates = await MandiRate.find({
-      $or: [{ district: 'ALL' }, { district: storeDistrict }],
-    })
-      .sort({ category: 1, commodity: 1 })
-      .lean();
-
-    res.json({ rates, district: storeDistrict });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
