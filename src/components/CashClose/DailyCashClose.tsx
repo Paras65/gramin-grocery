@@ -80,10 +80,13 @@ export const DailyCashClose: React.FC = () => {
         )
         .toArray();
 
-      // Filter by payment mode in JS (Dexie compound index not set up for paymentMode+timestamp)
+      // Filter by payment mode in JS (including split cash payments on credit bills)
       const cashSales = todaySales
-        .filter(s => s.paymentMode === 'CASH')
-        .reduce((sum, s) => sum + s.totalAmount, 0);
+        .reduce((sum, s) => {
+          if (s.paymentMode === 'CASH') return sum + s.totalAmount;
+          if (s.paymentMode === 'UDHAAR' && s.splitPayment?.cash) return sum + s.splitPayment.cash;
+          return sum;
+        }, 0);
 
       // Jama (credit repayments) today
       const allTxns = await db.transactions

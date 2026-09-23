@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { 
   Search, Calendar, ArrowUpRight, ArrowDownLeft, 
   Share2, History, AlertTriangle, UserPlus, X, BookOpen,
-  Printer, FileText, Send, Lock, Phone, Trash2
+  Printer, FileText, Send, Lock, Phone, Trash2, CheckCircle2
 } from 'lucide-react';
 import { db } from '../../db';
 import type { Customer, DueReason, Transaction } from '../../types';
@@ -24,6 +24,11 @@ export const KhataLedger: React.FC = () => {
   const [selectedPara, setSelectedPara] = useState<string>('all');
   const [activeCustomerForLedger, setActiveCustomerForLedger] = useState<Customer | null>(null);
   const [passbookCustomer, setPassbookCustomer] = useState<Customer | null>(null);
+  const [settledCustomer, setSettledCustomer] = useState<{
+    customer: Customer;
+    settledAmount: number;
+    timestamp: string;
+  } | null>(null);
 
   // Quick transaction modal (Jama or Udhaar)
   const [txnModal, setTxnModal] = useState<{
@@ -45,6 +50,19 @@ export const KhataLedger: React.FC = () => {
     return new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
   });
   const [newCustNotes, setNewCustNotes] = useState('');
+
+  const normalize = (str?: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const cleanPhoneInput = newCustPhone.replace(/\D/g, '').slice(-10);
+
+  // Real-time duplicate phone number match
+  const duplicatePhoneMatch = cleanPhoneInput.length === 10
+    ? customers.find(c => c.phone && c.phone.replace(/\D/g, '').slice(-10) === cleanPhoneInput)
+    : null;
+
+  // Real-time duplicate name match in the same Para
+  const duplicateNameMatch = newCustName.trim()
+    ? customers.find(c => normalize(c.name) === normalize(newCustName) && c.para === newCustPara)
+    : null;
 
   // Update credit limit for an existing customer
   const handleUpdateCreditLimit = async () => {
@@ -81,6 +99,25 @@ export const KhataLedger: React.FC = () => {
     .filter((c: Customer) => c.dueReason === 'KHARIF_DHAN')
     .reduce((sum: number, c: Customer) => sum + (c.balanceDue || 0), 0);
 
+  // Clearance Receipt WhatsApp sender
+  const sendClearanceReceiptWhatsApp = (cust: Customer, amount: number) => {
+    const store = syncService.getStoreInfo();
+    const shopName = store?.storeName || 'ग्रामीण किराना स्टोर';
+    const passbookLink = `${window.location.origin}${window.location.pathname}#passbook=${cust.id}`;
+    const dateStr = new Date().toLocaleDateString('hi-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    const msg = 
+      `🌸 *${shopName}* — खाता चुकता पावती 🌸\n\n` +
+      `आदरणीय ${cust.name} जी,\n` +
+      `आज दिनांक ${dateStr} को आपकी ओर से *₹${amount}* की अंतिम जमा राशि प्राप्त हुई।\n\n` +
+      `✅ *दुकान बही-खाता स्थिति: ₹0 (शून्य बकाया)*\n` +
+      `आपका पिछला समस्त उधार हिसाब पूर्णतः चुकता व साफ हो चुका है।\n\n` +
+      `📖 अपनी अद्यतन डिजिटल पासबुक यहाँ देखें:\n${passbookLink}\n\n` +
+      `समय पर भुगतान और अटूट विश्वास के लिए आपका कोटि-कोटि धन्यवाद! 🙏\n` +
+      `— ${shopName}`;
+    openWhatsApp(cust.phone, msg);
+  };
+
   // Handle Jama / Udhaar submission
   const handleSaveTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,8 +151,15 @@ export const KhataLedger: React.FC = () => {
         });
       });
 
-      // 1-Tap Jama payment receipt via WhatsApp
-      if (type === 'JAMA' && customer.phone && customer.phone.length === 10) {
+      // Check for zero-balance full debt clearance
+      if (type === 'JAMA' && newBalance === 0 && (customer.balanceDue || 0) > 0) {
+        setSettledCustomer({
+          customer: { ...customer, balanceDue: 0 },
+          settledAmount: amount,
+          timestamp
+        });
+      } else if (type === 'JAMA' && customer.phone && customer.phone.length === 10) {
+        // 1-Tap Jama payment receipt via WhatsApp
         const storeName = syncService.getStoreInfo()?.storeName || 'गाँव किराना स्टोर';
         const msg = 
           `✅ *जमा पावती (Payment Received)*\n` +
@@ -155,22 +199,42 @@ export const KhataLedger: React.FC = () => {
   // Handle Add New Customer
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCustName.trim()) return;
+    const cleanName = newCustName.trim().replace(/\s+/g, ' ');
+    if (!cleanName) {
+      alert('कृपया ग्राहक का नाम दर्ज करें!');
+      return;
+    }
 
-    const initialBal = parseFloat(newCustBalance) || 0;
+    const cleanPhone = newCustPhone.replace(/\D/g, '').slice(-10);
+    if (cleanPhone && cleanPhone.length !== 10) {
+      alert('कृपया 10-अंकों का मान्य मोबाइल नंबर दर्ज करें!');
+      return;
+    }
+
+    if (duplicatePhoneMatch) {
+      alert(`⚠️ मोबाइल नंबर टकराव: यह नंबर पहले से "${duplicatePhoneMatch.name}" (${duplicatePhoneMatch.para}) के खाते में दर्ज है। कृपया अलग नंबर दें या मौजूदा खाता खोलें।`);
+      return;
+    }
+
+    if (duplicateNameMatch) {
+      const proceed = confirm(`⚠️ "${duplicateNameMatch.name}" नाम का ग्राहक पहले से "${newCustPara}" में दर्ज है (वर्तमान बकाया: ₹${duplicateNameMatch.balanceDue})।\n\nक्या आप एक ही पारा में इसी नाम का नया खाता खोलना चाहते हैं?\n(सुझाव: पहचान के लिए नाम में उपनाम या पिता का नाम जोड़ें)`);
+      if (!proceed) return;
+    }
+
+    const initialBal = Math.max(0, parseFloat(newCustBalance) || 0);
     const customerId = 'cust_' + Math.random().toString(36).substring(2, 9);
     const now = new Date().toISOString();
 
     await db.customers.add({
       id: customerId,
-      name: newCustName.trim(),
-      phone: newCustPhone.trim(),
+      name: cleanName,
+      phone: cleanPhone,
       para: newCustPara,
       balanceDue: initialBal,
       creditLimit: isNaN(parseFloat(newCustCreditLimit)) ? 2000 : Math.max(0, parseFloat(newCustCreditLimit)),
       dueDate: newCustDueDate,
       dueReason: newCustDueReason,
-      notes: newCustNotes,
+      notes: newCustNotes.trim(),
       createdAt: now,
       updatedAt: now
     });
@@ -801,18 +865,37 @@ export const KhataLedger: React.FC = () => {
                 />
               </div>
 
+              {duplicateNameMatch && (
+                <div className="text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-xl flex items-start gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span>चेतावनी: <b>"{duplicateNameMatch.name}"</b> नाम से इसी पारा में पहले से खाता है (बकाया: ₹{duplicateNameMatch.balanceDue})। पहचान हेतु उपनाम या पिता का नाम जोड़ें।</span>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs font-bold text-stone-700 block mb-1">
-                    मोबाइल नंबर:
+                    मोबाइल नंबर (10 अंक):
                   </label>
                   <input
-                    type="text"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
                     value={newCustPhone}
-                    onChange={e => setNewCustPhone(e.target.value)}
+                    onChange={e => setNewCustPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="98261XXXXX"
-                    className="w-full p-2 border border-stone-300 rounded-xl text-xs text-stone-900 font-semibold outline-hidden focus:border-amber-600"
+                    className={`w-full p-2 border rounded-xl text-xs text-stone-900 font-semibold outline-hidden focus:border-amber-600 ${
+                      duplicatePhoneMatch ? 'border-rose-500 bg-rose-50 text-rose-900' : 'border-stone-300'
+                    }`}
                   />
+                  {duplicatePhoneMatch && (
+                    <div className="mt-1 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 p-1.5 rounded-lg flex items-start gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                      <span>यह नंबर पहले से <b>"{duplicatePhoneMatch.name}"</b> ({duplicatePhoneMatch.para}) के खाते में है!</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-bold text-stone-700 block mb-1">
@@ -907,12 +990,76 @@ export const KhataLedger: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl text-xs font-black bg-emerald-700 hover:bg-emerald-600 text-white cursor-pointer shadow-sm"
+                  disabled={!!duplicatePhoneMatch}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-black text-white shadow-sm transition-colors ${
+                    duplicatePhoneMatch 
+                      ? 'bg-stone-300 cursor-not-allowed text-stone-500' 
+                      : 'bg-emerald-700 hover:bg-emerald-600 cursor-pointer'
+                  }`}
                 >
                   ग्राहक जोड़ें
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Zero-Balance Debt Settlement Celebration Modal */}
+      {settledCustomer && (
+        <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border-2 border-emerald-400 text-center relative overflow-hidden">
+            <div className="absolute -top-12 -right-12 w-28 h-28 bg-emerald-100 rounded-full blur-xl pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-28 h-28 bg-amber-100 rounded-full blur-xl pointer-events-none" />
+
+            <div className="w-16 h-16 mx-auto mb-3 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center shadow-inner">
+              <CheckCircle2 className="w-10 h-10 text-emerald-600 animate-bounce" />
+            </div>
+
+            <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-black rounded-full uppercase tracking-wider mb-2">
+              🎉 पूर्ण हिसाब चुकता (Zero Debt)
+            </span>
+
+            <h3 className="text-lg font-black text-stone-900 m-0">
+              बधाई! खाता शून्य हुआ
+            </h3>
+
+            <p className="text-xs text-stone-600 mt-2 mb-4 leading-relaxed">
+              ग्राहक <b className="text-stone-900">{settledCustomer.customer.name}</b> ({settledCustomer.customer.para}) ने ₹{settledCustomer.settledAmount} का भुगतान कर अपना पूरा पिछला उधार चुकता कर दिया है।
+            </p>
+
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 mb-4 text-xs font-bold text-emerald-900 space-y-1">
+              <div className="flex justify-between">
+                <span className="text-emerald-700">अंतिम जमा राशि:</span>
+                <span className="font-black text-emerald-800">₹{settledCustomer.settledAmount}</span>
+              </div>
+              <div className="flex justify-between border-t border-emerald-200 pt-1">
+                <span className="text-emerald-700">वर्तमान कुल बकाया:</span>
+                <span className="font-black text-emerald-600 text-sm">₹0 (शून्य)</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  sendClearanceReceiptWhatsApp(settledCustomer.customer, settledCustomer.settledAmount);
+                  setSettledCustomer(null);
+                }}
+                className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>📲 व्हाट्सएप्प पर चुकता पावती भेजें</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSettledCustomer(null)}
+                className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl cursor-pointer transition-colors"
+              >
+                ठीक है / बंद करें
+              </button>
+            </div>
           </div>
         </div>
       )}

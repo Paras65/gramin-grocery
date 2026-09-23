@@ -12,14 +12,17 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Loose Weight Pricing (खुला सामान: पाव, आधा किलो)](#loose-weight-pricing-खुला-सामान-पाव-आधा-किलो)
    - [Dynamic Market Rate Adjustments (मंडी व बाज़ार दैनिक दर बदलाव)](#dynamic-market-rate-adjustments-मंडी-व-बाज़ार-दैनिक-दर-बदलाव)
    - [Payment Options: Cash, Udhaar, and UPI](#payment-options-cash-udhaar-and-upi)
+   - [Split & Mixed Payment: Part Cash + Part Udhaar (मिश्रित भुगतान: कुछ नकद + कुछ उधार)](#split--mixed-payment-part-cash--part-udhaar-मिश्रित-भुगतान-कुछ-नकद--कुछ-उधार)
    - [Dynamic Offline UPI Payment QR Code (स्वचालित UPI QR कोड)](#dynamic-offline-upi-payment-qr-code-स्वचालित-upi-qr-कोड)
    - [Bill Discount & Round-Off Chips (छूट / बट्टा व सिक्के छोड़ें)](#bill-discount--round-off-chips-छूट--बट्टा-व-सिक्के-छोड़ें)
    - [Sharing Receipts via WhatsApp](#sharing-receipts-via-whatsapp)
 3. [Udhaar & Bahi-Khata Ledger (ग्राहक उधार बही-खाता)](#3-udhaar--bahi-khata-ledger-ग्राहक-उधार-बही-खाता)
    - [Village Mohalla / Para Grouping](#village-mohalla--para-grouping)
+   - [Customer Deduplication & Mobile Number Validation (ग्राहक नाम व मोबाइल दोहराव सुरक्षा)](#customer-deduplication--mobile-number-validation-ग्राहक-नाम-व-मोबाइल-दोहराव-सुरक्षा)
    - [Customer Credit Limit Guard (ग्राहक उधारी सीमा व सुरक्षा अलर्ट)](#customer-credit-limit-guard-ग्राहक-उधारी-सीमा-व-सुरक्षा-अलर्ट)
    - [Harvest & Scheme Repayment Dates (धान खरीदी / महतारी वंदन)](#harvest--scheme-repayment-dates-धान-खरीदी--महतारी-वंदन)
    - [Recording Payments Received (जमा) & New Credit (उधार)](#recording-payments-received-जमा--new-credit-उधार)
+   - [Zero-Balance Debt Settlement Celebration & Clearance Receipt (पूर्ण हिसाब चुकता व पावती पर्ची)](#zero-balance-debt-settlement-celebration--clearance-receipt-पूर्ण-हिसाब-चुकता-व-पावती-पर्ची)
    - [WhatsApp Payment Receipts & Reminders (जमा रसीद व तगादा)](#whatsapp-payment-receipts--reminders-जमा-रसीद-व-तगादा)
    - [Customer Digital Khata Passbook & Direct UPI Payments (ग्राहक डिजिटल पासबुक व तुरंत UPI भुगतान)](#customer-digital-khata-passbook--direct-upi-payments-ग्राहक-डिजिटल-पासबुक-व-तुरंत-upi-भुगतान)
    - [Direct Phone Dialing & Safe Customer Guard (कॉल व खाता सुरक्षा)](#direct-phone-dialing--safe-customer-guard-कॉल-व-खाता-सुरक्षा)
@@ -159,6 +162,13 @@ Gramin Kirana is built to run **100% offline** without needing a continuous inte
 2. **Udhaar (उधार खाता):** Requires choosing a registered customer from the dropdown. The bill total is automatically added to that customer’s running debt balance.
 3. **UPI (ऑनलाइन):** For digital payments received via phone scanner.
 
+### Split & Mixed Payment: Part Cash + Part Udhaar (मिश्रित भुगतान: कुछ नकद + कुछ उधार)
+- **ग्रामीण काउंटर की आम ज़रूरत:** गाँव में अक्सर ग्राहक ₹500 का सामान खरीदते समय जेब में मौजूद ₹200 नकद दे देते हैं और शेष ₹300 अपने खाते में उधार दर्ज करने को कहते हैं।
+- **त्वरित नकद चिप्स (Quick Cash Chips):** बिलिंग कार्ट में उधार चुनते ही **"💵 नकद भुगतान अभी"** का विकल्प खुलता है। इसमें तुरंत चुनने के लिए **[आधा]**, **[₹100]**, **[₹200]**, **[₹500]** के बटन तथा मनचाही रकम लिखने का बॉक्स दिया गया है।
+- **सटीक हिसाब व उधारी कटौती:** दुकानदार जितना नकद प्राप्त करता है, सिस्टम केवल बची हुई शेष रकम ही ग्राहक के बही-खाते में जोड़ता है।
+- **दैनिक गल्ला व रोकड़ मिलान:** प्राप्त नकद राशि स्वचालित रूप से शाम के दैनिक गल्ला क्लोजिंग (Daily Cash Drawer) में नकद बिक्री के रूप में जुड़ जाती है, जिससे गल्ले में ₹1 का भी अंतर नहीं आता।
+- **थर्मल पर्ची व व्हाट्सएप पारदर्शिता:** ग्राहक को दी जाने वाली 58mm ब्लूटूथ पर्ची व व्हाट्सएप बिल में नकद दिया गया रुपया और खाते में चढ़ा उधार दोनों साफ-साफ दर्ज होते हैं।
+
 ### Dynamic Offline UPI Payment QR Code (स्वचालित UPI QR कोड)
 - **100% Offline QR Generation:** Gramin Kirana generates dynamic payment QR codes directly inside your device without relying on internet servers or third-party image APIs.
 - **Shopkeeper UPI Setup:** Go to **सेटिंग्स व बैकअप (Settings)** to enter your store's UPI ID (e.g. PhonePe, Google Pay, Paytm, or BHIM UPI ID). You can also set or change it directly on the POS counter with 1-tap.
@@ -187,6 +197,11 @@ Gramin Kirana is built to run **100% offline** without needing a continuous inte
 - In villages, multiple customers often share the same name (e.g. 4 "Ramesh Sahu").
 - Every customer is tagged with their **Mohalla / Para** (e.g. *Patel Para, School Para, Bazar Mohalla, Talab Paar*). Use the drop-down filter to quickly view only customers from a specific neighborhood.
 
+### Customer Deduplication & Mobile Number Validation (ग्राहक नाम व मोबाइल दोहराव सुरक्षा)
+- **10-अंकों का मोबाइल सत्यापन:** नया ग्राहक जोड़ते समय गैर-अंकीय अक्षर अपने आप साफ़ हो जाते हैं और केवल 10 अंकों का मान्य भारतीय मोबाइल नंबर ही स्वीकार किया जाता है।
+- **डुप्लीकेट मोबाइल नंबर पर तत्काल रोक:** यदि दर्ज किया गया मोबाइल नंबर पहले से किसी अन्य ग्राहक के खाते में मौजूद है, तो सिस्टम तुरंत लाल चेतावनी दिखाकर नया खाता बनाने से रोक देता है। इससे एक ही व्यक्ति के दो अलग-अलग खाते बनने का जोखिम शून्य हो जाता है।
+- **एक ही पारा में समान नाम चेतावनी:** यदि एक ही मोहल्ले/पारे में उसी नाम का ग्राहक पहले से मौजूद है, तो सिस्टम अंबर रंग का चेतावनी अलर्ट प्रदर्शित करता है और पहचान हेतु पिता का नाम या उपनाम जोड़ने का सुझाव देता है।
+
 ### Customer Credit Limit Guard (ग्राहक उधारी सीमा व सुरक्षा अलर्ट)
 - **Setting an Udhaar Limit:** When adding a new customer in the Khata Ledger, you can set a safe maximum credit limit (defaults to ₹2,000, or any custom amount like ₹5,000 or ₹10,000).
 - **1-Tap Limit Revisions:** On existing customer ledger accounts, tap the limit badge (✏️ बदलें) at any time to revise the approved credit ceiling.
@@ -202,6 +217,10 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 ### Recording Payments Received (जमा) & New Credit (उधार)
 - **जमा (+):** Green button to record a partial or full payment. Deducts from the customer's balance.
 - **उधार (-):** Red button to add a new credit amount directly to the customer's ledger.
+
+### Zero-Balance Debt Settlement Celebration & Clearance Receipt (पूर्ण हिसाब चुकता व पावती पर्ची)
+- **शुभ कर्ज़-मुक्ति उत्सव (Debt-Free Celebration):** जब कोई ग्रामीण ग्राहक अपना पूरा पिछला उधार चुका देता है और उसका कुल बकाया ₹0 हो जाता है, तो स्क्रीन पर उत्सव सूचक बधाई संवाद (Celebration Modal) खुलता है।
+- **1-क्लिक व्हाट्सएप चुकता पावती (Clearance Receipt):** संवाद में दिए गए बटन पर टैप करते ही ग्राहक के व्हाट्सएप पर एक पावती संदेश भेजा जाता है। इसमें दुकानदार की ओर से समय पर पूरा भुगतान करने हेतु आभार, ₹0 शेष बकाया की आधिकारिक पुष्टि, तथा अद्यतन डिजिटल पासबुक का लिंक शामिल रहता है।
 
 ### WhatsApp Payment Receipts & Reminders (जमा रसीद व तगादा)
 - **1-टैप जमा रसीद (Instant Repayment Receipt):** Whenever you record a payment (`जमा (+)`) from a customer, a prompt offers to send an immediate WhatsApp receipt directly to the customer confirming the received amount and their newly reduced balance.

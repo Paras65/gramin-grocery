@@ -68,6 +68,10 @@ export interface Sale {
   paymentMode: PaymentMode;
   customerId?: string;
   customerName?: string;
+  splitPayment?: {
+    cash: number;
+    udhaar: number;
+  };
 }
 
 export interface SpoilageLog {

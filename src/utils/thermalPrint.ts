@@ -75,6 +75,8 @@ export interface PrintReceiptData {
   discount?: number;
   originalTotal?: number;
   paymentMode: string;
+  splitCash?: number;
+  splitUdhaar?: number;
   customerName?: string;
   oldBalance?: number;
   newBalance?: number;
@@ -173,6 +175,10 @@ function buildReceiptBytes(data: PrintReceiptData): Uint8Array {
 
   // Payment mode
   parts.push(col2('भुगतान:', data.paymentMode, W));
+  if (data.splitCash !== undefined && data.splitUdhaar !== undefined) {
+    parts.push(col2('  नकद प्राप्त:', `₹${data.splitCash}`, W));
+    parts.push(col2('  उधार लिखा:', `₹${data.splitUdhaar}`, W));
+  }
 
   // Customer info (if udhaar)
   if (data.customerName) {

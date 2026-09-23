@@ -67,9 +67,18 @@ export const ProfitLossReport: React.FC = () => {
   const margin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : '0.0';
 
   const billCount = monthlySales.length;
-  const cashSales = monthlySales.filter(s => s.paymentMode === 'CASH').reduce((sum, s) => sum + s.totalAmount, 0);
+  const cashSales = monthlySales.reduce((sum, s) => {
+    if (s.paymentMode === 'CASH') return sum + s.totalAmount;
+    if (s.paymentMode === 'UDHAAR' && s.splitPayment?.cash) return sum + s.splitPayment.cash;
+    return sum;
+  }, 0);
   const upiSales = monthlySales.filter(s => s.paymentMode === 'UPI').reduce((sum, s) => sum + s.totalAmount, 0);
-  const udhaarSales = monthlySales.filter(s => s.paymentMode === 'UDHAAR').reduce((sum, s) => sum + s.totalAmount, 0);
+  const udhaarSales = monthlySales.reduce((sum, s) => {
+    if (s.paymentMode === 'UDHAAR') {
+      return sum + (s.splitPayment ? s.splitPayment.udhaar : s.totalAmount);
+    }
+    return sum;
+  }, 0);
 
   const fmt = (n: number) => formatINR(n, { round: true });
 

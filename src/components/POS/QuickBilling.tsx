@@ -53,8 +53,9 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
   const [tempCartRate, setTempCartRate] = useState<string>('');
   const [saveCartRateToCatalog, setSaveCartRateToCatalog] = useState<boolean>(false);
 
-  // Discount & Store UPI states
+  // Discount, Split Payment & Store UPI states
   const [discount, setDiscount] = useState<string>('');
+  const [splitCashPaid, setSplitCashPaid] = useState<string>('');
   const [storeUpiId, setStoreUpiId] = useState<string>(() => localStorage.getItem('gk_store_upi_id') || '');
   const [isEditingUpi, setIsEditingUpi] = useState<boolean>(false);
   const [tempUpiInput, setTempUpiInput] = useState<string>('');
@@ -66,6 +67,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
     discount?: number;
     originalTotal?: number;
     paymentMode: PaymentMode;
+    splitPayment?: { cash: number; udhaar: number };
     customer?: Customer;
     timestamp: string;
   } | null>(null);
@@ -272,9 +274,18 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
   const finalBillAmount = Math.max(0, Math.round((totalBillAmount - discountAmount) * 100) / 100);
   const totalCartItemsCount = cart.reduce((sum, item) => sum + (item.product.isLoose ? 1 : item.quantity), 0);
 
+  const parsedSplitCash = paymentMode === 'UDHAAR'
+    ? Math.min(finalBillAmount, Math.max(0, parseFloat(splitCashPaid) || 0))
+    : 0;
+  const netUdhaarAmount = paymentMode === 'UDHAAR'
+    ? Math.max(0, Math.round((finalBillAmount - parsedSplitCash) * 100) / 100)
+    : 0;
+
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
   const currentBalance = selectedCustomer?.balanceDue || 0;
-  const projectedBalance = Math.round((currentBalance + finalBillAmount) * 100) / 100;
+  const projectedBalance = paymentMode === 'UDHAAR'
+    ? Math.round((currentBalance + netUdhaarAmount) * 100) / 100
+    : currentBalance;
   const customerCreditLimit = selectedCustomer?.creditLimit ?? 2000;
   const isCreditLimitExceeded = Boolean(
     paymentMode === 'UDHAAR' && 
@@ -315,7 +326,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           `⚠️ उधारी सीमा पार (Credit Limit Exceeded)!\n\n` +
           `ग्राहक: ${selectedCustomer.name}\n` +
           `वर्तमान उधारी: ₹${currentBalance}\n` +
-          `यह बिल: ₹${finalBillAmount}\n` +
+          (parsedSplitCash > 0 ? `यह बिल: ₹${finalBillAmount} (₹${parsedSplitCash} नकद दिया, ₹${netUdhaarAmount} नया उधार)\n` : `यह बिल: ₹${finalBillAmount}\n`) +
           `नया बकाया होगा: ₹${projectedBalance}\n` +
           `स्वीकृत सीमा: ₹${customerCreditLimit}\n` +
           `(सीमा से ₹${excess} अधिक)\n\n` +
@@ -327,6 +338,9 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
 
     const timestamp = new Date().toISOString();
     const saleId = 'sale_' + Math.random().toString(36).substring(2, 9);
+    const splitPaymentObj = (paymentMode === 'UDHAAR' && parsedSplitCash > 0)
+      ? { cash: parsedSplitCash, udhaar: netUdhaarAmount }
+      : undefined;
 
     // Atomic multi-table ACID transaction
     await db.transaction('rw', [db.sales, db.customers, db.transactions, db.products], async () => {
@@ -346,6 +360,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
         totalAmount: finalBillAmount,
         discount: discountAmount > 0 ? discountAmount : undefined,
         paymentMode,
+        splitPayment: splitPaymentObj,
         timestamp
       });
 
@@ -356,13 +371,21 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
         });
 
         const itemsSummary = cart.map(it => `${it.product.hindiName || it.product.name} (${it.quantity}${it.product.unit}${it.customRate !== undefined ? ` @₹${it.customRate}` : ''})`).join(', ');
+        
+        let txnNote = 'दुकान बिल खरीदारी';
+        if (parsedSplitCash > 0) {
+          txnNote = `दुकान बिल (₹${parsedSplitCash} नकद जमा, ₹${netUdhaarAmount} उधार)`;
+        } else if (discountAmount > 0) {
+          txnNote = `दुकान बिल खरीदारी (₹${discountAmount} छूट लागू)`;
+        }
+
         await db.transactions.add({
           id: 'txn_' + Math.random().toString(36).substring(2, 9),
           customerId: selectedCustomer.id,
           type: 'UDHAAR',
-          amount: finalBillAmount,
+          amount: netUdhaarAmount,
           timestamp,
-          note: discountAmount > 0 ? `दुकान बिल खरीदारी (₹${discountAmount} छूट लागू)` : 'दुकान बिल खरीदारी',
+          note: txnNote,
           billItemsSummary: itemsSummary
         });
       }
@@ -392,12 +415,14 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
       originalTotal: totalBillAmount,
       discount: discountAmount > 0 ? discountAmount : undefined,
       paymentMode,
+      splitPayment: splitPaymentObj,
       customer: selectedCustomer,
       timestamp
     });
 
     setCart([]);
     setDiscount('');
+    setSplitCashPaid('');
     setSelectedCustomerId('');
     setPaymentMode('CASH');
     setIsMobileCartOpen(false);
@@ -434,7 +459,12 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
     text += `💳 भुगतान: ${paymentMode === 'CASH' ? 'नकद (Cash)' : paymentMode === 'UDHAAR' ? 'उधार खाता (Credit)' : 'ऑनलाइन (UPI)'}\n`;
 
     if (paymentMode === 'UDHAAR' && customer) {
-      text += `⚠️ *खाते में कुल बकाया: ₹${customer.balanceDue + total}*\n`;
+      if (lastCompletedBill.splitPayment && lastCompletedBill.splitPayment.cash > 0) {
+        text += `💵 नकद भुगतान प्राप्त: ₹${lastCompletedBill.splitPayment.cash}\n`;
+        text += `📝 खाते में शेष उधार: ₹${lastCompletedBill.splitPayment.udhaar}\n`;
+      }
+      const addedToBalance = lastCompletedBill.splitPayment ? lastCompletedBill.splitPayment.udhaar : total;
+      text += `⚠️ *खाते में कुल बकाया: ₹${customer.balanceDue + addedToBalance}*\n`;
     }
     text += `🙏 धन्यवाद! फिर पधारें।`;
 
@@ -836,6 +866,77 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                 )}
               </div>
             )}
+
+            {/* Split Payment Section (Partial Cash + Partial Udhaar) */}
+            {paymentMode === 'UDHAAR' && selectedCustomer && (
+              <div className="bg-amber-50/70 border border-amber-200/90 rounded-xl p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-amber-950 flex items-center gap-1">
+                    <span>💵 नकद भुगतान अभी (Split Cash):</span>
+                  </span>
+                  {parsedSplitCash > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSplitCashPaid('')}
+                      className="text-[10px] text-amber-800 hover:text-rose-700 underline font-bold cursor-pointer"
+                    >
+                      पूरा उधार (₹0 नकद)
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick Split Cash Chips */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {finalBillAmount >= 200 && (
+                    <button
+                      type="button"
+                      onClick={() => setSplitCashPaid(String(Math.floor(finalBillAmount / 2)))}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border cursor-pointer active:scale-95 transition-all ${
+                        parsedSplitCash === Math.floor(finalBillAmount / 2)
+                          ? 'bg-amber-700 text-white border-amber-800'
+                          : 'bg-white text-stone-700 border-amber-300 hover:bg-amber-100'
+                      }`}
+                    >
+                      आधा (₹{Math.floor(finalBillAmount / 2)})
+                    </button>
+                  )}
+                  {[100, 200, 500].filter(amt => amt < finalBillAmount).map(amt => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setSplitCashPaid(parsedSplitCash === amt ? '' : String(amt))}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border cursor-pointer active:scale-95 transition-all ${
+                        parsedSplitCash === amt
+                          ? 'bg-amber-700 text-white border-amber-800'
+                          : 'bg-white text-stone-700 border-amber-300 hover:bg-amber-100'
+                      }`}
+                    >
+                      ₹{amt}
+                    </button>
+                  ))}
+                  <div className="flex items-center gap-1 ml-auto">
+                    <span className="text-[10px] text-stone-600 font-semibold">नकद ₹:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={finalBillAmount}
+                      step="any"
+                      value={splitCashPaid}
+                      onChange={e => setSplitCashPaid(e.target.value)}
+                      placeholder="0"
+                      className="w-20 p-1 text-xs bg-white border border-stone-300 rounded-lg text-right font-black text-emerald-900 outline-hidden focus:border-amber-600"
+                    />
+                  </div>
+                </div>
+
+                {parsedSplitCash > 0 && (
+                  <div className="flex items-center justify-between pt-1 border-t border-amber-200 text-[11px] font-black">
+                    <span className="text-emerald-800">नकद मिला: ₹{parsedSplitCash}</span>
+                    <span className="text-rose-800">खाते में उधार: ₹{netUdhaarAmount}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -935,7 +1036,10 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           }`}
         >
           <CheckCircle className="w-4 h-4" />
-          <span>{t.pos.finishBill} (₹{finalBillAmount})</span>
+          <span>
+            {t.pos.finishBill} (₹{finalBillAmount})
+            {paymentMode === 'UDHAAR' && parsedSplitCash > 0 ? ` [₹${parsedSplitCash} नकद + ₹${netUdhaarAmount} उधार]` : ''}
+          </span>
         </button>
       </div>
     </div>
@@ -1321,8 +1425,20 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                   <span className="text-emerald-800">₹{lastCompletedBill.total}</span>
                 </div>
               )}
+              {lastCompletedBill.splitPayment && lastCompletedBill.splitPayment.cash > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-2 text-xs font-bold space-y-1">
+                  <div className="flex justify-between text-emerald-800">
+                    <span>💵 नकद भुगतान:</span>
+                    <span>₹{lastCompletedBill.splitPayment.cash}</span>
+                  </div>
+                  <div className="flex justify-between text-rose-800">
+                    <span>📝 खाते में उधार दर्ज:</span>
+                    <span>₹{lastCompletedBill.splitPayment.udhaar}</span>
+                  </div>
+                </div>
+              )}
               <div className="text-[11px] text-stone-500 font-medium">
-                भुगतान माध्यम: {lastCompletedBill.paymentMode === 'CASH' ? 'नकद (Cash)' : lastCompletedBill.paymentMode === 'UDHAAR' ? 'उधार खाता (Credit)' : 'ऑनलाइन (UPI)'}
+                भुगतान माध्यम: {lastCompletedBill.paymentMode === 'CASH' ? 'नकद (Cash)' : lastCompletedBill.paymentMode === 'UDHAAR' ? (lastCompletedBill.splitPayment && lastCompletedBill.splitPayment.cash > 0 ? `मिश्रित भुगतान (₹${lastCompletedBill.splitPayment.cash} नकद + ₹${lastCompletedBill.splitPayment.udhaar} उधार)` : 'उधार खाता (Credit)') : 'ऑनलाइन (UPI)'}
               </div>
             </div>
 
@@ -1353,9 +1469,11 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                     discount: lastCompletedBill.discount,
                     originalTotal: lastCompletedBill.originalTotal,
                     paymentMode: lastCompletedBill.paymentMode === 'CASH' ? 'नकद (Cash)' : lastCompletedBill.paymentMode === 'UDHAAR' ? 'उधार (Credit)' : 'ऑनलाइन (UPI)',
+                    splitCash: lastCompletedBill.splitPayment?.cash,
+                    splitUdhaar: lastCompletedBill.splitPayment?.udhaar,
                     customerName: lastCompletedBill.customer?.name,
                     oldBalance: lastCompletedBill.customer?.balanceDue,
-                    newBalance: lastCompletedBill.customer ? (lastCompletedBill.paymentMode === 'UDHAAR' ? lastCompletedBill.customer.balanceDue + lastCompletedBill.total : lastCompletedBill.customer.balanceDue) : undefined,
+                    newBalance: lastCompletedBill.customer ? (lastCompletedBill.paymentMode === 'UDHAAR' ? lastCompletedBill.customer.balanceDue + (lastCompletedBill.splitPayment ? lastCompletedBill.splitPayment.udhaar : lastCompletedBill.total) : lastCompletedBill.customer.balanceDue) : undefined,
                   });
                 }}
                 className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.99]"
