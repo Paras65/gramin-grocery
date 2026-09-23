@@ -10,7 +10,8 @@ import { db } from '../../db';
 import type { CartItem, Customer, PaymentMode, Product } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { printReceipt } from '../../utils/thermalPrint';
-import { generateQRCodeSVG, buildUpiPayUrl } from '../../utils/qrCode';
+import { QRCodeSVG } from 'qrcode.react';
+import { buildUpiPayUrl, isValidUpiId } from '../../utils/qrCode';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { DemoLimitModal } from '../Demo/DemoLimitModal';
 import { StoreAuthModal } from '../Auth/StoreAuthModal';
@@ -297,7 +298,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
   const handleSaveStoreUpi = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cleaned = tempUpiInput.trim();
-    if (!cleaned || !cleaned.includes('@')) {
+    if (!isValidUpiId(cleaned)) {
       alert('कृपया मान्य UPI ID दर्ज करें (उदा. 98261XXXXX@ybl या name@oksbi)');
       return;
     }
@@ -477,9 +478,9 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
 
   // Reusable Cart Content Component (Used in desktop column and mobile bottom sheet)
   const renderCartContent = (isMobileSheet = false) => (
-    <div className={`flex flex-col ${isMobileSheet ? 'h-full' : 'h-[calc(100vh-140px)]'}`}>
+    <div className={`flex flex-col ${isMobileSheet ? 'h-full max-h-[85vh]' : 'h-[calc(100vh-140px)]'} min-h-0`}>
       {/* Cart Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+      <div className="flex items-center justify-between pb-3 border-b border-stone-200 shrink-0">
         <div className="flex items-center gap-2">
           <ShoppingBag className="w-5 h-5 text-amber-600" />
           <h2 className="font-black text-base text-stone-900 m-0">
@@ -668,7 +669,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
       </div>
 
       {/* Bill Summary & Payment Controls */}
-      <div className="pt-3 border-t border-stone-200 space-y-3 shrink-0">
+      <div className="pt-2.5 border-t border-stone-200 space-y-2.5 shrink-0 max-h-[60vh] overflow-y-auto pr-0.5">
         {/* Bill Discount & Quick Round-Off */}
         {cart.length > 0 && (
           <div className="bg-[#faf8f3] p-2.5 rounded-xl border border-amber-200/70 space-y-2">
@@ -962,20 +963,20 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                   </button>
                 </div>
 
-                {/* QR Code SVG */}
-                <div
-                  className="p-2 bg-white rounded-xl border border-indigo-100 shadow-2xs flex items-center justify-center my-1"
-                  dangerouslySetInnerHTML={{
-                    __html: generateQRCodeSVG(
-                      buildUpiPayUrl(
-                        storeUpiId,
-                        syncService.getStoreInfo()?.storeName || 'ग्रामीण किराना',
-                        finalBillAmount
-                      ),
-                      140
-                    )
-                  }}
-                />
+                {/* QR Code SVG via qrcode.react */}
+                <div className="p-2 bg-white rounded-xl border border-indigo-100 shadow-2xs flex items-center justify-center my-1 w-36 h-36 max-w-[144px] max-h-[144px] mx-auto overflow-hidden shrink-0">
+                  <QRCodeSVG
+                    value={buildUpiPayUrl(
+                      storeUpiId,
+                      syncService.getStoreInfo()?.storeName || 'ग्रामीण किराना',
+                      finalBillAmount
+                    )}
+                    size={128}
+                    level="M"
+                    marginSize={2}
+                    className="w-full h-full"
+                  />
+                </div>
 
                 <div className="mt-1 text-center">
                   <div className="text-xs font-black text-indigo-950">

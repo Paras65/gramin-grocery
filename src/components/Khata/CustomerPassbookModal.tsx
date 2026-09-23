@@ -9,7 +9,8 @@ import {
 import { db } from '../../db';
 import type { Customer, Transaction } from '../../types';
 import { formatINR, formatDate } from '../../utils/formatters';
-import { generateQRCodeSVG, buildUpiPayUrl } from '../../utils/qrCode';
+import { QRCodeSVG } from 'qrcode.react';
+import { buildUpiPayUrl } from '../../utils/qrCode';
 import { printCustomerStatement } from '../../utils/thermalPrint';
 import { openWhatsApp } from '../../utils/whatsapp';
 import { syncService } from '../../services/syncService';
@@ -131,13 +132,11 @@ export const CustomerPassbookModal: React.FC<CustomerPassbookModalProps> = ({
     openWhatsApp(customer.phone, msg);
   };
 
-  // Generate UPI payment URL and QR
+  // Generate UPI payment URL
   const paymentAmountNum = parseFloat(payAmount) || customer.balanceDue;
   const upiPayUrl = storeUpi
     ? buildUpiPayUrl(storeUpi, storeName, paymentAmountNum > 0 ? paymentAmountNum : 0)
     : '';
-
-  const upiQrSvg = upiPayUrl ? generateQRCodeSVG(upiPayUrl, 180) : '';
 
   return (
     <div className={`fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto ${isStandalone ? 'bg-stone-900' : ''}`}>
@@ -273,11 +272,16 @@ export const CustomerPassbookModal: React.FC<CustomerPassbookModalProps> = ({
               {showQrExpanded && (
                 <div className="mt-4 pt-3 border-t border-amber-200/60 flex flex-col sm:flex-row items-center gap-4">
                   <div className="bg-white p-3 rounded-2xl shadow-sm border border-amber-200/80 shrink-0">
-                    {upiQrSvg ? (
-                      <div
-                        className="w-36 h-36 flex items-center justify-center"
-                        dangerouslySetInnerHTML={{ __html: upiQrSvg }}
-                      />
+                    {upiPayUrl ? (
+                      <div className="w-36 h-36 flex items-center justify-center overflow-hidden">
+                        <QRCodeSVG
+                          value={upiPayUrl}
+                          size={136}
+                          level="M"
+                          marginSize={2}
+                          className="w-full h-full"
+                        />
+                      </div>
                     ) : (
                       <div className="w-36 h-36 flex items-center justify-center text-xs text-stone-400">
                         QR तैयार नहीं

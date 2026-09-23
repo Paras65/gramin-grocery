@@ -71,7 +71,7 @@ const QR_SPECS: QRVersionSpec[] = [
   { version: 7, size: 45, totalBytes: 196, dataBytes: 156, ecBytes: 40, alignPos: [6, 22, 38] },
 ];
 
-export function generateQRCodeSVG(text: string, moduleSize = 4): string {
+export function generateQRCodeSVG(text: string, sizeOrModuleSize: number = 140, margin: number = 2): string {
   const encoder = new TextEncoder();
   const rawBytes = encoder.encode(text);
 
@@ -241,19 +241,21 @@ export function generateQRCodeSVG(text: string, moduleSize = 4): string {
   for (let i = 0; i < 7; i++) grid[size - 1 - i][8] = formatBits[i] ? 2 : 1;
   for (let i = 7; i < 15; i++) grid[8][size - 15 + i] = formatBits[i] ? 2 : 1;
 
-  // 7. Render SVG Path
-  const totalPixelSize = size * moduleSize;
-  let pathData = '';
+  // 7. Render Responsive Vector SVG Path with Quiet Zone Margin
+  const totalGridSize = size + margin * 2;
+  const isTotalPixelSize = sizeOrModuleSize > 12;
+  const targetPx = isTotalPixelSize ? sizeOrModuleSize : totalGridSize * sizeOrModuleSize;
 
+  let pathData = '';
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
       if (grid[r][c] === 2) {
-        pathData += `M${c * moduleSize},${r * moduleSize}h${moduleSize}v${moduleSize}h-${moduleSize}z `;
+        pathData += `M${c + margin},${r + margin}h1v1h-1z `;
       }
     }
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalPixelSize} ${totalPixelSize}" width="${totalPixelSize}" height="${totalPixelSize}" class="qr-code-svg"><rect width="100%" height="100%" fill="#ffffff"/><path d="${pathData}" fill="#0f172a"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalGridSize} ${totalGridSize}" width="${targetPx}" height="${targetPx}" class="qr-code-svg" shape-rendering="crispEdges" style="max-width: 100%; height: auto; aspect-ratio: 1/1; display: block;"><rect width="100%" height="100%" fill="#ffffff"/><path d="${pathData}" fill="#0f172a"/></svg>`;
 }
 
 /**
@@ -266,4 +268,16 @@ export function buildUpiPayUrl(upiId: string, storeName: string, amount: number)
   const cleanAmount = Math.max(0, isNaN(amount) ? 0 : amount).toFixed(2);
   return `upi://pay?pa=${cleanId}&pn=${cleanName}&am=${cleanAmount}&cu=INR`;
 }
+
+/**
+ * Validates Indian UPI VPA ID format
+ * e.g., 98260XXXXX@ybl, merchant@okhdfcbank, store@paytm
+ */
+export function isValidUpiId(upiId: string): boolean {
+  if (!upiId) return false;
+  const trimmed = upiId.trim();
+  const vpaRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z0-9]{2,64}$/;
+  return vpaRegex.test(trimmed);
+}
+
 
