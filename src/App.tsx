@@ -129,15 +129,6 @@ const MainApp: React.FC = () => {
     window.addEventListener('hashchange', checkPassbookHash);
     checkPassbookHash();
 
-    // Check if logged-in store has empty catalog -> prompt Store Setup Wizard
-    if (syncService.isLoggedIn()) {
-      db.products.count().then((count) => {
-        if (count === 0) {
-          setIsStoreWizardOpen(true);
-        }
-      });
-    }
-
     return () => {
       unsub();
       unsubAdmin();

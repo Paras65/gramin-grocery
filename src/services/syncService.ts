@@ -267,7 +267,7 @@ class SyncService {
     }
 
     // Always purge previous unauthenticated/demo store records so user's real store is loaded
-    await clearDatabase(false);
+    await clearDatabase(true);
     localStorage.removeItem('gk_last_sync');
 
     localStorage.setItem('gk_auth_token', data.token);
@@ -303,7 +303,7 @@ class SyncService {
     }
 
     // Critical: Clean out any previous demo/unauthenticated records so newly registered store is 100% clean
-    await clearDatabase(false);
+    await clearDatabase(true);
     localStorage.removeItem('gk_last_sync');
 
     localStorage.setItem('gk_auth_token', data.token);

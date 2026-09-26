@@ -170,17 +170,8 @@ export async function purgeDummySeedData() {
 export async function initializeDatabaseIfEmpty() {
   // Always purge any lingering dummy/seed customer records from previous test runs
   await purgeDummySeedData();
-
-  // Initialize real retail starter products if product table is completely empty
-  const productCount = await db.products.count();
-  if (productCount === 0) {
-    for (const p of INITIAL_PRODUCTS) {
-      await db.products.add({
-        ...p,
-        id: 'prod_' + Math.random().toString(36).substring(2, 9)
-      });
-    }
-  }
+  // Do NOT automatically auto-inject products into store database.
+  // Stores start with their own real products. Standard essentials are available via the Setup Wizard if requested.
 }
 
 /**
@@ -211,7 +202,15 @@ export async function seedStandardRuralEssentials(): Promise<{ added: number; to
 }
 
 export async function seedDemoSandboxData() {
-  // No dummy data in production
+  const count = await db.products.count();
+  if (count === 0) {
+    for (const p of INITIAL_PRODUCTS) {
+      await db.products.add({
+        ...p,
+        id: 'prod_' + Math.random().toString(36).substring(2, 9)
+      });
+    }
+  }
 }
 
 // Backup and Restore
