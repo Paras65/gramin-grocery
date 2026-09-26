@@ -1024,8 +1024,153 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
           </div>
         ) : null}
 
-        {/* Navigation Tabs: Stores Directory vs UPI Claims vs Platform Broadcasts */}
-        <div className="flex items-center gap-2 border-b border-amber-200/80 pb-2 overflow-x-auto">
+        {/* Mobile Navigation Tabs Grid: Zero Horizontal Scroll */}
+        <div className="md:hidden grid grid-cols-2 sm:grid-cols-3 gap-1.5 border-b border-amber-200/80 pb-3">
+          <button
+            type="button"
+            onClick={() => setAdminTab('STORES')}
+            className={`flex items-center justify-between p-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all ${
+              adminTab === 'STORES'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-50 border border-stone-200'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              <Building2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">🏪 दुकानें</span>
+            </div>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black shrink-0 ${
+              adminTab === 'STORES' ? 'bg-amber-700 text-amber-100' : 'bg-stone-100 text-stone-600'
+            }`}>
+              {stores.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('PAYMENTS');
+              loadPaymentClaims();
+            }}
+            className={`flex items-center justify-between p-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all ${
+              adminTab === 'PAYMENTS'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-50 border border-stone-200'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              <CreditCard className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">💳 UPI क्लेम</span>
+            </div>
+            {paymentClaims.filter(c => c.status === 'PENDING').length > 0 ? (
+              <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 shadow-xs animate-pulse">
+                {paymentClaims.filter(c => c.status === 'PENDING').length} नए
+              </span>
+            ) : (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${
+                adminTab === 'PAYMENTS' ? 'bg-amber-700 text-amber-100' : 'bg-stone-100 text-stone-500'
+              }`}>
+                {paymentClaims.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('VOUCHERS');
+              loadVouchers();
+            }}
+            className={`flex items-center justify-between p-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all ${
+              adminTab === 'VOUCHERS'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-50 border border-stone-200'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              <Ticket className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">🎟️ प्रो वाउचर</span>
+            </div>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${
+              adminTab === 'VOUCHERS' ? 'bg-amber-700 text-amber-100' : 'bg-stone-100 text-stone-500'
+            }`}>
+              {vouchers.filter(v => !v.isRedeemed).length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('BROADCASTS');
+              if (announcements.length === 0) loadAnnouncements();
+            }}
+            className={`flex items-center justify-between p-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all ${
+              adminTab === 'BROADCASTS'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-50 border border-stone-200'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              <Megaphone className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">📢 घोषणाएं</span>
+            </div>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${
+              adminTab === 'BROADCASTS' ? 'bg-amber-700 text-amber-100' : 'bg-stone-100 text-stone-500'
+            }`}>
+              {announcements.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('STORAGE');
+              loadStorageAnalytics();
+            }}
+            className={`flex items-center justify-between p-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all ${
+              adminTab === 'STORAGE'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-50 border border-stone-200'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              <Database className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">📊 स्टोरेज</span>
+            </div>
+            {storageData?.overview.hotUpgradeCount ? (
+              <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 shadow-xs">
+                {storageData.overview.hotUpgradeCount} हॉट
+              </span>
+            ) : null}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('FRAUD_RADAR');
+              loadFraudRadar();
+              loadSecurityAuditLogs(1);
+            }}
+            className={`flex items-center justify-between p-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all ${
+              adminTab === 'FRAUD_RADAR'
+                ? 'bg-rose-700 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-50 border border-stone-200'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">🛡️ फ्रॉड रडार</span>
+            </div>
+            {fraudData?.overview.highRiskCount ? (
+              <span className="bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 shadow-xs animate-pulse">
+                {fraudData.overview.highRiskCount} अलर्ट
+              </span>
+            ) : null}
+          </button>
+        </div>
+
+        {/* Desktop Navigation Tabs: Pill Bar */}
+        <div className="hidden md:flex items-center gap-2 border-b border-amber-200/80 pb-2">
           <button
             type="button"
             onClick={() => setAdminTab('STORES')}
@@ -1149,7 +1294,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                   <MapPin className="w-3.5 h-3.5 text-amber-700" />
                   <span>छत्तीसगढ़ जिलावार दुकानें (District Distribution):</span>
                 </div>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                <div className="flex flex-wrap items-center gap-1.5 pb-1">
                   <button
                     onClick={() => setSelectedDistrict('ALL')}
                     className={`text-xs px-3 py-1 rounded-xl font-bold cursor-pointer transition-all shrink-0 ${
@@ -1193,11 +1338,11 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full md:w-auto">
                 <button
                   type="button"
                   onClick={() => triggerBulkActionModal('PAUSE_ALL')}
-                  className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/50 text-xs font-bold cursor-pointer active:scale-95 transition flex items-center gap-1.5"
+                  className="px-3 py-2 sm:py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/50 text-xs font-bold cursor-pointer active:scale-95 transition flex items-center justify-center gap-1.5"
                   title="सभी सक्रिय प्रो दुकानों का प्लान रोकें (बचे दिन फ्रीज होंगे)"
                 >
                   <Pause className="w-3.5 h-3.5 text-amber-400" />
@@ -1207,7 +1352,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                 <button
                   type="button"
                   onClick={() => triggerBulkActionModal('RESUME_ALL')}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold cursor-pointer active:scale-95 transition flex items-center gap-1.5 shadow-xs"
+                  className="px-3 py-2 sm:py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold cursor-pointer active:scale-95 transition flex items-center justify-center gap-1.5 shadow-xs"
                   title="सभी रुके हुए प्रो दुकानों का प्लान पुनः सक्रिय करें"
                 >
                   <Play className="w-3.5 h-3.5 text-emerald-300" />
@@ -1217,7 +1362,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                 <button
                   type="button"
                   onClick={() => triggerBulkActionModal('SUSPEND_ALL')}
-                  className="px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-700/80 text-xs font-bold cursor-pointer active:scale-95 transition flex items-center gap-1.5"
+                  className="px-3 py-2 sm:py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-700/80 text-xs font-bold cursor-pointer active:scale-95 transition flex items-center justify-center gap-1.5"
                   title="सभी स्टोर खातों को निलंबित करें"
                 >
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
@@ -1227,7 +1372,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                 <button
                   type="button"
                   onClick={() => triggerBulkActionModal('ACTIVATE_ALL')}
-                  className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-emerald-400 border border-emerald-600 text-xs font-bold cursor-pointer active:scale-95 transition flex items-center gap-1.5"
+                  className="px-3 py-2 sm:py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-emerald-400 border border-emerald-600 text-xs font-bold cursor-pointer active:scale-95 transition flex items-center justify-center gap-1.5"
                   title="सभी स्टोर खातों को पुनः सक्रिय करें"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -1502,7 +1647,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                             </div>
 
                             {/* Quick Admin Actions */}
-                            <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200">
+                            <div className="w-full sm:w-auto flex items-center gap-1.5 flex-wrap shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200">
                               {/* WhatsApp Direct Contact Button */}
                               <a
                                 href={buildWhatsAppUrl(
@@ -1846,7 +1991,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
             </div>
 
             {/* Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="flex flex-wrap items-center gap-1.5 pb-1">
               <button
                 type="button"
                 onClick={() => setVoucherFilter('ALL')}
@@ -2333,7 +2478,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                 {/* Filter and Search Bar */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                   {/* Category Filter Pills */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                  <div className="flex flex-wrap items-center gap-1.5 pb-1">
                     {[
                       { key: 'ALL', label: `सभी (${storageData.stores.length})` },
                       { key: 'HOT_UPGRADE', label: `🚀 हॉट अपग्रेड (${storageData.overview.hotUpgradeCount})` },
@@ -2622,28 +2767,28 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
 
             {/* Sub-Tabs: Threats & Stores | IP Collisions | Live Audit Logs */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
-              <div className="flex items-center gap-2 overflow-x-auto">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setActiveFraudSubTab('THREATS')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition flex-1 sm:flex-none text-center ${
                     activeFraudSubTab === 'THREATS'
                       ? 'bg-rose-700 text-white shadow-xs'
                       : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                   }`}
                 >
-                  ⚠️ खतरे व फ्लैग्ड दुकानें ({fraudData?.flaggedStores.length || 0})
+                  ⚠️ खतरे व फ्लैग्ड ({fraudData?.flaggedStores.length || 0})
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveFraudSubTab('COLLISIONS')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition flex-1 sm:flex-none text-center ${
                     activeFraudSubTab === 'COLLISIONS'
                       ? 'bg-rose-700 text-white shadow-xs'
                       : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                   }`}
                 >
-                  👥 IP कोलिशन समूह ({fraudData?.ipCollisions.length || 0})
+                  👥 IP कोलिशन ({fraudData?.ipCollisions.length || 0})
                 </button>
                 <button
                   type="button"
@@ -2651,13 +2796,13 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                     setActiveFraudSubTab('AUDIT_LOGS');
                     loadSecurityAuditLogs(1);
                   }}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition flex-1 sm:flex-none text-center ${
                     activeFraudSubTab === 'AUDIT_LOGS'
                       ? 'bg-rose-700 text-white shadow-xs'
                       : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                   }`}
                 >
-                  📜 लाइव सुरक्षा ऑडिट लॉग ({auditLogs.length})
+                  📜 सुरक्षा ऑडिट लॉग ({auditLogs.length})
                 </button>
               </div>
 
@@ -2680,7 +2825,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
               <div className="space-y-4">
                 {/* Search & Filter Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs">
-                  <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                  <div className="flex items-center gap-2 flex-1 min-w-[200px]">
                     <Search className="w-4 h-4 text-stone-400 shrink-0" />
                     <input
                       type="text"
@@ -2691,7 +2836,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                     />
                   </div>
 
-                  <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold">
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
                     <span className="text-stone-400 mr-1 flex items-center gap-1">
                       <Filter className="w-3.5 h-3.5" /> जोखिम:
                     </span>
@@ -2998,7 +3143,78 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                   </div>
                 ) : (
                   <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
-                    <div className="overflow-x-auto">
+                    {/* Mobile Card Stack (md:hidden) */}
+                    <div className="md:hidden divide-y divide-stone-100">
+                      {auditLogs.map((log) => (
+                        <div key={log._id} className="p-3.5 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                                log.eventType === 'STORE_REGISTRATION'
+                                  ? 'bg-blue-100 text-blue-900'
+                                  : log.eventType === 'LOGIN'
+                                  ? 'bg-emerald-100 text-emerald-900'
+                                  : log.eventType === 'FAILED_LOGIN'
+                                  ? 'bg-rose-100 text-rose-900'
+                                  : log.eventType === 'PAYMENT_CLAIM'
+                                  ? 'bg-amber-100 text-amber-900'
+                                  : 'bg-stone-100 text-stone-800'
+                              }`}
+                            >
+                              {log.eventType}
+                            </span>
+
+                            <span
+                              className={`text-xs font-black px-2 py-0.5 rounded-md ${
+                                log.riskScore >= 60
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : log.riskScore >= 25
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-emerald-100 text-emerald-700'
+                              }`}
+                            >
+                              जोखिम {log.riskScore}/100
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs">
+                            <div>
+                              <div className="font-bold text-stone-900">{log.storeName || '—'}</div>
+                              <div className="text-stone-500 text-[11px]">{log.ownerPhone || '—'}</div>
+                            </div>
+                            <div className="text-right text-[11px] text-stone-400">
+                              {new Date(log.createdAt).toLocaleString('hi-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] bg-stone-50 p-2 rounded-xl border border-stone-200/80">
+                            <div className="flex items-center gap-1.5 font-mono text-stone-700">
+                              <span>IP: {log.ipAddress}</span>
+                              {log.isProxy && (
+                                <span className="text-[9px] font-black text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded-sm">
+                                  🌐 Proxy
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {log.riskReasons && log.riskReasons.length > 0 && (
+                            <div className="text-[11px] text-stone-600 bg-amber-50/60 p-2 rounded-xl border border-amber-200/70">
+                              <span className="font-bold text-amber-900">कारण: </span>
+                              <span>{log.riskReasons.join(' • ')}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Desktop Table View (hidden md:block) */}
+                    <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-[#faf8f3] border-b border-stone-200 text-stone-600 font-bold uppercase text-[10px]">
                           <tr>
