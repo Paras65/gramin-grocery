@@ -7,6 +7,8 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
 ## 📖 Table of Contents
 
 1. [Overview & Quick Start](#1-overview--quick-start)
+   - [First-Time User Onboarding & Visual Quick Tour (❓ ऐप सीखें: 1-मिनट सचित्र गाइड)](#first-time-user-onboarding--visual-quick-tour-ऐप-सीखें-1-मिनट-सचित्र-गाइड)
+   - [Interactive 1-Minute Guided Practice Bill (पहला अभ्यास बिल — बिना किसी डर के बिलिंग सीखें)](#interactive-1-minute-guided-practice-bill-पहला-अभ्यास-बिल--बिना-किसी-डर-के-बिलिंग-सीखें)
 2. [Quick Billing & POS (तुरंत बिलिंग)](#2-quick-billing--pos-तुरंत-बिलिंग)
    - [Selecting Items & Categories (Zero-Scroll Category Grid)](#selecting-items--categories-zero-scroll-category-grid)
    - [Kids "Khana Khazana" & Confectionery Billing (बच्चों का खजाना: टॉफी, कुरकुरे व लॉलीपॉप)](#kids-khana-khazana--confectionery-billing-बच्चों-का-खजाना-टॉफी-कुरकुरे-व-लॉलीपॉप)
@@ -170,6 +172,24 @@ Gramin Kirana is built to run **100% offline** without needing a continuous inte
 ### Language & Offline Indicators
 - **Language Toggle (भाषा चुनाव):** Click the language button in the top navigation bar to cycle instantly between **हिन्दी (Hindi)**, **छत्तीसगढ़ी (Chhattisgarhi)**, and **English**. The entire store counter, bills, Udhaar ledger, and categories switch into authentic local terminology.
 - **Offline Indicator:** The top bar shows a green badge when internet is active and an amber badge when running offline.
+
+### First-Time User Onboarding & Visual Quick Tour (❓ ऐप सीखें: 1-मिनट सचित्र गाइड)
+- **गाँव के नए उपयोगकर्ताओं के लिए सरल सचित्र मार्गदर्शिका:** पहली बार ऐप खोलने वाले ग्रामीण दुकानदारों, नए मुनीमों या परिजनों को ऐप का उपयोग समझने में कोई कठिनाई न हो, इसके लिए मुख्य हेडर व मोबाइल मेनू में **"❓ सीखें"** का स्थायी बटन दिया गया है।
+- **4-चरणों की सचित्र गाइड (4-Step Visual Carousel):**
+  1. **तुरंत बिलिंग (1-टैप POS):** सामान की फोटो या नाम छूकर बिल में जोड़ने, नकद/उधार/UPI चुनने, और तुरंत पर्ची देने की विधि।
+  2. **ग्राहक उधारी (बही-खाता):** गाँव के मोहल्ले/पारा अनुसार ग्राहक चुनने, वादा तारीख लिखने, उधारी सीमा अलर्ट देखने, और 1-क्लिक में व्हाट्सएप तगादा भेजने का तरीका।
+  3. **खुला सामान व भाव बदलाव:** पाव (250g), आधा किलो (500g) तौलने और रोज़ सुबह नया मंडी भाव केवल 1 टैप में बदलने की प्रक्रिया।
+  4. **शाम का गल्ला हिसाब (कैश क्लोज):** शाम को दुकान बढ़ाते समय 500, 200, 100, 50, 20, 10 के नोट-सिक्के गिनकर गल्ले का नकद मिलान करने और दिन का सारांश व्हाट्सएप पर भेजने का नियम।
+- **कभी भी दोबारा देखें:** यह सचित्र गाइड किसी भी समय मोबाइल मेनू, मोबाइल स्टोर शीट या कंप्यूटर हेडर के "❓ सीखें" बटन से दोबारा खोली जा सकती है।
+
+### Interactive 1-Minute Guided Practice Bill (पहला अभ्यास बिल — बिना किसी डर के बिलिंग सीखें)
+- **शुरुआती हिचकिचाहट से मुक्ति:** नए दुकानदार अक्सर यह सोचकर झिझकते हैं कि *"कहीं मुझसे गलत बटन दब गया तो दुकान का हिसाब या स्टॉक न बिगड़ जाए"*, इसलिए ऐप में **पहला अभ्यास बिल (Practice Mode)** प्रदान किया गया है।
+- **सजीव सिमुलेशन व चमकदार रोशनी (Interactive Spotlight Guidance):**
+  - **स्टेप 1 (सामान जोड़ें):** स्क्रीन पर सामान कार्ड के चारों तरफ सुनहरी धड़कती रोशनी (`ring-4 animate-pulse`) और हाथ का इशारा (`👆 यहाँ टैप करें`) दिखता है। किसी भी सामान को छूते ही वह अभ्यास बिल में जुड़ जाता है।
+  - **स्टेप 2 (बिल पूरा करें):** नकद, उधार या UPI का चुनाव करें। नीचे "बिल पूरा करें" बटन पर सुनहरी रोशनी चमकती है। बटन दबाते ही रंग-बिरंगे कंफेटी पटाखों (🎉 Confetti) के साथ बधाई संदेश प्रकट होता है।
+- **शून्य खाता प्रदूषण गारंटी (Zero Ledger Pollution Guarantee):** अभ्यास मोड में बनाया गया बिल पूरी तरह सुरक्षित सिमुलेशन है। इससे दुकान के वास्तविक स्टॉक, बही-खाते, बिक्री इतिहास या गल्ले में कोई भी प्रविष्टि नहीं होती।
+- **मौजूदा बिल की सुरक्षा (Ongoing Cart Auto-Preservation):** यदि काउंटर पर पहले से कोई वास्तविक ग्राहक का सामान चढ़ा हुआ है, तो अभ्यास बिल शुरू होने पर वह अस्थायी रूप से सुरक्षित रख लिया जाता है और अभ्यास समाप्त होते ही स्क्रीन पर ज्यों का त्यों लौट आता है।
+- **पहला बिल पूरा होने पर प्रमाण व शुरुआत:** अभ्यास पूरा होते ही हरा बटन **"✅ अब असली बिलिंग शुरू करें"** दबाकर सीधे दुकान की असली बिलिंग में प्रवेश करें, या मन चाहे तो **"🔄 दोबारा अभ्यास करें"** दबाकर दोबारा सीखें।
 
 ---
 

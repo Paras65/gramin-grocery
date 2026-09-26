@@ -5,7 +5,7 @@ import {
   Search, Trash2, CheckCircle, Share2, 
   CreditCard, Banknote, QrCode, ShoppingBag,
   ArrowRight, X, Scale, Printer, Scan, Plus,
-  Pause, Play, UserPlus, Clock
+  Pause, Play, UserPlus, Clock, ShieldCheck
 } from 'lucide-react';
 import { db } from '../../db';
 import type { CartItem, Customer, PaymentMode, Product } from '../../types';
@@ -24,6 +24,8 @@ import { openWhatsApp } from '../../utils/whatsapp';
 interface QuickBillingProps {
   initialSearchQuery?: string;
   onSwitchToHaat?: () => void;
+  isGuidedTourActive?: boolean;
+  onExitGuidedTour?: () => void;
 }
 
 export interface HeldBill {
@@ -37,11 +39,21 @@ export interface HeldBill {
   totalAmount: number;
 }
 
-export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery = '', onSwitchToHaat }) => {
+export const QuickBilling: React.FC<QuickBillingProps> = ({ 
+  initialSearchQuery = '', 
+  onSwitchToHaat,
+  isGuidedTourActive = false,
+  onExitGuidedTour
+}) => {
   const { language, t } = useLanguage();
   const { confirm } = useConfirm();
   const products = useLiveQuery(() => db.products.toArray()) || [];
   const customers = useLiveQuery(() => db.customers.toArray()) || [];
+
+  // Guided Practice Tour States (Zero Ledger Pollution)
+  const [guidedStep, setGuidedStep] = useState<1 | 2>(1);
+  const [isTourCelebrationOpen, setIsTourCelebrationOpen] = useState<boolean>(false);
+  const [backupRealCart, setBackupRealCart] = useState<CartItem[]>([]);
 
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -115,6 +127,62 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
       setSearchQuery(initialSearchQuery);
     }
   }, [initialSearchQuery]);
+
+  // Guided Practice Tour Synchronizations (Edge Cases E2, E3, E5)
+  useEffect(() => {
+    if (isGuidedTourActive) {
+      if (cart.length > 0 && backupRealCart.length === 0) {
+        setBackupRealCart(cart);
+        setCart([]);
+      }
+      setGuidedStep(1);
+    }
+  }, [isGuidedTourActive]);
+
+  useEffect(() => {
+    if (isGuidedTourActive) {
+      if (cart.length > 0) {
+        setGuidedStep(2);
+        // Edge Case E3: Mobile collapsed drawer auto-open
+        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+          setIsMobileCartOpen(true);
+        }
+      } else {
+        setGuidedStep(1);
+      }
+    }
+  }, [cart.length, isGuidedTourActive]);
+
+  const handleExitTour = () => {
+    if (backupRealCart.length > 0) {
+      setCart(backupRealCart);
+      setBackupRealCart([]);
+    } else {
+      setCart([]);
+    }
+    setGuidedStep(1);
+    setIsTourCelebrationOpen(false);
+    if (onExitGuidedTour) onExitGuidedTour();
+  };
+
+  const handleCompleteTourAndStartReal = () => {
+    localStorage.setItem('gk_first_bill_tour_completed', 'true');
+    if (backupRealCart.length > 0) {
+      setCart(backupRealCart);
+      setBackupRealCart([]);
+    } else {
+      setCart([]);
+    }
+    setGuidedStep(1);
+    setIsTourCelebrationOpen(false);
+    if (onExitGuidedTour) onExitGuidedTour();
+  };
+
+  const handleRestartTour = () => {
+    setCart([]);
+    setGuidedStep(1);
+    setIsTourCelebrationOpen(false);
+  };
 
   // Categories list with intuitive visual icons
   const categories = [
@@ -483,6 +551,13 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
 
   const handleFinishBill = async () => {
     if (cart.length === 0) return;
+
+    // Zero Database Pollution: In practice tour, celebrate without modifying real ledgers (Edge Case E2)
+    if (isGuidedTourActive) {
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      setIsTourCelebrationOpen(true);
+      return;
+    }
 
     if (await syncService.isDemoQuotaReached()) {
       setIsDemoLimitOpen(true);
@@ -1463,6 +1538,8 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           className={`w-full py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.99] cursor-pointer ${
             cart.length === 0
               ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
+              : isGuidedTourActive && guidedStep === 2
+              ? 'bg-emerald-600 hover:bg-emerald-500 text-white ring-4 ring-amber-400 ring-offset-2 animate-pulse shadow-lg'
               : 'bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white ring-1 ring-emerald-400/40'
           }`}
         >
@@ -1478,6 +1555,38 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      {/* Floating Guided Tour Practice Banner (High-Contrast, Sunlight-Friendly) */}
+      {isGuidedTourActive && (
+        <div className="col-span-1 lg:col-span-12 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 text-white shadow-md flex items-center justify-between gap-3 animate-fade-in border border-amber-400/40">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-2 rounded-xl bg-white/20 text-white shrink-0 text-lg shadow-inner">
+              {guidedStep === 1 ? '🛒' : '💳'}
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs sm:text-sm font-black tracking-tight text-white flex items-center gap-2">
+                <span>
+                  {guidedStep === 1
+                    ? ((t as any).tour?.practiceBar?.step1 || '👆 स्टेप 1: नीचे किसी भी सामान (जैसे शक्कर या तेल) पर टैप करें')
+                    : ((t as any).tour?.practiceBar?.step2 || '👆 स्टेप 2: नकद/उधार चुनें और नीचे "बिल पूरा करें" पर टैप करें')}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-200 font-medium m-0 truncate">
+                अभ्यास बिल — असली स्टॉक या खाते पर कोई असर नहीं होगा।
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleExitTour}
+            className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 active:scale-95 text-white text-xs font-black cursor-pointer transition shrink-0"
+            title="अभ्यास बंद करें"
+          >
+            {(t as any).tour?.practiceBar?.exitTour || '✕ अभ्यास बंद करें'}
+          </button>
+        </div>
+      )}
+
       {/* Left Column: Product Selection Grid (7 cols on desktop, full width on mobile/tablet) */}
       <div className="lg:col-span-7 space-y-3">
         {/* Search Bar & Quick Clear */}
@@ -1556,21 +1665,65 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
 
         {/* Product Grid: 2 cols on mobile, 3 cols on tablet/desktop */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[calc(100vh-270px)] lg:max-h-[calc(100vh-230px)] overflow-y-auto pr-1">
-          {filteredProducts.map((product: Product) => {
+          {/* Emergency Practice Item if inventory is empty (Edge Case E1) */}
+          {isGuidedTourActive && filteredProducts.length === 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const sampleItem: Product = {
+                  id: 'sample_sugar_practice',
+                  name: 'Sugar (M-30)',
+                  hindiName: 'शक्कर (चीनी)',
+                  category: 'spices',
+                  purchasePrice: 40,
+                  sellingPrice: 44,
+                  stockQty: 50,
+                  unit: 'kg',
+                  minStockThreshold: 10,
+                  isLoose: true,
+                  updatedAt: new Date().toISOString(),
+                };
+                handleProductClick(sampleItem);
+              }}
+              className="village-card p-3 rounded-2xl text-left border-2 border-amber-500 bg-amber-50/80 ring-4 ring-amber-500 ring-offset-2 animate-pulse relative cursor-pointer"
+            >
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-md z-10 animate-bounce whitespace-nowrap">
+                👆 यहाँ टैप करें (नमूना सामान)
+              </div>
+              <div className="font-bold text-stone-950 text-sm">शक्कर (अभ्यास नमूना)</div>
+              <div className="text-[11px] text-stone-500">Sugar (Sample Practice)</div>
+              <div className="mt-3 flex items-center justify-between pt-1.5 border-t border-stone-200">
+                <span className="text-emerald-800 font-black text-base">₹44/kg</span>
+                <span className="text-[10px] bg-amber-200 text-amber-900 font-bold px-1.5 py-0.2 rounded-md">खुला</span>
+              </div>
+            </button>
+          )}
+
+          {filteredProducts.map((product: Product, pIdx: number) => {
             const isOutOfStock = product.stockQty <= 0;
             const isLowStock = !isOutOfStock && product.stockQty <= product.minStockThreshold;
+            const isTargetedPracticeItem = isGuidedTourActive && guidedStep === 1 && pIdx === 0;
+
             return (
               <button
                 key={product.id}
                 onClick={() => handleProductClick(product)}
                 className={`village-card p-3 rounded-2xl text-left transition-all cursor-pointer flex flex-col justify-between relative active:scale-[0.98] ${
-                  isOutOfStock 
+                  isTargetedPracticeItem
+                    ? 'border-amber-500 ring-4 ring-amber-500 ring-offset-2 animate-pulse bg-amber-50/50 shadow-md'
+                    : isOutOfStock 
                     ? 'border-rose-300 bg-rose-50/20 hover:border-rose-400' 
                     : isLowStock 
                       ? 'border-amber-300 hover:border-amber-400' 
                       : ''
                 }`}
               >
+                {isTargetedPracticeItem && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-md z-10 animate-bounce whitespace-nowrap flex items-center gap-1">
+                    <span>👆</span>
+                    <span>यहाँ टैप करें</span>
+                  </div>
+                )}
                 <div>
                   <div className="flex items-start justify-between gap-1">
                     <span className="font-bold text-stone-950 text-sm leading-snug line-clamp-1">
@@ -2296,6 +2449,64 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           </div>
         </div>
       )}
+
+      {/* First-Time Guided Practice Bill Celebration Modal */}
+      {isTourCelebrationOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl border-4 border-amber-400 relative overflow-hidden animate-scale-up">
+            {/* Top Close Button */}
+            <button
+              type="button"
+              onClick={handleExitTour}
+              className="absolute top-4 right-4 p-2 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+              title="बंद करें"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Festive Celebration Icon */}
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-amber-100 flex items-center justify-center text-4xl shadow-inner mb-4 animate-bounce">
+              🎉
+            </div>
+
+            <h3 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight mb-2">
+              {(t as any).tour?.celebration?.title || '🎉 शाबाश! आपका पहला बिल तैयार है!'}
+            </h3>
+
+            <p className="text-sm font-semibold text-stone-600 mb-4 leading-relaxed">
+              {(t as any).tour?.celebration?.subtitle || 'आपने सफलतापूर्वक ग्रामीण किराना पर बिलिंग करना सीख लिया है।'}
+            </p>
+
+            {/* Zero Ledger Pollution Assurance Box (Rule 11 user-facing security & integrity) */}
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 mb-6 text-left flex items-start gap-2.5">
+              <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <p className="text-xs font-bold text-emerald-950 leading-relaxed m-0">
+                {(t as any).tour?.celebration?.note || '💡 ध्यान दें: यह सिर्फ आपका सीखने का अभ्यास बिल था। असली दुकान के बही-खाते और स्टॉक में कोई बदलाव नहीं हुआ है।'}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={handleCompleteTourAndStartReal}
+                className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black text-base shadow-lg shadow-emerald-700/20 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>{(t as any).tour?.celebration?.startRealBtn || '✅ अब असली बिलिंग शुरू करें'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRestartTour}
+                className="w-full py-2.5 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition cursor-pointer"
+              >
+                {(t as any).tour?.celebration?.retryBtn || '🔄 दोबारा अभ्यास करें'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <StoreAuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}

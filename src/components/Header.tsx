@@ -20,6 +20,7 @@ interface HeaderProps {
   onOpenWizard?: () => void;
   onOpenAdminLogin?: () => void;
   isEveningCashCloseDue?: boolean;
+  onOpenTour?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -31,7 +32,8 @@ export const Header: React.FC<HeaderProps> = ({
   onBackToLanding,
   onOpenWizard,
   onOpenAdminLogin,
-  isEveningCashCloseDue = false
+  isEveningCashCloseDue = false,
+  onOpenTour
 }) => {
   const { language, toggleLanguage, t } = useLanguage();
   const { confirm } = useConfirm();
@@ -189,6 +191,18 @@ export const Header: React.FC<HeaderProps> = ({
             <Mic className="w-4 h-4" />
           </button>
 
+          {/* Learn / Guided Tour Button */}
+          {onOpenTour && (
+            <button
+              onClick={onOpenTour}
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-300 text-xs font-bold active:scale-95 cursor-pointer"
+              title="ऐप सीखें / Quick Tour"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden xs:inline">{t.learnBtn || 'सीखें'}</span>
+            </button>
+          )}
+
           {/* Language Switch */}
           <button
             onClick={toggleLanguage}
@@ -309,6 +323,18 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden md:inline">बोलकर खोजें</span>
           </button>
 
+
+          {/* Learn / Guided Tour Button */}
+          {onOpenTour && (
+            <button
+              onClick={onOpenTour}
+              className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer active:scale-95"
+              title="ऐप सीखें / Quick Visual Guide"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>{t.learnBtn || '❓ सीखें'}</span>
+            </button>
+          )}
 
           {/* Trilingual Language Toggle (Hindi -> Chhattisgarhi -> English) */}
           <button
@@ -639,6 +665,30 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                   <span className="text-xs font-black text-amber-950 bg-amber-400 px-2.5 py-1 rounded-xl">
                     खोलें
+                  </span>
+                </button>
+              )}
+
+              {/* 1-Minute App Tour & Practice Bill */}
+              {onOpenTour && (
+                <button
+                  onClick={() => {
+                    setIsMobileStoreSheetOpen(false);
+                    onOpenTour();
+                  }}
+                  className="w-full p-3 rounded-2xl bg-amber-950/40 hover:bg-amber-900/40 border border-amber-500/60 text-left flex items-center justify-between cursor-pointer transition active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-amber-200 block">1 मिनट में ऐप सीखें</span>
+                      <span className="text-[10px] text-stone-400 block">सचित्र गाइड व अभ्यास बिल</span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-amber-950 bg-amber-400 px-2.5 py-1 rounded-xl">
+                    सीखें
                   </span>
                 </button>
               )}

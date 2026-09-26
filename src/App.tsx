@@ -24,6 +24,7 @@ import { SuperAdminDashboard } from './components/Admin/SuperAdminDashboard';
 import { AdminLoginModal } from './components/Admin/AdminLoginModal';
 import { StoreSetupWizardModal } from './components/Auth/StoreSetupWizardModal';
 import { CustomerPassbookModal } from './components/Khata/CustomerPassbookModal';
+import { AppTourGuideModal } from './components/Onboarding/AppTourGuideModal';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { syncService } from './services/syncService';
 import { adminService } from './services/adminService';
@@ -75,6 +76,16 @@ const MainApp: React.FC = () => {
   const [isDemoExploring, setIsDemoExploring] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem('gk_exploring_demo') === 'true';
+    }
+    return false;
+  });
+
+  // First-Time User Onboarding & Guided Practice States
+  const [isTourGuideOpen, setIsTourGuideOpen] = useState<boolean>(false);
+  const [isGuidedTourActive, setIsGuidedTourActive] = useState<boolean>(false);
+  const [hasDismissedWelcomeBanner, setHasDismissedWelcomeBanner] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('gk_first_bill_tour_completed') === 'true';
     }
     return false;
   });
@@ -264,6 +275,7 @@ const MainApp: React.FC = () => {
         }}
         onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
         isEveningCashCloseDue={isEveningCashCloseDue}
+        onOpenTour={() => setIsTourGuideOpen(true)}
       />
 
       {/* Low Stock Morning Alert Banner — shows once per session when logged in */}
@@ -278,7 +290,59 @@ const MainApp: React.FC = () => {
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-2.5 sm:p-5 pb-24 md:pb-8">
         {activeTab === 'pos' && (
-          <QuickBilling initialSearchQuery={posSearchQuery} onSwitchToHaat={() => setActiveTab('haat')} />
+          <>
+            {/* Non-intrusive First-Time Onboarding Welcome Prompt Banner on POS */}
+            {!hasDismissedWelcomeBanner && !isGuidedTourActive && (
+              <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-2 border-amber-400/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500 text-stone-950 font-black text-xl flex items-center justify-center shrink-0 shadow-sm">
+                    ✨
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-stone-900 m-0">
+                      {(t as any).tour?.welcomePrompt?.title || 'नमस्ते! क्या आप 1 मिनट में पहला बिल बनाना सीखना चाहते हैं?'}
+                    </h4>
+                    <p className="text-xs text-stone-600 m-0 mt-0.5">
+                      बिना किसी डर के अभ्यास बिल बनाएं — असली बही-खाते और स्टॉक में कोई बदलाव नहीं होगा।
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHasDismissedWelcomeBanner(true);
+                      localStorage.setItem('gk_first_bill_tour_completed', 'true');
+                    }}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 transition cursor-pointer"
+                  >
+                    {(t as any).tour?.welcomePrompt?.dismissBtn || 'बाद में'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGuidedTourActive(true);
+                    }}
+                    className="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-black bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>{(t as any).tour?.welcomePrompt?.startBtn || '🚀 हाँ, अभ्यास बिल सीखें'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <QuickBilling 
+              initialSearchQuery={posSearchQuery} 
+              onSwitchToHaat={() => setActiveTab('haat')}
+              isGuidedTourActive={isGuidedTourActive}
+              onExitGuidedTour={() => {
+                setIsGuidedTourActive(false);
+                setHasDismissedWelcomeBanner(true);
+              }}
+            />
+          </>
         )}
         {activeTab === 'haat' && <HaatBazaarMode />}
         {activeTab === 'khata' && <KhataLedger />}
@@ -523,10 +587,31 @@ const MainApp: React.FC = () => {
                 <span className="text-xs font-black text-amber-950">दुकान सेटअप विज़ार्ड</span>
                 <span className="text-[10px] text-amber-800 font-medium">52 किराना सामान व UPI लोड</span>
               </button>
+
+              <button
+                onClick={() => { setIsTourGuideOpen(true); setIsMoreMenuOpen(false); }}
+                className="p-3.5 rounded-2xl border text-left flex flex-col gap-1 transition cursor-pointer active:scale-[0.98] bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-400 text-stone-800"
+              >
+                <span className="text-2xl">❓</span>
+                <span className="text-xs font-black text-amber-950">1 मिनट में ऐप सीखें</span>
+                <span className="text-[10px] text-amber-800 font-medium">सचित्र गाइड व अभ्यास बिल</span>
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* 1-Minute Visual Tour & Guided Practice Modal */}
+      <AppTourGuideModal
+        isOpen={isTourGuideOpen}
+        onClose={() => setIsTourGuideOpen(false)}
+        onStartPracticeBill={() => {
+          setIsTourGuideOpen(false);
+          setActiveTab('pos');
+          setIsGuidedTourActive(true);
+        }}
+        userRole={userRole}
+      />
 
     </div>
   );

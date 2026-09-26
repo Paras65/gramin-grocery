@@ -238,6 +238,58 @@ export const translations = {
       currentPlanLabel: 'आपकी दुकान का प्लान:',
       currentPlanFree: '🌾 गाँव स्टार्टर (मुफ़्त)',
       currentPlanPro: '👑 ग्रामिन प्रो'
+    },
+    learnBtn: '❓ सीखें',
+    tour: {
+      modalTitle: 'ग्रामीण किराना — 1 मिनट में सीखें',
+      modalSubtitle: 'दुकानदार व मुनीम के लिए सरल सचित्र गाइड',
+      slides: [
+        {
+          title: '1. तुरंत बिलिंग (1-टैप POS)',
+          icon: '🧾',
+          desc: 'सामान के नाम या फोटो पर सिर्फ 1 बार छूएं, वह तुरंत चालू बिल में जुड़ जाएगा। नकद, उधार या UPI QR चुनें और 1-सेकंड में ग्राहक को बिल पर्ची दें या व्हाट्सएप पर भेजें।',
+          badge: 'तेज़ व आसान'
+        },
+        {
+          title: '2. ग्राहक उधारी (बही-खाता)',
+          icon: '👥',
+          desc: 'गाँव के पारा या मोहल्ला अनुसार ग्राहक चुनें। धान कटाई या महतारी वंदन की वादा तारीख लिखें। उधारी सीमा पार होने पर लाल चेतावनी दिखेगी और 1 क्लिक में व्हाट्सएप तगादा भेजें।',
+          badge: 'उधारी सुरक्षा'
+        },
+        {
+          title: '3. खुला सामान व भाव बदलाव',
+          icon: '⚖️',
+          desc: 'पाव (250g), आधा किलो (500g) या ₹10-₹20 के खुले सिक्के भाव सीधे बेचें। रोज़ सुबह नया मंडी भाव केवल 1 टैप में बदल सकते हैं।',
+          badge: 'पाव व आधा किलो'
+        },
+        {
+          title: '4. शाम का गल्ला हिसाब (कैश क्लोज)',
+          icon: '🔒',
+          desc: 'दुकान बढ़ाने के समय 500, 200, 100, 50, 20, 10 के नोट गिनकर गल्ले में दर्ज करें। दिन भर की कुल नकद बिक्री का मिलान करें और व्हाट्सएप पर दिन का हिसाब भेजें।',
+          badge: 'रोकड़ सुरक्षा'
+        }
+      ],
+      startPracticeBtn: '🚀 1 मिनट का अभ्यास बिल बनाकर देखें',
+      skipBtn: '✕ बाद में सीखें',
+      prevBtn: 'पिछला',
+      nextBtn: 'अगला',
+      practiceBar: {
+        step1: '👆 स्टेप 1: नीचे किसी भी सामान (जैसे शक्कर या तेल) पर टैप करें',
+        step2: '👆 स्टेप 2: नकद/उधार चुनें और नीचे "बिल पूरा करें" पर टैप करें',
+        exitTour: '✕ अभ्यास बंद करें'
+      },
+      celebration: {
+        title: '🎉 शाबाश! आपका पहला बिल तैयार है!',
+        subtitle: 'आपने सफलतापूर्वक ग्रामीण किराना पर बिलिंग करना सीख लिया है।',
+        note: '💡 ध्यान दें: यह सिर्फ आपका सीखने का अभ्यास बिल था। असली दुकान के बही-खाते और स्टॉक में कोई बदलाव नहीं हुआ है।',
+        startRealBtn: '✅ अब असली बिलिंग शुरू करें',
+        retryBtn: '🔄 दोबारा अभ्यास करें'
+      },
+      welcomePrompt: {
+        title: 'नमस्ते! क्या आप 1 मिनट में पहला बिल बनाना सीखना चाहते हैं?',
+        startBtn: '🚀 हाँ, अभ्यास बिल सीखें',
+        dismissBtn: 'बाद में'
+      }
     }
   },
   cg: {
@@ -477,6 +529,58 @@ export const translations = {
       currentPlanLabel: 'दुकान के प्लान:',
       currentPlanFree: '🌾 गाँव स्टार्टर (मुफ़्त)',
       currentPlanPro: '👑 ग्रामिन प्रो'
+    },
+    learnBtn: '❓ सीखव',
+    tour: {
+      modalTitle: 'ग्रामीण किराना — 1 मिनट म सीखव',
+      modalSubtitle: 'दुकानदार अउ मुनीम बर सरल सचित्र गाइड',
+      slides: [
+        {
+          title: '1. तुरंत बिलिंग (1-टैप POS)',
+          icon: '🧾',
+          desc: 'सामान के नाव या फोटो म सिरिफ 1 पइत छूवव, उहू ह तुरंत चालू बिल म जुड़ जाही। नकद, उधार या UPI QR चुनव अउ 1-सेकंड म गाहक ला बिल रसीद देवव या व्हाट्सएप म भेजव।',
+          badge: 'तेज़ अउ आसान'
+        },
+        {
+          title: '2. गाहक उधारी (बही-खाता)',
+          icon: '👥',
+          desc: 'गाँव के पारा या मोहल्ला अनुसार गाहक चुनव। धान लुवाई या महतारी वंदन के वादा तारीख लिखव। उधारी जादा होए म लाल चेतावनी दिखही अउ 1 क्लिक म व्हाट्सएप तगादा भेजव।',
+          badge: 'उधारी सुरक्षा'
+        },
+        {
+          title: '3. खुला सामान अउ भाव बदलाव',
+          icon: '⚖️',
+          desc: 'पाव (250g), आधा किलो (500g) या ₹10-₹20 के खुला सामान सोझे बेचव। रोज बिहनिया नवा मंडी भाव सिरिफ 1 टैप म बदल सकथो।',
+          badge: 'पाव अउ आधा किलो'
+        },
+        {
+          title: '4. संझा के गल्ला हिसाब (कैश क्लोज)',
+          icon: '🔒',
+          desc: 'दुकान बढ़ाए के बेरा 500, 200, 100, 50, 20, 10 के नोट गिन के गल्ला म दर्ज करव। दिन भर के नकद बिक्री के मिलान करव अउ व्हाट्सएप म संझा के हिसाब भेजव।',
+          badge: 'रोकड़ सुरक्षा'
+        }
+      ],
+      startPracticeBtn: '🚀 1 मिनट के अभ्यास बिल बना के देखव',
+      skipBtn: '✕ पाछू सीखहूं',
+      prevBtn: 'पाछू',
+      nextBtn: 'आगू',
+      practiceBar: {
+        step1: '👆 स्टेप 1: नीचे कोनो भी सामान (जैसे शक्कर या तेल) म टैप करव',
+        step2: '👆 स्टेप 2: नकद/उधार चुनव अउ नीचे "बिल पूरा करव" म टैप करव',
+        exitTour: '✕ अभ्यास बंद करव'
+      },
+      celebration: {
+        title: '🎉 शाबाश! तोर पहिली बिल तैयार हे!',
+        subtitle: 'तँय सफलतापूर्वक ग्रामीण किराना म बिलिंग करना सीख गए हवव।',
+        note: '💡 सुरता राखव: ये सिरिफ सीखे बर अभ्यास बिल रहिस। असली दुकान के बही-खाता म कोनो बदलाव नइ होए हे।',
+        startRealBtn: '✅ अब असली बिलिंग शुरू करव',
+        retryBtn: '🔄 फेर ले अभ्यास करव'
+      },
+      welcomePrompt: {
+        title: 'नमस्ते! का तँय 1 मिनट म पहिली बिल बनाना सीखना चाहत हव?',
+        startBtn: '🚀 हव, अभ्यास बिल सीखव',
+        dismissBtn: 'पाछू'
+      }
     }
   },
   en: {
@@ -716,6 +820,58 @@ export const translations = {
       currentPlanLabel: 'Active Shop Plan:',
       currentPlanFree: '🌾 Village Starter (Free)',
       currentPlanPro: '👑 Gramin Pro'
+    },
+    learnBtn: '❓ Learn',
+    tour: {
+      modalTitle: 'Gramin Kirana — Learn in 1 Minute',
+      modalSubtitle: 'Simple illustrated guide for shop owners & cashiers',
+      slides: [
+        {
+          title: '1. Instant Billing (1-Tap POS)',
+          icon: '🧾',
+          desc: 'Tap any product name or photo to instantly add it to the cart. Choose Cash, Udhaar, or UPI QR and hand over the receipt or share on WhatsApp in 1 second.',
+          badge: 'Fast & Easy'
+        },
+        {
+          title: '2. Customer Khata Ledger',
+          icon: '👥',
+          desc: 'Pick village customers by Para/Mohalla. Record harvest or DBT repayment dates. Visual red warnings highlight credit limit breaches with 1-tap WhatsApp reminders.',
+          badge: 'Udhaar Safety'
+        },
+        {
+          title: '3. Loose Weighing & Live Rates',
+          icon: '⚖️',
+          desc: 'Sell loose sugar, flour, and oil in Paav (250g), half kg (500g), or ₹10-₹20 coins. Revise daily mandi rates in just 1 tap every morning.',
+          badge: 'Paav & Half Kg'
+        },
+        {
+          title: '4. Evening Cash Till Close',
+          icon: '🔒',
+          desc: 'At shop closing time, count 500, 200, 100, 50, 20, 10 notes into the cash drawer. Reconcile total day sales and send summary receipts via WhatsApp.',
+          badge: 'Cash Integrity'
+        }
+      ],
+      startPracticeBtn: '🚀 Try 1-Minute Practice Bill',
+      skipBtn: '✕ Learn Later',
+      prevBtn: 'Back',
+      nextBtn: 'Next',
+      practiceBar: {
+        step1: '👆 Step 1: Tap any item below (e.g. Sugar or Oil) to add to cart',
+        step2: '👆 Step 2: Choose Cash/Udhaar and tap "Finish Bill" below',
+        exitTour: '✕ Exit Practice'
+      },
+      celebration: {
+        title: '🎉 Great Job! Your First Bill is Ready!',
+        subtitle: 'You have successfully learned how to bill on Gramin Kirana.',
+        note: '💡 Note: This was a practice bill for learning. Real inventory and ledger accounts were not affected.',
+        startRealBtn: '✅ Start Real Billing Now',
+        retryBtn: '🔄 Practice Again'
+      },
+      welcomePrompt: {
+        title: 'Welcome! Would you like to learn how to make your first bill in 1 minute?',
+        startBtn: '🚀 Yes, Try Practice Bill',
+        dismissBtn: 'Later'
+      }
     }
   }
 };
