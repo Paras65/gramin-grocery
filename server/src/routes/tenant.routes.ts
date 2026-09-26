@@ -9,6 +9,8 @@ import { Sale } from '../models/Sale.js';
 import { Announcement } from '../models/Announcement.js';
 import { PaymentClaim } from '../models/PaymentClaim.js';
 import { Voucher } from '../models/Voucher.js';
+import { SecurityAuditLog } from '../models/SecurityAuditLog.js';
+import { extractClientIp, detectProxyHeaders, calculateRiskScore } from '../utils/fraudDetection.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'gk_default_secret_key_2026';
@@ -252,12 +254,34 @@ router.post('/subscription/claim', requireAuth, async (req: Request, res: Respon
     // Check if this UTR is already approved for any store
     const alreadyApproved = await PaymentClaim.findOne({ utrNumber: cleanUtr, status: 'APPROVED' });
     if (alreadyApproved) {
+      const clientIp = extractClientIp(req);
+      const proxyInfo = detectProxyHeaders(req);
+      SecurityAuditLog.create({
+        tenantId: tenant._id,
+        storeName: tenant.storeName,
+        ownerPhone: tenant.phone,
+        eventType: 'PAYMENT_CLAIM',
+        ipAddress: clientIp,
+        userAgent: req.headers['user-agent'] || '',
+        isProxy: proxyInfo.isProxy,
+        proxyDetails: {
+          headersDetected: proxyInfo.detectedHeaders,
+          isDatacenter: proxyInfo.isDatacenter,
+          isVpnOrTor: proxyInfo.isVpnOrTor,
+        },
+        riskScore: 90,
+        riskLevel: 'FRAUD',
+        riskReasons: [`स्वीकृत UTR (${cleanUtr}) को पुनः सबमिट करने का प्रयास (Attempted Claim on Already Approved UTR)`],
+        actionTaken: 'FLAGGED',
+        metadata: { utrNumber: cleanUtr, amount: expectedAmount },
+      }).catch(() => {});
+
       return res.status(400).json({
         error: 'यह UTR नंबर पहले से ही सत्यापित और स्वीकृत हो चुका है।',
       });
     }
 
-    // Edge Case 2: Cross-Store Collision Guard on Pending Claims
+    // Edge Case 2: Cross-Store Collision Guard on Pending Claims (Edge Case 5)
     const existingPending = await PaymentClaim.findOne({ utrNumber: cleanUtr, status: 'PENDING' });
     if (existingPending) {
       if (existingPending.tenantId.toString() === tenantId.toString()) {
@@ -266,6 +290,28 @@ router.post('/subscription/claim', requireAuth, async (req: Request, res: Respon
           claim: existingPending,
         });
       } else {
+        const clientIp = extractClientIp(req);
+        const proxyInfo = detectProxyHeaders(req);
+        SecurityAuditLog.create({
+          tenantId: tenant._id,
+          storeName: tenant.storeName,
+          ownerPhone: tenant.phone,
+          eventType: 'PAYMENT_CLAIM',
+          ipAddress: clientIp,
+          userAgent: req.headers['user-agent'] || '',
+          isProxy: proxyInfo.isProxy,
+          proxyDetails: {
+            headersDetected: proxyInfo.detectedHeaders,
+            isDatacenter: proxyInfo.isDatacenter,
+            isVpnOrTor: proxyInfo.isVpnOrTor,
+          },
+          riskScore: 95,
+          riskLevel: 'FRAUD',
+          riskReasons: [`अन्य स्टोर का समीक्षाधीन UTR (${cleanUtr}) सबमिट करने का प्रयास (Cross-Store Duplicate UTR Theft)`],
+          actionTaken: 'FLAGGED',
+          metadata: { utrNumber: cleanUtr, originalStoreId: existingPending.tenantId.toString() },
+        }).catch(() => {});
+
         return res.status(400).json({
           error: 'यह UTR नंबर पहले से किसी अन्य अनुरोध में समीक्षाधीन है। यदि यह आपका वैध UTR है तो कृपया हेल्पलाइन से संपर्क करें।',
         });
@@ -298,6 +344,34 @@ router.post('/subscription/claim', requireAuth, async (req: Request, res: Respon
       utrNumber: cleanUtr,
       status: 'PENDING',
     });
+
+    // Record audit telemetry
+    const clientIp = extractClientIp(req);
+    const proxyInfo = detectProxyHeaders(req);
+    const riskEval = calculateRiskScore({
+      isProxy: proxyInfo.isProxy,
+      isDatacenter: proxyInfo.isDatacenter,
+      isVpnOrTor: proxyInfo.isVpnOrTor,
+    });
+    SecurityAuditLog.create({
+      tenantId: tenant._id,
+      storeName: tenant.storeName,
+      ownerPhone: tenant.phone,
+      eventType: 'PAYMENT_CLAIM',
+      ipAddress: clientIp,
+      userAgent: req.headers['user-agent'] || '',
+      isProxy: proxyInfo.isProxy,
+      proxyDetails: {
+        headersDetected: proxyInfo.detectedHeaders,
+        isDatacenter: proxyInfo.isDatacenter,
+        isVpnOrTor: proxyInfo.isVpnOrTor,
+      },
+      riskScore: riskEval.riskScore,
+      riskLevel: riskEval.riskLevel,
+      riskReasons: riskEval.riskReasons,
+      actionTaken: 'NONE',
+      metadata: { utrNumber: cleanUtr, amount: expectedAmount, planDurationMonths: duration },
+    }).catch(() => {});
 
     res.status(201).json({
       message: 'भुगतान UTR सफलतापूर्वक दर्ज किया गया। सत्यापन होते ही प्रो प्लान स्वतः सक्रिय हो जाएगा।',

@@ -7,10 +7,17 @@ import {
   Eye, Clock, Plus, X, Send, CreditCard,
   CheckCircle2, XCircle, Copy, CheckCheck,
   Pause, Play, Bell, Zap, Sliders, Ticket,
-  Database, SlidersHorizontal, Layers, HardDrive
+  Database, SlidersHorizontal, Layers, HardDrive,
+  Globe, ShieldCheck, AlertOctagon, UserCheck, Ban,
+  Filter, FileText
 } from 'lucide-react';
 import { adminService, type PlatformOverviewResponse } from '../../services/adminService';
-import type { AdminStoreSummary, PlatformAnnouncement, AnnouncementType, AnnouncementTargetMode, PaymentClaim, VoucherItem, StoreStorageAnalytics, PlatformStorageOverview, LeadCategory } from '../../types';
+import type { 
+  AdminStoreSummary, PlatformAnnouncement, AnnouncementType, 
+  AnnouncementTargetMode, PaymentClaim, VoucherItem, StoreStorageAnalytics, 
+  PlatformStorageOverview, LeadCategory, FraudRadarOverview, 
+  SecurityAuditLogItem, FlaggedStoreRisk 
+} from '../../types';
 import { formatINR } from '../../utils/formatters';
 import { buildWhatsAppUrl } from '../../utils/whatsapp';
 
@@ -29,8 +36,30 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
   const [selectedPlan] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
 
-  // Tabs: STORES | PAYMENTS | VOUCHERS | BROADCASTS | STORAGE
-  const [adminTab, setAdminTab] = useState<'STORES' | 'PAYMENTS' | 'VOUCHERS' | 'BROADCASTS' | 'STORAGE'>('STORES');
+  // Tabs: STORES | PAYMENTS | VOUCHERS | BROADCASTS | STORAGE | FRAUD_RADAR
+  const [adminTab, setAdminTab] = useState<'STORES' | 'PAYMENTS' | 'VOUCHERS' | 'BROADCASTS' | 'STORAGE' | 'FRAUD_RADAR'>('STORES');
+
+  // Fraud Radar & Threat Intelligence States
+  const [fraudData, setFraudData] = useState<FraudRadarOverview | null>(null);
+  const [loadingFraud, setLoadingFraud] = useState<boolean>(false);
+  const [fraudFilter, setFraudFilter] = useState<'ALL' | 'HIGH_RISK' | 'SUSPICIOUS' | 'SAFE'>('ALL');
+  const [fraudSearch, setFraudSearch] = useState<string>('');
+  const [auditLogs, setAuditLogs] = useState<SecurityAuditLogItem[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState<boolean>(false);
+  const [auditLogPage, setAuditLogPage] = useState<number>(1);
+  const [auditLogTotalPages, setAuditLogTotalPages] = useState<number>(1);
+  const [activeFraudSubTab, setActiveFraudSubTab] = useState<'THREATS' | 'COLLISIONS' | 'AUDIT_LOGS'>('THREATS');
+  const [suspendModal, setSuspendModal] = useState<{
+    isOpen: boolean;
+    store: FlaggedStoreRisk | null;
+    reason: string;
+    isProcessing: boolean;
+  }>({
+    isOpen: false,
+    store: null,
+    reason: 'संदिग्ध गतिविधि / सुरक्षा जांच',
+    isProcessing: false,
+  });
 
   // Storage & Upgrade Analytics States
   const [storageData, setStorageData] = useState<{ overview: PlatformStorageOverview; stores: StoreStorageAnalytics[] } | null>(null);
@@ -141,6 +170,84 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
     } finally {
       setLoadingStorage(false);
     }
+  };
+
+  const loadFraudRadar = async () => {
+    try {
+      setLoadingFraud(true);
+      const data = await adminService.getFraudRadar();
+      setFraudData(data);
+    } catch (err: any) {
+      console.error('Failed to load fraud radar:', err);
+    } finally {
+      setLoadingFraud(false);
+    }
+  };
+
+  const loadSecurityAuditLogs = async (page = 1) => {
+    try {
+      setLoadingLogs(true);
+      const data = await adminService.getSecurityAuditLogs({
+        page,
+        limit: 25,
+        riskLevel: fraudFilter !== 'ALL' ? fraudFilter : undefined,
+        q: fraudSearch.trim() || undefined,
+      });
+      setAuditLogs(data.logs || []);
+      setAuditLogPage(data.page || 1);
+      setAuditLogTotalPages(data.totalPages || 1);
+    } catch (err: any) {
+      console.error('Failed to load audit logs:', err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const handleOpenSuspendModal = (store: FlaggedStoreRisk) => {
+    setSuspendModal({
+      isOpen: true,
+      store,
+      reason: 'संदिग्ध गतिविधि / सुरक्षा जांच',
+      isProcessing: false,
+    });
+  };
+
+  const handleConfirmSuspend = async () => {
+    if (!suspendModal.store) return;
+    try {
+      setSuspendModal(prev => ({ ...prev, isProcessing: true }));
+      await adminService.suspendStore(suspendModal.store.storeId, suspendModal.reason);
+      alert(`'${suspendModal.store.storeName}' का खाता सफलतापूर्वक निलंबित (Freeze) कर दिया गया है।`);
+      setSuspendModal({ isOpen: false, store: null, reason: '', isProcessing: false });
+      await loadFraudRadar();
+      await loadData(true);
+    } catch (err: any) {
+      alert(`खाता निलंबित करने में त्रुटि: ${err.message}`);
+      setSuspendModal(prev => ({ ...prev, isProcessing: false }));
+    }
+  };
+
+  const handleUnsuspendStore = async (store: FlaggedStoreRisk) => {
+    if (!window.confirm(`क्या आप '${store.storeName}' का खाता पुनः सक्रिय (Unsuspend) करना चाहते हैं?`)) return;
+    try {
+      await adminService.unsuspendStore(store.storeId);
+      alert(`'${store.storeName}' का खाता पुनः सक्रिय हो गया है।`);
+      await loadFraudRadar();
+      await loadData(true);
+    } catch (err: any) {
+      alert(`पुनः सक्रिय करने में त्रुटि: ${err.message}`);
+    }
+  };
+
+  const handleFraudWhatsAppInquiry = (store: FlaggedStoreRisk) => {
+    const cleanPhone = store.phone.replace(/[^0-9]/g, '');
+    if (!cleanPhone) {
+      alert('फोन नंबर उपलब्ध नहीं है');
+      return;
+    }
+    const message = `नमस्ते ${store.ownerName} जी,\n\nग्रामीण किराना सुरक्षा व सपोर्ट टीम की ओर से संदेश।\n\nआपकी दुकान "${store.storeName}" (${store.village}, ${store.district}) के खाते पर सुरक्षा रडार ने एक अलर्ट दर्ज किया है:\n• जोखिम श्रेणी: ${store.riskLevel}\n• मुख्य कारण: ${store.riskReasons.slice(0, 2).join(', ') || 'सत्यापन आवश्यक'}\n\nकृपया अपनी दुकान का सत्यापन पूर्ण करने हेतु अपनी दुकान का बोर्ड या बिल पर्ची की फोटो साझा करें।\n\n— ग्रामीण किराना सुरक्षा दल`;
+    const url = buildWhatsAppUrl(cleanPhone, message);
+    window.open(url, '_blank');
   };
 
   const handleOpenInspector = (store: AdminStoreSummary) => {
@@ -1006,6 +1113,28 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
             {storageData?.overview.hotUpgradeCount ? (
               <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
                 {storageData.overview.hotUpgradeCount} हॉट!
+              </span>
+            ) : null}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('FRAUD_RADAR');
+              loadFraudRadar();
+              loadSecurityAuditLogs(1);
+            }}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm cursor-pointer transition-all shrink-0 ${
+              adminTab === 'FRAUD_RADAR'
+                ? 'bg-rose-700 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4" />
+            <span>🛡️ फ्रॉड रडार व सुरक्षा</span>
+            {fraudData?.overview.highRiskCount ? (
+              <span className="bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs animate-pulse">
+                {fraudData.overview.highRiskCount} अलर्ट!
               </span>
             ) : null}
           </button>
@@ -2416,6 +2545,629 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                 </div>
               </div>
             ) : null}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* FRAUD RADAR & THREAT INTELLIGENCE TAB (सुरक्षा व धोखाधड़ी निगरानी) */}
+        {/* ========================================================================= */}
+        {adminTab === 'FRAUD_RADAR' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Top 4 KPI Metrics */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {/* Card 1: High Risk Threat Alerts */}
+              <div className="p-4 rounded-2xl bg-white border border-rose-200 shadow-2xs">
+                <div className="flex items-center justify-between text-stone-500 mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-800">उच्च जोखिम अलर्ट (High Risk)</span>
+                  <div className="p-1.5 rounded-xl bg-rose-100 text-rose-800">
+                    <ShieldAlert className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-rose-950">
+                  {fraudData?.overview.highRiskCount || 0}
+                </div>
+                <div className="mt-2 text-[11px] text-rose-700 font-medium">
+                  {fraudData?.overview.suspendedStoresCount || 0} खाते वर्तमान में निलंबित (Frozen) हैं
+                </div>
+              </div>
+
+              {/* Card 2: Proxies & VPNs Detected */}
+              <div className="p-4 rounded-2xl bg-white border border-purple-200 shadow-2xs">
+                <div className="flex items-center justify-between text-stone-500 mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-purple-800">प्रॉक्सी व वीपीएन (Proxy/VPN)</span>
+                  <div className="p-1.5 rounded-xl bg-purple-100 text-purple-800">
+                    <Globe className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-purple-950">
+                  {fraudData?.overview.proxyHitsCount || 0}
+                </div>
+                <div className="mt-2 text-[11px] text-purple-700 font-medium">
+                  गुमनाम या डेटासेंटर IP हेडर पहचान
+                </div>
+              </div>
+
+              {/* Card 3: IP Collision Groups */}
+              <div className="p-4 rounded-2xl bg-white border border-amber-200 shadow-2xs">
+                <div className="flex items-center justify-between text-stone-500 mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-800">IP कोलिशन समूह (Shared IP)</span>
+                  <div className="p-1.5 rounded-xl bg-amber-100 text-amber-800">
+                    <Users className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-amber-950">
+                  {fraudData?.overview.ipCollisionCount || 0}
+                </div>
+                <div className="mt-2 text-[11px] text-amber-700 font-medium">
+                  एक ही IP से 2 या अधिक दुकानें संबंधित
+                </div>
+              </div>
+
+              {/* Card 4: Duplicate UTR Claims */}
+              <div className="p-4 rounded-2xl bg-white border border-blue-200 shadow-2xs">
+                <div className="flex items-center justify-between text-stone-500 mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-800">डुप्लीकेट UTR प्रयास</span>
+                  <div className="p-1.5 rounded-xl bg-blue-100 text-blue-800">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-blue-950">
+                  {fraudData?.overview.duplicateUtrCount || 0}
+                </div>
+                <div className="mt-2 text-[11px] text-blue-700 font-medium">
+                  समान 12-अंक UTR चोरी या डुप्लीकेट क्लेम
+                </div>
+              </div>
+            </div>
+
+            {/* Sub-Tabs: Threats & Stores | IP Collisions | Live Audit Logs */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
+              <div className="flex items-center gap-2 overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveFraudSubTab('THREATS')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition ${
+                    activeFraudSubTab === 'THREATS'
+                      ? 'bg-rose-700 text-white shadow-xs'
+                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
+                >
+                  ⚠️ खतरे व फ्लैग्ड दुकानें ({fraudData?.flaggedStores.length || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveFraudSubTab('COLLISIONS')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition ${
+                    activeFraudSubTab === 'COLLISIONS'
+                      ? 'bg-rose-700 text-white shadow-xs'
+                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
+                >
+                  👥 IP कोलिशन समूह ({fraudData?.ipCollisions.length || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveFraudSubTab('AUDIT_LOGS');
+                    loadSecurityAuditLogs(1);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition ${
+                    activeFraudSubTab === 'AUDIT_LOGS'
+                      ? 'bg-rose-700 text-white shadow-xs'
+                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
+                >
+                  📜 लाइव सुरक्षा ऑडिट लॉग ({auditLogs.length})
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  loadFraudRadar();
+                  if (activeFraudSubTab === 'AUDIT_LOGS') loadSecurityAuditLogs(auditLogPage);
+                }}
+                disabled={loadingFraud || loadingLogs}
+                className="px-3 py-1.5 rounded-xl bg-white border border-stone-200 hover:bg-stone-50 text-xs font-bold text-stone-700 flex items-center gap-1.5 cursor-pointer active:scale-95 transition"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingFraud || loadingLogs ? 'animate-spin' : ''}`} />
+                <span>रिफ्रेश</span>
+              </button>
+            </div>
+
+            {/* SUB-TAB 1: THREATS & FLAGGED STORES */}
+            {activeFraudSubTab === 'THREATS' && (
+              <div className="space-y-4">
+                {/* Search & Filter Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs">
+                  <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                    <Search className="w-4 h-4 text-stone-400 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="दुकान, फोन या IP खोजें..."
+                      value={fraudSearch}
+                      onChange={(e) => setFraudSearch(e.target.value)}
+                      className="w-full text-xs sm:text-sm bg-transparent border-none focus:outline-hidden text-stone-800 placeholder-stone-400"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold">
+                    <span className="text-stone-400 mr-1 flex items-center gap-1">
+                      <Filter className="w-3.5 h-3.5" /> जोखिम:
+                    </span>
+                    {(['ALL', 'HIGH_RISK', 'SUSPICIOUS', 'SAFE'] as const).map((lvl) => (
+                      <button
+                        key={lvl}
+                        type="button"
+                        onClick={() => setFraudFilter(lvl)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition ${
+                          fraudFilter === lvl
+                            ? 'bg-rose-700 text-white'
+                            : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        }`}
+                      >
+                        {lvl === 'ALL'
+                          ? 'सभी'
+                          : lvl === 'HIGH_RISK'
+                          ? '🔴 उच्च जोखिम'
+                          : lvl === 'SUSPICIOUS'
+                          ? '🟡 संदिग्ध'
+                          : '🟢 सुरक्षित'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Flagged Stores List */}
+                {loadingFraud ? (
+                  <div className="p-8 text-center bg-white rounded-2xl border border-stone-200 text-stone-500 font-bold text-sm flex items-center justify-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin text-rose-600" />
+                    सुरक्षा रडार विश्लेषण लोड हो रहा है...
+                  </div>
+                ) : !fraudData || fraudData.flaggedStores.length === 0 ? (
+                  <div className="p-8 text-center bg-white rounded-2xl border border-stone-200 text-stone-500">
+                    <ShieldCheck className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                    <div className="font-bold text-stone-800">कोई सुरक्षा खतरा दर्ज नहीं हुआ है</div>
+                    <div className="text-xs text-stone-400 mt-1">सभी दुकानें सामान्य व सुरक्षित नेटवर्क से संचालित हो रही हैं।</div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {fraudData.flaggedStores
+                      .filter((s) => {
+                        if (fraudFilter === 'HIGH_RISK') return s.riskScore >= 60;
+                        if (fraudFilter === 'SUSPICIOUS') return s.riskScore >= 25 && s.riskScore < 60;
+                        if (fraudFilter === 'SAFE') return s.riskScore < 25;
+                        return true;
+                      })
+                      .filter((s) => {
+                        if (!fraudSearch.trim()) return true;
+                        const q = fraudSearch.toLowerCase().trim();
+                        return (
+                          s.storeName.toLowerCase().includes(q) ||
+                          s.ownerName.toLowerCase().includes(q) ||
+                          s.phone.includes(q) ||
+                          s.lastIp.includes(q) ||
+                          s.district.toLowerCase().includes(q)
+                        );
+                      })
+                      .map((store) => {
+                        const isHigh = store.riskScore >= 60;
+                        const isMed = store.riskScore >= 25 && store.riskScore < 60;
+                        const isSuspended = store.status === 'SUSPENDED';
+
+                        return (
+                          <div
+                            key={store.storeId}
+                            className={`p-4 rounded-2xl bg-white border transition shadow-2xs ${
+                              isSuspended
+                                ? 'border-stone-300 bg-stone-50/70 opacity-90'
+                                : isHigh
+                                ? 'border-rose-300 ring-1 ring-rose-200'
+                                : isMed
+                                ? 'border-amber-200'
+                                : 'border-stone-200'
+                            }`}
+                          >
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                              {/* Store Info */}
+                              <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h4 className="font-black text-stone-900 text-sm sm:text-base m-0">
+                                    {store.storeName}
+                                  </h4>
+                                  <span className="text-xs text-stone-500 font-medium">
+                                    ({store.ownerName})
+                                  </span>
+
+                                  {/* Plan Badge */}
+                                  <span
+                                    className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                      store.plan === 'PRO'
+                                        ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                                        : 'bg-stone-100 text-stone-700'
+                                    }`}
+                                  >
+                                    {store.plan === 'PRO' ? '👑 PRO' : 'FREE'}
+                                  </span>
+
+                                  {/* Trial Badge */}
+                                  {store.isTrial && (
+                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
+                                      ट्रायल
+                                    </span>
+                                  )}
+
+                                  {/* Status Badge */}
+                                  {isSuspended ? (
+                                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-rose-700 text-white flex items-center gap-1 shadow-xs animate-pulse">
+                                      <Ban className="w-3 h-3" /> खाता निलंबित (Frozen)
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                      सक्रिय (Active)
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3 text-xs text-stone-500">
+                                  <span>📞 {store.phone}</span>
+                                  <span>📍 {store.village}, {store.district}</span>
+                                  <span>🌐 IP: <code className="font-mono bg-stone-100 px-1.5 py-0.5 rounded-sm text-stone-800">{store.lastIp}</code></span>
+                                </div>
+                              </div>
+
+                              {/* Risk Meter & Action Buttons */}
+                              <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-stone-100">
+                                {/* Risk Score Badge */}
+                                <div className="text-right mr-2">
+                                  <div className="text-[10px] uppercase font-bold text-stone-400">जोखिम स्कोर</div>
+                                  <div
+                                    className={`text-lg font-black ${
+                                      isHigh ? 'text-rose-700' : isMed ? 'text-amber-700' : 'text-emerald-700'
+                                    }`}
+                                  >
+                                    {store.riskScore}/100
+                                  </div>
+                                </div>
+
+                                {/* Suspend / Unsuspend Button */}
+                                {isSuspended ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUnsuspendStore(store)}
+                                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition"
+                                  >
+                                    <UserCheck className="w-3.5 h-3.5" />
+                                    <span>सक्रिय करें</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenSuspendModal(store)}
+                                    className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition"
+                                    title="खाता तत्काल निलंबित करें"
+                                  >
+                                    <Ban className="w-3.5 h-3.5" />
+                                    <span>खाता रोकें (Freeze)</span>
+                                  </button>
+                                )}
+
+                                {/* WhatsApp Inquiry */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleFraudWhatsAppInquiry(store)}
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition"
+                                  title="व्हाट्सएप पर स्पष्टीकरण मांगें"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>WhatsApp 💬</span>
+                                </button>
+
+                                {/* 360 Inspector */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const matched = stores.find((s) => s.id === store.storeId);
+                                    if (matched) handleOpenInspector(matched);
+                                    else alert('स्टोर विवरण लोड हो रहा है...');
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1 cursor-pointer active:scale-95 transition"
+                                  title="360° स्टोर नियंत्रण"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>जांचें</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Threat Tags & Reasons */}
+                            <div className="mt-3 pt-3 border-t border-stone-100 flex flex-wrap items-center gap-2">
+                              {store.isProxy && (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-200 flex items-center gap-1">
+                                  <Globe className="w-3 h-3" /> प्रॉक्सी / वीपीएन हेडर
+                                </span>
+                              )}
+                              {store.isDatacenter && (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-200 flex items-center gap-1">
+                                  <AlertOctagon className="w-3 h-3" /> डेटासेंटर / बॉट स्क्रिप्ट
+                                </span>
+                              )}
+
+                              {store.riskReasons.map((r, i) => (
+                                <span
+                                  key={i}
+                                  className="text-[11px] font-medium text-stone-600 bg-stone-100 px-2 py-0.5 rounded-md"
+                                >
+                                  • {r}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SUB-TAB 2: IP COLLISIONS */}
+            {activeFraudSubTab === 'COLLISIONS' && (
+              <div className="space-y-4">
+                <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                  <strong>💡 ग्रामीण संदर्भ व CSC कियोस्क सुरक्षा:</strong> ग्रामीण क्षेत्रों में साझा टावर (CGNAT) या ग्राम पंचायत कियोस्क (CSC/VLE) से एक ही IP पर कई वैध दुकानें हो सकती हैं। यदि दुकानें अलग-अलग डिवाइस पर अलग-अलग समय पर खुली हैं तो यह सामान्य है। यदि 5 मिनट के भीतर एक ही डिवाइस से 3+ ट्रायल खाते बने हों, तो तुरंत खाता रोकें।
+                </div>
+
+                {!fraudData?.ipCollisions || fraudData.ipCollisions.length === 0 ? (
+                  <div className="p-8 text-center bg-white rounded-2xl border border-stone-200 text-stone-500">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                    <div className="font-bold text-stone-800">कोई IP कोलिशन नहीं मिला</div>
+                    <div className="text-xs text-stone-400 mt-1">प्रत्येक दुकान विशिष्ट IP पते से संचालित हो रही है।</div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {fraudData.ipCollisions.map((group, idx) => (
+                      <div key={idx} className="p-4 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-3">
+                        <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-sm text-stone-900 bg-stone-100 px-2 py-0.5 rounded-md">
+                              {group.ipAddress}
+                            </span>
+                            {group.isProxy && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
+                                🌐 Proxy
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                            {group.storeCount} दुकानें साझा
+                          </span>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-[11px] font-bold text-stone-400 uppercase">संबंधित किराना दुकानें:</div>
+                          {group.stores.map((s: any, sIdx: number) => (
+                            <div key={sIdx} className="flex items-center justify-between text-xs bg-stone-50 p-2 rounded-xl">
+                              <span className="font-bold text-stone-800">{s.storeName || 'किराना दुकान'}</span>
+                              <span className="text-stone-500 font-mono">{s.phone}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SUB-TAB 3: LIVE SECURITY AUDIT LOGS */}
+            {activeFraudSubTab === 'AUDIT_LOGS' && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-stone-200 shadow-2xs">
+                  <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                    <Search className="w-4 h-4 text-stone-400 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="लॉग में खोजें (दुकान, फोन, IP)..."
+                      value={fraudSearch}
+                      onChange={(e) => setFraudSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') loadSecurityAuditLogs(1);
+                      }}
+                      className="w-full text-xs sm:text-sm bg-transparent border-none focus:outline-hidden text-stone-800 placeholder-stone-400"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => loadSecurityAuditLogs(1)}
+                    className="px-3 py-1.5 rounded-xl bg-stone-900 text-white text-xs font-bold cursor-pointer"
+                  >
+                    खोजें
+                  </button>
+                </div>
+
+                {loadingLogs ? (
+                  <div className="p-8 text-center bg-white rounded-2xl border border-stone-200 text-stone-500 font-bold text-sm flex items-center justify-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin text-rose-600" />
+                    ऑडिट लॉग लोड हो रहे हैं...
+                  </div>
+                ) : auditLogs.length === 0 ? (
+                  <div className="p-8 text-center bg-white rounded-2xl border border-stone-200 text-stone-500">
+                    <FileText className="w-8 h-8 text-stone-300 mx-auto mb-2" />
+                    <div className="font-bold text-stone-700">कोई सुरक्षा लॉग नहीं मिला</div>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#faf8f3] border-b border-stone-200 text-stone-600 font-bold uppercase text-[10px]">
+                          <tr>
+                            <th className="p-3">समय</th>
+                            <th className="p-3">घटना (Event)</th>
+                            <th className="p-3">दुकान / फोन</th>
+                            <th className="p-3">IP पता व प्रॉक्सी</th>
+                            <th className="p-3">जोखिम</th>
+                            <th className="p-3">कारण व विवरण</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-100">
+                          {auditLogs.map((log) => (
+                            <tr key={log._id} className="hover:bg-stone-50/70 transition">
+                              <td className="p-3 text-stone-400 text-[11px] whitespace-nowrap">
+                                {new Date(log.createdAt).toLocaleString('hi-IN', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </td>
+                              <td className="p-3 font-bold">
+                                <span
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                                    log.eventType === 'STORE_REGISTRATION'
+                                      ? 'bg-blue-100 text-blue-900'
+                                      : log.eventType === 'LOGIN'
+                                      ? 'bg-emerald-100 text-emerald-900'
+                                      : log.eventType === 'FAILED_LOGIN'
+                                      ? 'bg-rose-100 text-rose-900'
+                                      : log.eventType === 'PAYMENT_CLAIM'
+                                      ? 'bg-amber-100 text-amber-900'
+                                      : 'bg-stone-100 text-stone-800'
+                                  }`}
+                                >
+                                  {log.eventType}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <div className="font-bold text-stone-900">{log.storeName || '—'}</div>
+                                <div className="text-stone-400 text-[11px]">{log.ownerPhone || '—'}</div>
+                              </td>
+                              <td className="p-3">
+                                <div className="font-mono text-stone-800">{log.ipAddress}</div>
+                                {log.isProxy && (
+                                  <span className="text-[9px] font-black text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-sm">
+                                    🌐 Proxy
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3">
+                                <span
+                                  className={`font-black ${
+                                    log.riskScore >= 60
+                                      ? 'text-rose-600'
+                                      : log.riskScore >= 25
+                                      ? 'text-amber-600'
+                                      : 'text-emerald-600'
+                                  }`}
+                                >
+                                  {log.riskScore}/100
+                                </span>
+                              </td>
+                              <td className="p-3 text-stone-600 text-[11px]">
+                                {log.riskReasons && log.riskReasons.length > 0 ? (
+                                  <div>{log.riskReasons.join(' • ')}</div>
+                                ) : (
+                                  <span className="text-stone-400">सामान्य</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination */}
+                    <div className="p-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
+                      <span>पृष्ठ {auditLogPage} / {auditLogTotalPages}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={auditLogPage <= 1}
+                          onClick={() => loadSecurityAuditLogs(auditLogPage - 1)}
+                          className="px-2.5 py-1 rounded-lg border border-stone-200 hover:bg-stone-100 disabled:opacity-40 cursor-pointer"
+                        >
+                          पिछला
+                        </button>
+                        <button
+                          type="button"
+                          disabled={auditLogPage >= auditLogTotalPages}
+                          onClick={() => loadSecurityAuditLogs(auditLogPage + 1)}
+                          className="px-2.5 py-1 rounded-lg border border-stone-200 hover:bg-stone-100 disabled:opacity-40 cursor-pointer"
+                        >
+                          अगला
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* STORE SUSPENSION CONFIRMATION MODAL */}
+        {/* ========================================================================= */}
+        {suspendModal.isOpen && suspendModal.store && (
+          <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-5 sm:p-6 border border-rose-300 animate-slide-down my-auto space-y-4">
+              <div className="flex items-center gap-3 text-rose-700">
+                <div className="p-2.5 rounded-2xl bg-rose-100">
+                  <Ban className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-stone-900 m-0">
+                    खाता निलंबित करें (Freeze Store)
+                  </h3>
+                  <p className="text-xs text-stone-500 m-0 font-medium">
+                    {suspendModal.store.storeName} ({suspendModal.store.ownerName})
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-rose-50 p-3 rounded-2xl border border-rose-200 text-xs text-rose-900 leading-relaxed">
+                ⚠️ <strong>तत्काल प्रभाव:</strong> इस दुकान का खाता तुरंत फ्रीज हो जाएगा। दुकानदार व मुनीम का सक्रिय लॉगिन सत्र तत्काल रद्द हो जाएगा और वे बिलिंग या क्लाउड सिंक नहीं कर सकेंगे।
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  निलंबन का कारण (Reason):
+                </label>
+                <input
+                  type="text"
+                  value={suspendModal.reason}
+                  onChange={(e) => setSuspendModal(prev => ({ ...prev, reason: e.target.value }))}
+                  className="w-full text-xs sm:text-sm p-2.5 rounded-xl border border-stone-300 focus:outline-rose-500 bg-white"
+                  placeholder="जैसे: डुप्लीकेट UTR, संदिग्ध प्रॉक्सी लॉगिन..."
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSuspendModal({ isOpen: false, store: null, reason: '', isProcessing: false })}
+                  disabled={suspendModal.isProcessing}
+                  className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs cursor-pointer"
+                >
+                  रद्द करें
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmSuspend}
+                  disabled={suspendModal.isProcessing}
+                  className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs cursor-pointer shadow-xs flex items-center gap-1.5"
+                >
+                  {suspendModal.isProcessing ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>निलंबित हो रहा है...</span>
+                    </>
+                  ) : (
+                    <span>⛔ हाँ, तुरंत खाता निलंबित करें</span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

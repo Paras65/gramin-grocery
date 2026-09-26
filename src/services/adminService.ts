@@ -1,4 +1,8 @@
-import type { PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan, PlatformAnnouncement, PaymentClaim, VoucherItem, StoreStorageAnalytics, PlatformStorageOverview } from '../types';
+import type { 
+  PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan, 
+  PlatformAnnouncement, PaymentClaim, VoucherItem, StoreStorageAnalytics, 
+  PlatformStorageOverview, FraudRadarOverview, SecurityAuditLogItem 
+} from '../types';
 import { API_BASE } from '../utils/apiConfig';
 
 export interface AdminUser {
@@ -414,6 +418,54 @@ class AdminService {
     });
 
     return await this.parseResponse(res, 'मुनीम PIN रीसेट करने में विफल');
+  }
+
+  public async getFraudRadar(): Promise<FraudRadarOverview> {
+    const res = await fetch(`${API_BASE}/admin/security/fraud-radar`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    return await this.parseResponse(res, 'फ्रॉड रडार टेलीमेट्री लोड करने में विफल');
+  }
+
+  public async getSecurityAuditLogs(params?: {
+    riskLevel?: string;
+    eventType?: string;
+    q?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ logs: SecurityAuditLogItem[]; total: number; page: number; totalPages: number }> {
+    const query = new URLSearchParams();
+    if (params?.riskLevel && params.riskLevel !== 'ALL') query.set('riskLevel', params.riskLevel);
+    if (params?.eventType && params.eventType !== 'ALL') query.set('eventType', params.eventType);
+    if (params?.q) query.set('q', params.q);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+
+    const res = await fetch(`${API_BASE}/admin/security/audit-logs?${query.toString()}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    return await this.parseResponse(res, 'सुरक्षा ऑडिट लॉग लोड करने में विफल');
+  }
+
+  public async suspendStore(id: string, reason?: string): Promise<{ message: string; storeId: string; status: string }> {
+    const res = await fetch(`${API_BASE}/admin/stores/${id}/suspend`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ reason: reason || 'संदिग्ध गतिविधि / सुरक्षा कारण' }),
+    });
+
+    return await this.parseResponse(res, 'स्टोर खाता निलंबित करने में विफल');
+  }
+
+  public async unsuspendStore(id: string): Promise<{ message: string; storeId: string; status: string }> {
+    const res = await fetch(`${API_BASE}/admin/stores/${id}/unsuspend`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+    });
+
+    return await this.parseResponse(res, 'स्टोर खाता पुनः सक्रिय करने में विफल');
   }
 }
 

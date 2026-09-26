@@ -13,8 +13,10 @@ import { SpoilageLog } from '../models/SpoilageLog.js';
 import { Announcement } from '../models/Announcement.js';
 import { PaymentClaim } from '../models/PaymentClaim.js';
 import { Voucher } from '../models/Voucher.js';
-import { adminAuthLimiter, requireAuth, requireRole } from '../middleware/security.js';
+import { SecurityAuditLog } from '../models/SecurityAuditLog.js';
+import { adminAuthLimiter, requireAuth, requireRole, markTenantSuspended, markTenantUnsuspended } from '../middleware/security.js';
 import { runWithTenantContext } from '../middleware/tenantContext.js';
+import { isPrivateOrLoopbackIp } from '../utils/fraudDetection.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'gk_default_secret_key_2026';
@@ -500,20 +502,50 @@ router.post('/stores/bulk-status-control', requireAuth, requireRole('SUPER_ADMIN
 router.patch('/stores/:id/status', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { isActive } = req.body;
+    const { isActive, reason } = req.body;
 
     if (typeof isActive !== 'boolean') {
       return res.status(400).json({ error: 'isActive must be a boolean' });
     }
+
+    const tenant = await Tenant.findById(id);
+    if (!tenant) {
+      return res.status(404).json({ error: 'दुकान नहीं मिली (Store not found).' });
+    }
+
+    if (isActive) {
+      tenant.subscription.status = 'ACTIVE';
+      markTenantUnsuspended(id);
+    } else {
+      tenant.subscription.status = 'SUSPENDED';
+      markTenantSuspended(id);
+    }
+    await tenant.save();
 
     await User.updateMany(
       { tenantId: id },
       { $set: { isActive } }
     );
 
+    // Audit administrative security action
+    SecurityAuditLog.create({
+      tenantId: tenant._id,
+      storeName: tenant.storeName,
+      ownerPhone: tenant.phone,
+      eventType: 'ADMIN_ACTION',
+      ipAddress: '127.0.0.1',
+      isProxy: false,
+      riskScore: 0,
+      riskLevel: 'SAFE',
+      riskReasons: [isActive ? 'सुपर एडमिन द्वारा स्टोर पुनः सक्रिय किया गया' : 'सुपर एडमिन द्वारा स्टोर निलंबित किया गया'],
+      actionTaken: isActive ? 'NONE' : 'SUSPENDED',
+      metadata: { reason: reason || 'Admin status update', performedBy: (req as any).user?.name || 'SUPER_ADMIN' },
+    }).catch(() => {});
+
     res.json({
       message: isActive ? 'दुकान खाता पुनः सक्रिय किया गया (Store re-activated)' : 'दुकान खाता निलंबित किया गया (Store suspended)',
       isActive,
+      status: tenant.subscription.status,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1178,6 +1210,358 @@ router.post('/stores/:id/reset-munim-pin', requireAuth, requireRole('SUPER_ADMIN
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// 22. Fraud Radar Platform Security Aggregations & Metrics
+router.get('/security/fraud-radar', requireAuth, requireRole('SUPER_ADMIN'), async (_req: Request, res: Response) => {
+  return runWithTenantContext({ role: 'SUPER_ADMIN' }, async () => {
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const [
+        totalEvents,
+        highRiskCount,
+        proxyHitsCount,
+        duplicateUtrCount,
+        suspendedStoresCount,
+      ] = await Promise.all([
+        SecurityAuditLog.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+        SecurityAuditLog.countDocuments({
+          createdAt: { $gte: thirtyDaysAgo },
+          riskLevel: { $in: ['HIGH_RISK', 'FRAUD'] },
+        }),
+        SecurityAuditLog.countDocuments({ createdAt: { $gte: thirtyDaysAgo }, isProxy: true }),
+        SecurityAuditLog.countDocuments({
+          createdAt: { $gte: thirtyDaysAgo },
+          eventType: 'PAYMENT_CLAIM',
+          riskLevel: 'FRAUD',
+        }),
+        Tenant.countDocuments({ 'subscription.status': 'SUSPENDED' }),
+      ]);
+
+      // Detect IP Collisions (IPs used across 2+ distinct stores)
+      const rawIpGroups = await SecurityAuditLog.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: thirtyDaysAgo },
+            tenantId: { $exists: true, $ne: null },
+          },
+        },
+        {
+          $group: {
+            _id: '$ipAddress',
+            uniqueTenants: { $addToSet: '$tenantId' },
+            sampleStores: {
+              $addToSet: {
+                tenantId: '$tenantId',
+                storeName: '$storeName',
+                phone: '$ownerPhone',
+              },
+            },
+            isProxy: { $max: '$isProxy' },
+          },
+        },
+        {
+          $project: {
+            ipAddress: '$_id',
+            storeCount: { $size: '$uniqueTenants' },
+            sampleStores: 1,
+            isProxy: 1,
+          },
+        },
+        { $match: { storeCount: { $gte: 2 } } },
+        { $sort: { storeCount: -1 } },
+        { $limit: 20 },
+      ]);
+
+      // Filter out localhost and private subnets from collision alerts
+      const ipCollisions = rawIpGroups
+        .filter((g) => !isPrivateOrLoopbackIp(g.ipAddress))
+        .map((g) => ({
+          ipAddress: g.ipAddress,
+          storeCount: g.storeCount,
+          isProxy: !!g.isProxy,
+          stores: (g.sampleStores || []).slice(0, 5),
+        }));
+
+      // Find Stores ranked by Risk Score
+      const storeRiskAgg = await SecurityAuditLog.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: thirtyDaysAgo },
+            tenantId: { $exists: true, $ne: null },
+          },
+        },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: '$tenantId',
+            maxRiskScore: { $max: '$riskScore' },
+            latestLog: { $first: '$$ROOT' },
+            allReasons: { $push: '$riskReasons' },
+          },
+        },
+        { $sort: { maxRiskScore: -1 } },
+        { $limit: 50 },
+      ]);
+
+      const tenantIds = storeRiskAgg.map((s) => s._id);
+      const tenantsMap = new Map();
+      if (tenantIds.length > 0) {
+        const foundTenants = await Tenant.find({ _id: { $in: tenantIds } })
+          .select('storeName ownerName phone address subscription createdAt')
+          .lean();
+        foundTenants.forEach((t) => tenantsMap.set(t._id.toString(), t));
+      }
+
+      // Also include any currently suspended stores even if no recent log
+      const allSuspendedTenants = await Tenant.find({ 'subscription.status': 'SUSPENDED' })
+        .select('storeName ownerName phone address subscription createdAt')
+        .lean();
+
+      for (const st of allSuspendedTenants) {
+        if (!tenantsMap.has(st._id.toString())) {
+          tenantsMap.set(st._id.toString(), st);
+          storeRiskAgg.push({
+            _id: st._id,
+            maxRiskScore: 90,
+            latestLog: {
+              ipAddress: '127.0.0.1',
+              isProxy: false,
+              riskLevel: 'FRAUD',
+              riskReasons: ['प्रशासक द्वारा निलंबित स्टोर खाता (Manually Suspended Store)'],
+              createdAt: st.createdAt,
+            },
+            allReasons: [['खाता निलंबित है']],
+          });
+        }
+      }
+
+      const flaggedStores = storeRiskAgg.map((item) => {
+        const tenant = tenantsMap.get(item._id.toString());
+        const log = item.latestLog || {};
+        const flatReasons = Array.from(new Set((item.allReasons || []).flat())).filter(Boolean);
+
+        return {
+          storeId: item._id,
+          storeName: tenant?.storeName || log.storeName || 'अज्ञात स्टोर',
+          ownerName: tenant?.ownerName || 'दुकानदार',
+          phone: tenant?.phone || log.ownerPhone || '—',
+          village: tenant?.address?.village || '—',
+          district: tenant?.address?.district || '—',
+          plan: tenant?.subscription?.plan || 'FREE',
+          status: tenant?.subscription?.status || 'ACTIVE',
+          riskScore: item.maxRiskScore,
+          riskLevel:
+            item.maxRiskScore >= 80
+              ? 'FRAUD'
+              : item.maxRiskScore >= 60
+              ? 'HIGH_RISK'
+              : item.maxRiskScore >= 25
+              ? 'SUSPICIOUS'
+              : 'SAFE',
+          isProxy: !!log.isProxy,
+          isDatacenter: !!log.proxyDetails?.isDatacenter,
+          isVpnOrTor: !!log.proxyDetails?.isVpnOrTor,
+          lastIp: log.ipAddress || '127.0.0.1',
+          riskReasons: flatReasons.length > 0 ? flatReasons.slice(0, 4) : log.riskReasons || [],
+          lastEventAt: log.createdAt || tenant?.createdAt,
+          isTrial: !!tenant?.subscription?.isTrial,
+        };
+      });
+
+      // Duplicate UTR Fraud Alerts
+      const duplicateUtrLogs = await SecurityAuditLog.find({
+        createdAt: { $gte: thirtyDaysAgo },
+        eventType: 'PAYMENT_CLAIM',
+        riskLevel: 'FRAUD',
+      })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+
+      const duplicateUtrAlerts = duplicateUtrLogs.map((l) => ({
+        id: l._id,
+        utrNumber: l.metadata?.utrNumber || 'अज्ञात UTR',
+        storeName: l.storeName || '—',
+        phone: l.ownerPhone || '—',
+        ipAddress: l.ipAddress,
+        riskScore: l.riskScore,
+        reason: l.riskReasons[0] || 'डुप्लीकेट भुगतान क्लेम प्रयास',
+        createdAt: l.createdAt,
+      }));
+
+      res.json({
+        overview: {
+          totalEvents,
+          highRiskCount,
+          proxyHitsCount,
+          ipCollisionCount: ipCollisions.length,
+          duplicateUtrCount,
+          suspendedStoresCount,
+        },
+        flaggedStores,
+        ipCollisions,
+        duplicateUtrAlerts,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'फ्रॉड रडार डेटा लोड करने में त्रुटि: ' + err.message });
+    }
+  });
+});
+
+// 23. Paginated Security Audit Logs Feed
+router.get('/security/audit-logs', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  return runWithTenantContext({ role: 'SUPER_ADMIN' }, async () => {
+    try {
+      const {
+        riskLevel = 'ALL',
+        eventType = 'ALL',
+        q = '',
+        page = '1',
+        limit = '50',
+      } = req.query;
+
+      const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 50));
+      const skip = (pageNum - 1) * limitNum;
+
+      const filter: any = {};
+
+      if (riskLevel !== 'ALL') {
+        filter.riskLevel = riskLevel;
+      }
+
+      if (eventType !== 'ALL') {
+        filter.eventType = eventType;
+      }
+
+      if (q && typeof q === 'string' && q.trim()) {
+        const cleanQ = q.trim();
+        filter.$or = [
+          { storeName: { $regex: cleanQ, $options: 'i' } },
+          { ownerPhone: { $regex: cleanQ, $options: 'i' } },
+          { ipAddress: { $regex: cleanQ, $options: 'i' } },
+        ];
+      }
+
+      const [logs, total] = await Promise.all([
+        SecurityAuditLog.find(filter)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limitNum)
+          .lean(),
+        SecurityAuditLog.countDocuments(filter),
+      ]);
+
+      res.json({
+        logs,
+        total,
+        page: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'सुरक्षा ऑडिट लॉग लोड करने में त्रुटि: ' + err.message });
+    }
+  });
+});
+
+// 24. 1-Click Store Account Suspension (Freeze Store)
+router.post('/stores/:id/suspend', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  return runWithTenantContext({ role: 'SUPER_ADMIN' }, async () => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+
+      const tenant = await Tenant.findById(id);
+      if (!tenant) {
+        return res.status(404).json({ error: 'दुकान नहीं मिली (Store not found).' });
+      }
+
+      tenant.subscription.status = 'SUSPENDED';
+      if (reason) tenant.subscription.pauseReason = String(reason).trim();
+      await tenant.save();
+
+      // Deactivate all users under this store
+      await User.updateMany({ tenantId: id }, { $set: { isActive: false } });
+
+      // Invalidate active token sessions instantly in memory
+      markTenantSuspended(id);
+
+      // Audit log
+      await SecurityAuditLog.create({
+        tenantId: tenant._id,
+        storeName: tenant.storeName,
+        ownerPhone: tenant.phone,
+        eventType: 'ADMIN_ACTION',
+        ipAddress: '127.0.0.1',
+        isProxy: false,
+        riskScore: 0,
+        riskLevel: 'SAFE',
+        riskReasons: ['सुपर एडमिन द्वारा स्टोर खाता तत्काल निलंबित (Freeze) किया गया'],
+        actionTaken: 'SUSPENDED',
+        metadata: {
+          reason: reason || 'संदिग्ध गतिविधि / सुरक्षा कारण',
+          performedBy: (req as any).user?.name || 'SUPER_ADMIN',
+        },
+      });
+
+      res.json({
+        message: `'${tenant.storeName}' का खाता सफलतापूर्वक निलंबित (Suspended) कर दिया गया है। सभी सक्रिय सत्र समाप्त हो गए हैं।`,
+        storeId: id,
+        status: 'SUSPENDED',
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'खाता निलंबित करने में त्रुटि: ' + err.message });
+    }
+  });
+});
+
+// 25. 1-Click Store Account Unsuspend (Restore Store)
+router.post('/stores/:id/unsuspend', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  return runWithTenantContext({ role: 'SUPER_ADMIN' }, async () => {
+    try {
+      const { id } = req.params;
+
+      const tenant = await Tenant.findById(id);
+      if (!tenant) {
+        return res.status(404).json({ error: 'दुकान नहीं मिली (Store not found).' });
+      }
+
+      tenant.subscription.status = 'ACTIVE';
+      tenant.subscription.pauseReason = undefined;
+      await tenant.save();
+
+      // Re-activate all users
+      await User.updateMany({ tenantId: id }, { $set: { isActive: true } });
+
+      // Unsuspend from memory cache
+      markTenantUnsuspended(id);
+
+      // Audit log
+      await SecurityAuditLog.create({
+        tenantId: tenant._id,
+        storeName: tenant.storeName,
+        ownerPhone: tenant.phone,
+        eventType: 'ADMIN_ACTION',
+        ipAddress: '127.0.0.1',
+        isProxy: false,
+        riskScore: 0,
+        riskLevel: 'SAFE',
+        riskReasons: ['सुपर एडमिन द्वारा स्टोर खाता पुनः सक्रिय (Unsuspend) किया गया'],
+        actionTaken: 'NONE',
+        metadata: { performedBy: (req as any).user?.name || 'SUPER_ADMIN' },
+      });
+
+      res.json({
+        message: `'${tenant.storeName}' का खाता पुनः सक्रिय (Active) कर दिया गया है।`,
+        storeId: id,
+        status: 'ACTIVE',
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'खाता पुनः सक्रिय करने में त्रुटि: ' + err.message });
+    }
+  });
 });
 
 export default router;

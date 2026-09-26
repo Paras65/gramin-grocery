@@ -19,7 +19,7 @@ export interface ITenant extends Document {
   };
   subscription: {
     plan: 'FREE' | 'BASIC' | 'PRO';
-    status: 'ACTIVE' | 'EXPIRED' | 'PAUSED';
+    status: 'ACTIVE' | 'EXPIRED' | 'PAUSED' | 'SUSPENDED';
     planExpiryDate?: Date;
     startDate?: Date;
     pausedAt?: Date;
@@ -70,7 +70,7 @@ const TenantSchema = new Schema<ITenant>(
     },
     subscription: {
       plan: { type: String, enum: ['FREE', 'BASIC', 'PRO'], default: 'FREE' },
-      status: { type: String, enum: ['ACTIVE', 'EXPIRED', 'PAUSED'], default: 'ACTIVE' },
+      status: { type: String, enum: ['ACTIVE', 'EXPIRED', 'PAUSED', 'SUSPENDED'], default: 'ACTIVE' },
       planExpiryDate: { type: Date },
       startDate: { type: Date },
       pausedAt: { type: Date },

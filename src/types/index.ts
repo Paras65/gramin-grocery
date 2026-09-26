@@ -191,7 +191,7 @@ export interface AdminStoreSummary {
   };
   subscription: {
     plan: TenantPlan;
-    status: 'ACTIVE' | 'EXPIRED' | 'PAUSED';
+    status: 'ACTIVE' | 'EXPIRED' | 'PAUSED' | 'SUSPENDED';
     planExpiryDate?: string;
     startDate?: string;
     pausedAt?: string;
@@ -344,4 +344,93 @@ export interface VoucherItem {
   createdAt: string;
   updatedAt?: string;
 }
+
+export type SecurityEventType = 
+  | 'STORE_REGISTRATION'
+  | 'LOGIN'
+  | 'FAILED_LOGIN'
+  | 'PAYMENT_CLAIM'
+  | 'SUSPICIOUS_PROXY'
+  | 'ADMIN_ACTION';
+
+export type SecurityRiskLevel = 'SAFE' | 'SUSPICIOUS' | 'HIGH_RISK' | 'FRAUD';
+
+export interface SecurityAuditLogItem {
+  _id: string;
+  tenantId?: string;
+  storeName?: string;
+  ownerPhone?: string;
+  eventType: SecurityEventType;
+  ipAddress: string;
+  userAgent?: string;
+  isProxy: boolean;
+  proxyDetails?: {
+    headersDetected: string[];
+    isDatacenter: boolean;
+    isVpnOrTor: boolean;
+  };
+  riskScore: number;
+  riskLevel: SecurityRiskLevel;
+  riskReasons: string[];
+  actionTaken: 'NONE' | 'FLAGGED' | 'SUSPENDED';
+  metadata?: Record<string, any>;
+  createdAt: string;
+}
+
+export interface FlaggedStoreRisk {
+  storeId: string;
+  storeName: string;
+  ownerName: string;
+  phone: string;
+  village: string;
+  district: string;
+  plan: 'FREE' | 'BASIC' | 'PRO';
+  status: 'ACTIVE' | 'EXPIRED' | 'PAUSED' | 'SUSPENDED';
+  riskScore: number;
+  riskLevel: SecurityRiskLevel;
+  isProxy: boolean;
+  isDatacenter: boolean;
+  isVpnOrTor: boolean;
+  lastIp: string;
+  riskReasons: string[];
+  lastEventAt: string;
+  isTrial: boolean;
+}
+
+export interface IpCollisionGroup {
+  ipAddress: string;
+  storeCount: number;
+  isProxy: boolean;
+  stores: Array<{
+    tenantId: string;
+    storeName: string;
+    phone: string;
+  }>;
+}
+
+export interface DuplicateUtrAlert {
+  id: string;
+  utrNumber: string;
+  storeName: string;
+  phone: string;
+  ipAddress: string;
+  riskScore: number;
+  reason: string;
+  createdAt: string;
+}
+
+export interface FraudRadarOverview {
+  overview: {
+    totalEvents: number;
+    highRiskCount: number;
+    proxyHitsCount: number;
+    ipCollisionCount: number;
+    duplicateUtrCount: number;
+    suspendedStoresCount: number;
+  };
+  flaggedStores: FlaggedStoreRisk[];
+  ipCollisions: IpCollisionGroup[];
+  duplicateUtrAlerts: DuplicateUtrAlert[];
+}
+
 

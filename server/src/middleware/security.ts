@@ -2,6 +2,32 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
 import { runWithTenantContext } from './tenantContext.js';
+import { Tenant } from '../models/Tenant.js';
+
+// In-Memory Zero-Latency Cache for Suspended Tenants (Edge Case 7 / Rule 8 & 10)
+export const suspendedTenantsCache = new Set<string>();
+
+export function markTenantSuspended(tenantId: string | any) {
+  if (tenantId) suspendedTenantsCache.add(String(tenantId));
+}
+
+export function markTenantUnsuspended(tenantId: string | any) {
+  if (tenantId) suspendedTenantsCache.delete(String(tenantId));
+}
+
+export function isTenantSuspended(tenantId: string | any): boolean {
+  if (!tenantId) return false;
+  return suspendedTenantsCache.has(String(tenantId));
+}
+
+// Warm up cache on server start
+Tenant.find({ 'subscription.status': 'SUSPENDED' })
+  .select('_id')
+  .lean()
+  .then((tenants) => {
+    tenants.forEach((t) => suspendedTenantsCache.add(t._id.toString()));
+  })
+  .catch(() => {});
 
 const isProd = process.env.NODE_ENV === 'production';
 const rawJwtSecret = process.env.JWT_SECRET;
@@ -69,6 +95,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as AuthUserPayload;
     req.user = decoded;
+
+    // Instant session invalidation for suspended stores (Edge Case 7 & 8)
+    if (decoded.tenantId && decoded.role !== 'SUPER_ADMIN' && isTenantSuspended(decoded.tenantId)) {
+      return res.status(403).json({
+        error: 'सुरक्षा अलर्ट: यह दुकान खाता संदिग्ध गतिविधि के कारण निलंबित (Suspended) है। कृपया सहायता से संपर्क करें।',
+        code: 'STORE_SUSPENDED',
+      });
+    }
 
     // Run downstream request within the isolated tenant context
     runWithTenantContext(
