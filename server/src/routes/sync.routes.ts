@@ -251,7 +251,14 @@ router.post('/sync', requireAuth, async (req: Request, res: Response) => {
     }
 
     // Run automated deduplication to ensure zero duplicate products remain for this store in MongoDB
-    await deduplicateTenantProducts(tenantId);
+    // Scalability Guard: Only scan products during initial login/full sync or when product mutations/deletions occurred
+    if (
+      !lastSyncTimestamp ||
+      (mutations?.products && mutations.products.length > 0) ||
+      (mutations?.deletedProductUUIDs && mutations.deletedProductUUIDs.length > 0)
+    ) {
+      await deduplicateTenantProducts(tenantId);
+    }
 
     // 6. Query Server Deltas (Fetch records created/updated after client's lastSyncTimestamp)
     const sinceDate = lastSyncTimestamp ? new Date(lastSyncTimestamp) : new Date(0);

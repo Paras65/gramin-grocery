@@ -54,6 +54,7 @@ ProductSchema.index({ tenantId: 1, clientUUID: 1 }, { unique: true });
 ProductSchema.index({ tenantId: 1, barcode: 1 });
 ProductSchema.index({ tenantId: 1, category: 1 });
 ProductSchema.index({ tenantId: 1, stockQty: 1 }); // Mandi restock planner low stock radar
+ProductSchema.index({ tenantId: 1, isDeleted: 1, updatedAt: -1 }); // Delta sync & deduplication radar
 
 export const Product = mongoose.model<IProduct>('Product', ProductSchema);
 
