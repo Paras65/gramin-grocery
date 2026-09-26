@@ -758,7 +758,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                   </div>
                 </div>
 
-                {/* Quantity Stepper */}
+                {/* Quantity Stepper & Direct Input */}
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => updateCartQty(idx, item.quantity - (item.product.isLoose ? 0.25 : 1))}
@@ -767,9 +767,23 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                   >
                     -
                   </button>
-                  <span className="text-xs font-black text-stone-900 w-14 text-center">
-                    {item.quantity} {item.product.unit}
-                  </span>
+                  <div className="flex items-center bg-white border border-stone-200 rounded-lg px-1 py-0.5">
+                    <input
+                      type="number"
+                      min="0.01"
+                      step={item.product.isLoose ? "0.05" : "1"}
+                      value={item.quantity}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && val > 0) updateCartQty(idx, val);
+                      }}
+                      className="text-xs font-black text-stone-900 w-10 text-center bg-transparent outline-hidden"
+                      title="मात्रा सीधे लिखें"
+                    />
+                    <span className="text-[10px] text-stone-500 font-bold select-none">
+                      {item.product.unit}
+                    </span>
+                  </div>
                   <button
                     onClick={() => updateCartQty(idx, item.quantity + (item.product.isLoose ? 0.25 : 1))}
                     className="w-7 h-7 rounded-lg bg-stone-200/90 hover:bg-stone-300 flex items-center justify-center font-black text-stone-800 text-sm cursor-pointer active:scale-95"
@@ -1163,9 +1177,9 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                   </div>
                 </div>
 
-                {/* Dropdown Customer Results */}
+                {/* Inline Customer Results */}
                 {isCustomerPickerOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-amber-300 rounded-2xl shadow-xl z-40 max-h-52 overflow-y-auto p-1.5 space-y-1 animate-fade-in">
+                  <div className="mt-1.5 bg-white border border-amber-300 rounded-2xl shadow-sm max-h-48 overflow-y-auto p-1.5 space-y-1 animate-fade-in">
                     <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold text-stone-500 border-b border-stone-100">
                       <span>ग्राहक चुनें ({filteredCustomers.length})</span>
                       <button
