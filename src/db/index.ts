@@ -102,13 +102,22 @@ export const INITIAL_PRODUCTS: Omit<Product, 'id'>[] = [
   { name: 'Ajwain (Loose)', hindiName: 'देसी अजवाइन (खुला)', category: 'spices', purchasePrice: 240, sellingPrice: 300, stockQty: 5, unit: 'kg', minStockThreshold: 2, isLoose: true },
   { name: 'Hing Powder (25g)', hindiName: 'हींग डिब्बी (25g)', category: 'spices', purchasePrice: 42, sellingPrice: 55, stockQty: 15, unit: 'piece', minStockThreshold: 5, isLoose: false, barcode: '8901262010555' },
 
-  // Tea & Snacks
+  // Tea, Snacks & Kids Confectionery ("बच्चों का खजाना")
   { name: 'Chai Patti (Red Label 250g)', hindiName: 'चाय पत्ती (रेड लेबल)', category: 'snacks', purchasePrice: 115, sellingPrice: 130, stockQty: 14, unit: 'packet', minStockThreshold: 5, isLoose: false, barcode: '8901030381234' },
   { name: 'Khuli Chai Patti (Loose)', hindiName: 'खुली चाय पत्ती', category: 'snacks', purchasePrice: 220, sellingPrice: 280, stockQty: 10, unit: 'kg', minStockThreshold: 3, isLoose: true },
   { name: 'Parle-G Biscuit (₹5)', hindiName: 'पारले-जी बिस्कुट', category: 'snacks', purchasePrice: 4.15, sellingPrice: 5, stockQty: 120, unit: 'packet', minStockThreshold: 40, isLoose: false, barcode: '8901719101052' },
   { name: 'Tiger Glucose (₹5)', hindiName: 'टाइगर बिस्कुट', category: 'snacks', purchasePrice: 4.2, sellingPrice: 5, stockQty: 60, unit: 'packet', minStockThreshold: 20, isLoose: false, barcode: '8901063012019' },
+  { name: 'Bounce Cream Biscuit (₹5)', hindiName: 'क्रीम बिस्कुट (बाउन्स ₹5)', category: 'snacks', purchasePrice: 4.15, sellingPrice: 5, stockQty: 50, unit: 'packet', minStockThreshold: 15, isLoose: false, barcode: '8901725121013' },
   { name: 'Maggi Noodles (₹14)', hindiName: 'मैगी नूडल्स', category: 'snacks', purchasePrice: 12.2, sellingPrice: 14, stockQty: 48, unit: 'packet', minStockThreshold: 15, isLoose: false, barcode: '8901058852309' },
   { name: 'Ratlami Sev / Mixture', hindiName: 'रतलामी सेव / मिक्सचर', category: 'snacks', purchasePrice: 36, sellingPrice: 45, stockQty: 25, unit: 'packet', minStockThreshold: 8, isLoose: false, barcode: '8906001234567' },
+  { name: 'Kurkure Masala Munch (₹5)', hindiName: 'कुरकुरे मसाला मंच (₹5)', category: 'snacks', purchasePrice: 4.15, sellingPrice: 5, stockQty: 60, unit: 'packet', minStockThreshold: 20, isLoose: false, barcode: '8901491101837' },
+  { name: 'Tedhe Medhe / Crax Rings (₹5)', hindiName: 'टेड्ढे मेढ़े / पफ रिंग्स (₹5)', category: 'snacks', purchasePrice: 4.10, sellingPrice: 5, stockQty: 50, unit: 'packet', minStockThreshold: 15, isLoose: false, barcode: '8901725132224' },
+  { name: 'Lay\'s Magic Masala (₹5)', hindiName: 'लेज आलू चिप्स (₹5)', category: 'snacks', purchasePrice: 4.20, sellingPrice: 5, stockQty: 45, unit: 'packet', minStockThreshold: 15, isLoose: false, barcode: '8901491001021' },
+  { name: 'Kaccha Aam / Mango Toffee (₹1)', hindiName: 'कच्चा आम / मैंगो टॉफी (₹1)', category: 'snacks', purchasePrice: 0.65, sellingPrice: 1, stockQty: 250, unit: 'piece', minStockThreshold: 60, isLoose: false, barcode: '8901719112232' },
+  { name: 'Cadbury Eclairs (₹1)', hindiName: 'इक्लेयर्स चॉकलेट टॉफी (₹1)', category: 'snacks', purchasePrice: 0.70, sellingPrice: 1, stockQty: 200, unit: 'piece', minStockThreshold: 50, isLoose: false, barcode: '7622201140023' },
+  { name: 'Parle Kismi Bar (₹1)', hindiName: 'पारले किसमी बार टॉफी (₹1)', category: 'snacks', purchasePrice: 0.65, sellingPrice: 1, stockQty: 180, unit: 'piece', minStockThreshold: 40, isLoose: false, barcode: '8901719108013' },
+  { name: 'Lollipop / Chupa Chups (₹2)', hindiName: 'रंग-बिरंगी लॉलीपॉप (₹2)', category: 'snacks', purchasePrice: 1.35, sellingPrice: 2, stockQty: 75, unit: 'piece', minStockThreshold: 25, isLoose: false, barcode: '8904223801019' },
+  { name: 'Cadbury Gems (₹5)', hindiName: 'कैडबरी जेम्स (₹5)', category: 'snacks', purchasePrice: 4.10, sellingPrice: 5, stockQty: 40, unit: 'packet', minStockThreshold: 12, isLoose: false, barcode: '7622201430018' },
 
   // Hygiene & Cleaning
   { name: 'Ghari Detergent Powder (1kg)', hindiName: 'घड़ी डिटर्जेंट पाउडर', category: 'hygiene', purchasePrice: 62, sellingPrice: 72, stockQty: 30, unit: 'packet', minStockThreshold: 10, isLoose: false, barcode: '8906010500010' },
@@ -124,6 +133,7 @@ export const INITIAL_PRODUCTS: Omit<Product, 'id'>[] = [
   { name: 'Amul Taaza Milk (500ml)', hindiName: 'अमुल ताज़ा दूध', category: 'dairy', purchasePrice: 26, sellingPrice: 29, stockQty: 8, unit: 'pouch', minStockThreshold: 5, isLoose: false, expiryDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0] },
   { name: 'Dahi Pouch (200g)', hindiName: 'ताज़ा दही पाउच', category: 'dairy', purchasePrice: 16, sellingPrice: 20, stockQty: 6, unit: 'pouch', minStockThreshold: 4, isLoose: false, expiryDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0] },
   { name: 'Thums Up Cold Drink (250ml)', hindiName: 'थम्स अप बॉटल', category: 'dairy', purchasePrice: 16.5, sellingPrice: 20, stockQty: 15, unit: 'piece', minStockThreshold: 8, isLoose: false },
+  { name: 'Frooti Mango Drink (125ml)', hindiName: 'मैंगो फ्रूटी टेट्रापैक (₹10)', category: 'dairy', purchasePrice: 8.2, sellingPrice: 10, stockQty: 30, unit: 'piece', minStockThreshold: 10, isLoose: false, barcode: '8901719124013' },
 
   // Rural Special Items
   { name: 'Bidi Bundle (Chhap 502)', hindiName: 'बीड़ी बंडल (502 छाप)', category: 'rural_special', purchasePrice: 16, sellingPrice: 20, stockQty: 90, unit: 'packet', minStockThreshold: 30, isLoose: false },

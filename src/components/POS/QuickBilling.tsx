@@ -121,7 +121,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
     { id: 'pulses', label: t.pos.categoryNames.pulses, icon: '🍲' },
     { id: 'oils', label: t.pos.categoryNames.oils, icon: '🪔' },
     { id: 'spices', label: t.pos.categoryNames.spices, icon: '🌶️' },
-    { id: 'snacks', label: t.pos.categoryNames.snacks, icon: '🍪' },
+    { id: 'snacks', label: t.pos.categoryNames.snacks, icon: '🍪🍭' },
     { id: 'hygiene', label: t.pos.categoryNames.hygiene, icon: '🧼' },
     { id: 'dairy', label: t.pos.categoryNames.dairy, icon: '🥛' },
     { id: 'rural_special', label: t.pos.categoryNames.rural_special, icon: '🌿' },

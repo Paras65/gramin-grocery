@@ -18,14 +18,14 @@ export const translations = {
       more: '☰ मेनू'
     },
     pos: {
-      searchPlaceholder: 'सामान खोजें (जैसे: चावल, तेल, बिस्कुट, बीड़ी)...',
+      searchPlaceholder: 'सामान खोजें (जैसे: चावल, तेल, कुरकुरे, टॉफी)...',
       allCategories: 'सभी',
       categoryNames: {
         staples: 'अनाज व आटा',
         pulses: 'दालें',
         oils: 'तेल व घी',
         spices: 'मसाले व शक्कर',
-        snacks: 'नाश्ता व बिस्कुट',
+        snacks: 'नाश्ता, बिस्कुट व बच्चों का खजाना',
         hygiene: 'साबुन व सफाई',
         dairy: 'दूध व पेय',
         rural_special: 'ग्रामीण स्पेशल'
@@ -253,14 +253,14 @@ export const translations = {
       more: '☰ मेनू'
     },
     pos: {
-      searchPlaceholder: 'सामान खोजव (जैसे: चांउर, तेल, बिस्कुट, बीड़ी)...',
+      searchPlaceholder: 'सामान खोजव (जैसे: चांउर, तेल, कुरकुरे, टॉफी)...',
       allCategories: 'सबो',
       categoryNames: {
         staples: 'अनाज अउ आटा',
         pulses: 'दाल मन',
         oils: 'तेल अउ घीव',
         spices: 'मसाला अउ शक्कर',
-        snacks: 'नाश्ता अउ बिस्कुट',
+        snacks: 'नाश्ता, बिस्कुट अउ लइका मन के खजाना',
         hygiene: 'साबुन अउ सफाई',
         dairy: 'दूध अउ पेय',
         rural_special: 'गाँव-देहात स्पेशल'
@@ -488,14 +488,14 @@ export const translations = {
       more: '☰ Menu'
     },
     pos: {
-      searchPlaceholder: 'Search item (e.g. Rice, Oil, Biscuits, Bidi)...',
+      searchPlaceholder: 'Search item (e.g. Rice, Oil, Kurkure, Toffee)...',
       allCategories: 'All',
       categoryNames: {
         staples: 'Grains & Flour',
         pulses: 'Pulses (Daal)',
         oils: 'Oil & Ghee',
         spices: 'Spices & Sugar',
-        snacks: 'Snacks & Biscuits',
+        snacks: 'Snacks & Kids Treats',
         hygiene: 'Soaps & Care',
         dairy: 'Dairy & Drinks',
         rural_special: 'Rural Specials'

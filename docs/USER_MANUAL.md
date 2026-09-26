@@ -8,7 +8,8 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
 
 1. [Overview & Quick Start](#1-overview--quick-start)
 2. [Quick Billing & POS (तुरंत बिलिंग)](#2-quick-billing--pos-तुरंत-बिलिंग)
-   - [Selecting Items & Categories](#selecting-items--categories)
+   - [Selecting Items & Categories (Zero-Scroll Category Grid)](#selecting-items--categories-zero-scroll-category-grid)
+   - [Kids "Khana Khazana" & Confectionery Billing (बच्चों का खजाना: टॉफी, कुरकुरे व लॉलीपॉप)](#kids-khana-khazana--confectionery-billing-बच्चों-का-खजाना-टॉफी-कुरकुरे-व-लॉलीपॉप)
    - [Loose Weight Pricing (खुला सामान: पाव, आधा किलो)](#loose-weight-pricing-खुला-सामान-पाव-आधा-किलो)
    - [Dynamic Market Rate Adjustments (मंडी व बाज़ार दैनिक दर बदलाव)](#dynamic-market-rate-adjustments-मंडी-व-बाज़ार-दैनिक-दर-बदलाव)
    - [Bill Hold & Resume: Queue & Crowd Management (बिल होल्ड व रिज़्यूम: काउंटर भीड़ प्रबंधन)](#bill-hold--resume-queue--crowd-management-बिल-होल्ड-व-रिज़्यूम-काउंटर-भीड़-प्रबंधन)
@@ -158,9 +159,16 @@ Gramin Kirana is built to run **100% offline** without needing a continuous inte
 ## 2. Quick Billing & POS (तुरंत बिलिंग)
 
 ### Selecting Items & Categories (Zero-Scroll Category Grid)
-- **Zero-Scroll Quick Access:** All 9 product categories (*अनाज, दालें, तेल, मसाले, नाश्ता, साबुन, दूध, ग्रामीण स्पेशल*) are visible at a single glance in a high-density, responsive 3-column (mobile) or 5-column (desktop) button matrix with icons. No horizontal swiping or sideways scrolling is needed.
+- **Zero-Scroll Quick Access:** All 9 product categories (*अनाज व आटा, दालें, तेल व घी, मसाले व शक्कर, नाश्ता व बच्चों का खजाना, साबुन व सफाई, दूध व पेय, ग्रामीण स्पेशल*) are visible at a single glance in a high-density, responsive 3-column (mobile) or 5-column (desktop) button matrix with icons. No horizontal swiping or sideways scrolling is needed.
 - **Desktop Shortcut Keys:** On desktop or laptop computers, press **`Alt + 1`** through **`Alt + 9`** to switch between categories in less than half a second.
 - Tap any product card to immediately add it to the active bill on the right.
+
+### Kids "Khana Khazana" & Confectionery Billing (बच्चों का खजाना: टॉफी, कुरकुरे व लॉलीपॉप)
+- **गाँव के बच्चों की त्वरित खरीदारी:** ग्रामीण किराना दुकान में स्कूल के बच्चे और अभिभावक दिन भर कई बार ₹1 से ₹5 के स्नैक्स, टॉफी और चिप्स खरीदने आते हैं। काउंटर पर छुट्टे सिक्कों से तुरंत बिलिंग के लिए ऐप में प्रसिद्ध ग्रामीण किड्स आइटम्स शामिल किए गए हैं:
+  - **₹5 नमकीन व चिप्स:** *कुरकुरे मसाला मंच (₹5), टेड्ढे मेढ़े / पफ रिंग्स (₹5), लेज आलू चिप्स (₹5)*।
+  - **₹1 व ₹2 टॉफी व लॉलीपॉप:** *कच्चा आम / मैंगो टॉफी (₹1), इक्लेयर्स चॉकलेट टॉफी (₹1), पारले किसमी बार (₹1), रंग-बिरंगी लॉलीपॉप (₹2)*।
+  - **मीठे ट्रीट व पेय:** *कैडबरी जेम्स (₹5), क्रीम बिस्कुट (₹5), मैंगो फ्रूटी टेट्रापैक (₹10)*।
+- **1-टैप बिलिंग व बारकोड स्कैन:** काउंटर पर बच्चों की भीड़ होने पर दुकानदार श्रेणी टैब में **"🍪🍭 नाश्ता व बच्चों का खजाना"** दबाकर केवल 1 टैप में सामान बिल में जोड़ सकता है, या पैकेट के पीछे का बारकोड कैमरा स्कैनर से 1 सेकंड में स्कैन कर सकता है।
 
 ### Loose Weight Pricing (खुला सामान: पाव, आधा किलो)
 - For loose items like loose mustard oil, rice, sugar, or flour, tapping the item opens the **Loose Weight Selector**.
@@ -477,11 +485,11 @@ Gramin Kirana supports distinct operational roles and multi-store privacy to ens
   - दुकानदार अपनी दुकान का नाम और गाँव का नाम सत्यापित करते हैं।
   - दुकान का UPI ID (GooglePay, PhonePe, Paytm या BHIM) दर्ज किया जाता है, जिससे काउंटर बिलिंग और ग्राहक पासबुक में डायनामिक QR कोड से सीधे बैंक खाते में भुगतान आ सके।
 - **चरण 2: सामान कस्टमाइज़ करें (Customizable Item Selection & Zero-Stock Mode):**
-  - **अपनी पसंद के सामान चुनें:** सभी 52 सामानों को जबरदस्ती लोड करने के बजाय, विज़ार्ड में अब हर श्रेणी और सामान की इंटरएक्टिव चेकलिस्ट दी गई है। दुकानदार जिन सामानों को अपनी दुकान में रखता है सिर्फ उन्हें चुन सकता है।
-  - **श्रेणी अनुसार 1-टैप चुनाव (Category Filter & Quick Toggle):** अनाज व आटा, दालें, तेल व घी, मसाले व चीनी, चाय व बिस्कुट, साबुन व सर्फ, डेयरी और ग्रामीण दैनिक श्रेणियों के त्वरित फ़िल्टर बटन हैं। यदि दुकानदार बीड़ी या माचिस नहीं बेचता, तो वह "🌿 ग्रामीण दैनिक" श्रेणी को 1 टैप में बंद कर सकता है।
-  - **सामान खोज बार (Item Search Bar):** किसी विशेष सामान (उदा. शक्कर, तेल, पारले) को तुरंत ढूंढने के लिए सर्च बॉक्स उपलब्ध है।
+  - **अपनी पसंद के सामान चुनें:** सभी 65+ ग्रामीण किराना सामानों (अनाज, दालें, तेल, मसाले, साबुन सहित **बच्चों का खजाना: कुरकुरे, टेड्ढे मेढ़े, लेज, टॉफी, जेम्स, लॉलीपॉप व फ्रूटी**) की इंटरएक्टिव चेकलिस्ट दी गई है। दुकानदार जिन सामानों को अपनी दुकान में रखता है सिर्फ उन्हें चुन सकता है।
+  - **श्रेणी अनुसार 1-टैप चुनाव (Category Filter & Quick Toggle):** अनाज व आटा, दालें, तेल व घी, मसाले व चीनी, **नाश्ता व बच्चों का खजाना (स्नैक्स/टॉफी)**, साबुन व सर्फ, डेयरी व पेय, और ग्रामीण दैनिक श्रेणियों के त्वरित फ़िल्टर बटन हैं। यदि दुकानदार बीड़ी या माचिस नहीं बेचता, तो वह "🌿 ग्रामीण दैनिक" श्रेणी को 1 टैप में बंद कर सकता है।
+  - **सामान खोज बार (Item Search Bar):** किसी विशेष सामान (उदा. कुरकुरे, टॉफी, शक्कर, तेल, पारले) को तुरंत ढूंढने के लिए सर्च बॉक्स उपलब्ध है।
   - **📦 शून्य स्टॉक मोड (Zero Initial Stock Option):** दुकानदार के पास विकल्प है कि वह सामानों के नाम और प्रचलित भाव तो लोड करे, लेकिन शुरुआती स्टॉक को 0 रखे, ताकि वह दुकान में मौजूद अपनी वास्तविक गिनती बाद में दर्ज कर सके।
-  - **"चयनित सामान जोड़ें" बटन:** जितने सामान टिक होंगे (उदा. 25 या 35 सामान), सिर्फ वही दुकान की इन्वेंट्री में जुड़ेंगे।
+  - **"चयनित सामान जोड़ें" बटन:** जितने सामान टिक होंगे (उदा. 25, 35 या सभी 65+ सामान), सिर्फ वही दुकान की इन्वेंट्री में जुड़ेंगे।
   - **स्किप का विकल्प:** जो दुकानदार अपने सामान पूरी तरह नए सिरे से खुद दर्ज करना चाहते हैं, वे "Skip" बटन दबाकर पूरी खाली दुकान से शुरुआत कर सकते हैं।
 - **चरण 3: तुरंत काउंटर बिलिंग शुरू:** सामान लोड होते ही दुकानदार सीधे तुरंत बिलिंग (POS) काउंटर पर पहुँचकर ग्राहकों का बिल बनाना शुरू कर सकते हैं।
 

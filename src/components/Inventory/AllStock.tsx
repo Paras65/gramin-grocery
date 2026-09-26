@@ -460,8 +460,10 @@ export const AllStock: React.FC = () => {
             { id: 'pulses', label: 'दालें' },
             { id: 'oils', label: 'तेल' },
             { id: 'spices', label: 'मसाले' },
-            { id: 'snacks', label: 'नाश्ता/बिस्कुट' },
-            { id: 'dairy', label: 'डेयरी' },
+            { id: 'snacks', label: 'नाश्ता व बच्चों का खजाना' },
+            { id: 'hygiene', label: 'साबुन व सफाई' },
+            { id: 'dairy', label: 'डेयरी व पेय' },
+            { id: 'rural_special', label: 'ग्रामीण दैनिक' },
           ].map(c => (
             <button
               key={c.id}

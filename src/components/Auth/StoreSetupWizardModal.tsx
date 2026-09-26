@@ -18,9 +18,9 @@ const CATEGORY_META: Record<string, { label: string; icon: string }> = {
   pulses: { label: 'दालें व दलहन', icon: '🍲' },
   oils: { label: 'तेल व घी', icon: '🪔' },
   spices: { label: 'मसाले व चीनी', icon: '🌶️' },
-  snacks: { label: 'चाय व बिस्कुट', icon: '🍪' },
+  snacks: { label: 'नाश्ता व बच्चों का खजाना', icon: '🍪🍭' },
   hygiene: { label: 'साबुन व सर्फ', icon: '🧼' },
-  dairy: { label: 'डेयरी व दूध', icon: '🥛' },
+  dairy: { label: 'डेयरी व पेय', icon: '🥛' },
   rural_special: { label: 'ग्रामीण दैनिक', icon: '🌿' },
 };
 
