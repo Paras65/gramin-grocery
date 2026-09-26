@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Building2, Users, IndianRupee, ShieldAlert, 
   Search, RefreshCw, LogOut, AlertTriangle, 
@@ -581,6 +581,26 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
     setTimeout(() => setCopiedUtrId(null), 2000);
   };
 
+  const isInitialMount = useRef(true);
+
+  // Minimal targeted fetch: Only re-queries stores & overview metrics (Zero Waterfall)
+  const loadStoresAndOverview = async (isManualRefresh = false) => {
+    try {
+      if (isManualRefresh) setRefreshing(true);
+      setError('');
+      const [overviewData, storesData] = await Promise.all([
+        adminService.getOverview(),
+        adminService.getStores(searchQuery, selectedPlan, selectedDistrict),
+      ]);
+      setOverview(overviewData);
+      setStores(storesData);
+    } catch (err: any) {
+      setError(err.message || 'स्टोर डेटा लोड करने में असमर्थ');
+    } finally {
+      if (isManualRefresh) setRefreshing(false);
+    }
+  };
+
   const loadData = async (isManualRefresh = false) => {
     try {
       if (isManualRefresh) setRefreshing(true);
@@ -608,9 +628,30 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
     }
   };
 
+  // 1. Initial mount: Load all initial badge counters and primary overview
+  // Subsequent store filter changes: Only refresh stores & overview (zero redundant calls)
   useEffect(() => {
-    loadData();
-  }, [selectedPlan, selectedDistrict, claimStatusFilter, voucherFilter]);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      loadData();
+      return;
+    }
+    loadStoresAndOverview();
+  }, [selectedPlan, selectedDistrict]);
+
+  // 2. Targeted payment claims refetch on claim filter change
+  useEffect(() => {
+    if (!isInitialMount.current) {
+      loadPaymentClaims(claimStatusFilter);
+    }
+  }, [claimStatusFilter]);
+
+  // 3. Targeted voucher refetch on voucher filter change
+  useEffect(() => {
+    if (!isInitialMount.current) {
+      loadVouchers(voucherFilter);
+    }
+  }, [voucherFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

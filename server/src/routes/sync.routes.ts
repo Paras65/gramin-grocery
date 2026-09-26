@@ -267,17 +267,23 @@ router.post('/sync', requireAuth, async (req: Request, res: Response) => {
       tenantId,
       isDeleted: { $ne: true },
       updatedAt: { $gt: sinceDate },
-    }).lean();
+    })
+      .select('-__v')
+      .lean();
 
     const updatedCustomers = await Customer.find({
       tenantId,
       updatedAt: { $gt: sinceDate },
-    }).lean();
+    })
+      .select('-__v')
+      .lean();
 
     const updatedTransactions = await Transaction.find({
       tenantId,
       createdAt: { $gt: sinceDate },
-    }).lean();
+    })
+      .select('-__v')
+      .lean();
 
     const tenant = await Tenant.findById(tenantId).select('subscription').lean();
 

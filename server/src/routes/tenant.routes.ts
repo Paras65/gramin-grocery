@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { requireAuth, requireRole } from '../middleware/security.js';
@@ -43,29 +44,53 @@ router.get('/profile', requireAuth, async (_req: Request, res: Response) => {
 router.get('/stats', requireAuth, async (_req: Request, res: Response) => {
   try {
     const tenantId = getTenantId();
-
-    const customers = await Customer.find({ tenantId, isDeleted: false }).lean();
-    const totalOutstanding = customers.reduce((sum, c) => sum + (c.balanceDue || 0), 0);
-    const kharifDhanDebt = customers
-      .filter((c) => c.dueReason === 'KHARIF_DHAN')
-      .reduce((sum, c) => sum + (c.balanceDue || 0), 0);
+    const targetTenantId = new mongoose.Types.ObjectId(String(tenantId));
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    const todaySales = await Sale.find({
-      tenantId,
-      timestamp: { $gte: startOfToday },
-    }).lean();
+    const [customerAgg, salesAgg] = await Promise.all([
+      Customer.aggregate([
+        { $match: { tenantId: targetTenantId, isDeleted: false } },
+        {
+          $group: {
+            _id: null,
+            totalCustomers: { $sum: 1 },
+            totalOutstanding: { $sum: '$balanceDue' },
+            kharifDhanDebt: {
+              $sum: {
+                $cond: [{ $eq: ['$dueReason', 'KHARIF_DHAN'] }, '$balanceDue', 0]
+              }
+            }
+          }
+        }
+      ]),
+      Sale.aggregate([
+        {
+          $match: {
+            tenantId: targetTenantId,
+            timestamp: { $gte: startOfToday }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            todaySalesCount: { $sum: 1 },
+            todaySalesTotal: { $sum: '$totalAmount' }
+          }
+        }
+      ])
+    ]);
 
-    const todaySalesTotal = todaySales.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+    const cData = customerAgg[0] || { totalCustomers: 0, totalOutstanding: 0, kharifDhanDebt: 0 };
+    const sData = salesAgg[0] || { todaySalesCount: 0, todaySalesTotal: 0 };
 
     res.json({
-      totalCustomers: customers.length,
-      totalOutstanding,
-      kharifDhanDebt,
-      todaySalesCount: todaySales.length,
-      todaySalesTotal,
+      totalCustomers: cData.totalCustomers,
+      totalOutstanding: cData.totalOutstanding,
+      kharifDhanDebt: cData.kharifDhanDebt,
+      todaySalesCount: sData.todaySalesCount,
+      todaySalesTotal: sData.todaySalesTotal,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

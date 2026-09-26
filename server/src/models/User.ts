@@ -34,6 +34,15 @@ const UserSchema = new Schema<IUser>(
 UserSchema.index({ mobile: 1 }, { unique: true });
 UserSchema.index({ tenantId: 1, role: 1 });
 
+// Defense-in-Depth: Strip pinHash and __v from all JSON serializations (OWASP ASVS)
+UserSchema.set('toJSON', {
+  transform: function (_doc: any, ret: any) {
+    delete ret.pinHash;
+    delete ret.__v;
+    return ret;
+  },
+});
+
 // Helper to compare 4-digit PIN securely
 UserSchema.methods.comparePin = async function (candidatePin: string): Promise<boolean> {
   return bcrypt.compare(candidatePin, this.pinHash);

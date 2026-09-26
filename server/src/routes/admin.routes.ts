@@ -178,87 +178,135 @@ router.get('/stores', requireAuth, requireRole('SUPER_ADMIN'), async (req: Reque
         .sort({ createdAt: -1 })
         .lean();
 
-      // Enrich with live customer, product, sales, debt, and storage counts
-      const enrichedStores = await Promise.all(
-        tenants.map(async (t) => {
-          const [customerCount, productCount, salesCount, spoilageCount, debtAgg, ownerUser, latestClaim] = await Promise.all([
-            Customer.countDocuments({ tenantId: t._id, isDeleted: false }).setOptions({ bypassTenantCheck: true }),
-            Product.countDocuments({ tenantId: t._id, isDeleted: false }).setOptions({ bypassTenantCheck: true }),
-            Sale.countDocuments({ tenantId: t._id }),
-            SpoilageLog.countDocuments({ tenantId: t._id }),
-            Customer.aggregate([
-              { $match: { tenantId: t._id, isDeleted: false } },
-              { $group: { _id: null, totalDebt: { $sum: '$balanceDue' } } }
-            ]),
-            User.findOne({ tenantId: t._id, role: 'OWNER' }).select('isActive lastLoginAt').lean(),
-            PaymentClaim.findOne({ tenantId: t._id })
-              .sort({ createdAt: -1 })
-              .select('utrNumber amount status planDurationMonths createdAt rejectionReason')
-              .lean()
-          ]);
+      if (!tenants || tenants.length === 0) {
+        return res.json({ stores: [] });
+      }
 
-          const estimatedStorageKb = Math.round(
-            productCount * 0.8 +
-            customerCount * 0.6 +
-            salesCount * 1.5 +
-            spoilageCount * 0.5
-          );
+      const tenantIds = tenants.map((t) => t._id);
 
-          const now = Date.now();
-          let daysRemaining = 0;
-          let isExpired = false;
-
-          if (t.subscription?.plan === 'PRO') {
-            if (t.subscription?.status === 'PAUSED') {
-              daysRemaining = Number(t.subscription.remainingDaysOnPause) || 0;
-            } else if (t.subscription?.planExpiryDate) {
-              const diffMs = new Date(t.subscription.planExpiryDate).getTime() - now;
-              daysRemaining = Math.max(0, Math.ceil(diffMs / 86400000));
-              isExpired = diffMs <= 0;
+      // Batch aggregations to eliminate N+1 database queries (Scalability & High Load Guard)
+      const [customersAgg, productsAgg, salesAgg, spoilageAgg, ownerUsers, latestClaims] = await Promise.all([
+        Customer.aggregate([
+          { $match: { tenantId: { $in: tenantIds }, isDeleted: false } },
+          { $group: { _id: '$tenantId', customerCount: { $sum: 1 }, totalDebt: { $sum: '$balanceDue' } } }
+        ]),
+        Product.aggregate([
+          { $match: { tenantId: { $in: tenantIds }, isDeleted: false } },
+          { $group: { _id: '$tenantId', productCount: { $sum: 1 } } }
+        ]),
+        Sale.aggregate([
+          { $match: { tenantId: { $in: tenantIds } } },
+          { $group: { _id: '$tenantId', salesCount: { $sum: 1 } } }
+        ]),
+        SpoilageLog.aggregate([
+          { $match: { tenantId: { $in: tenantIds } } },
+          { $group: { _id: '$tenantId', spoilageCount: { $sum: 1 } } }
+        ]),
+        User.find({ tenantId: { $in: tenantIds }, role: 'OWNER' })
+          .select('tenantId isActive lastLoginAt')
+          .lean(),
+        PaymentClaim.aggregate([
+          { $match: { tenantId: { $in: tenantIds } } },
+          { $sort: { createdAt: -1 } },
+          {
+            $group: {
+              _id: '$tenantId',
+              utrNumber: { $first: '$utrNumber' },
+              amount: { $first: '$amount' },
+              status: { $first: '$status' },
+              planDurationMonths: { $first: '$planDurationMonths' },
+              createdAt: { $first: '$createdAt' },
+              rejectionReason: { $first: '$rejectionReason' },
             }
           }
+        ])
+      ]);
 
-          return {
-            id: t._id,
-            storeName: t.storeName,
-            ownerName: t.ownerName,
-            phone: t.phone,
-            address: t.address,
-            subscription: {
-              ...t.subscription,
-              startDate: t.subscription?.startDate || t.createdAt,
-              daysRemaining,
-              isExpired,
-              isTrial: !!t.subscription?.isTrial,
-            },
-            referral: t.referral || {
-              code: '',
-              referralCount: 0,
-              bonusDaysEarned: 0,
-            },
-            latestClaim: latestClaim ? {
-              utrNumber: latestClaim.utrNumber,
-              amount: latestClaim.amount,
-              status: latestClaim.status,
-              planDurationMonths: latestClaim.planDurationMonths,
-              createdAt: latestClaim.createdAt,
-              rejectionReason: latestClaim.rejectionReason,
-            } : null,
-            customerCount,
-            productCount,
-            salesCount,
-            spoilageCount,
-            storageKb: estimatedStorageKb,
-            featureOverrides: t.featureOverrides || {},
-            quotaOverrides: t.quotaOverrides || {},
-            totalDebt: debtAgg[0]?.totalDebt || 0,
-            isActive: ownerUser ? ownerUser.isActive : true,
-            lastLoginAt: ownerUser?.lastLoginAt,
-            createdAt: t.createdAt,
-            updatedAt: t.updatedAt,
-          };
-        })
-      );
+      const customerMap = new Map(customersAgg.map((c) => [String(c._id), c]));
+      const productMap = new Map(productsAgg.map((p) => [String(p._id), p]));
+      const salesMap = new Map(salesAgg.map((s) => [String(s._id), s]));
+      const spoilageMap = new Map(spoilageAgg.map((sp) => [String(sp._id), sp]));
+      const userMap = new Map(ownerUsers.map((u) => [String(u.tenantId), u]));
+      const claimMap = new Map(latestClaims.map((cl) => [String(cl._id), cl]));
+
+      const now = Date.now();
+
+      // Synchronous O(1) enrichment across all matching stores
+      const enrichedStores = tenants.map((t) => {
+        const tid = String(t._id);
+        const cData = customerMap.get(tid);
+        const pData = productMap.get(tid);
+        const sData = salesMap.get(tid);
+        const spData = spoilageMap.get(tid);
+        const uData = userMap.get(tid);
+        const latestClaim = claimMap.get(tid);
+
+        const customerCount = cData?.customerCount || 0;
+        const productCount = pData?.productCount || 0;
+        const salesCount = sData?.salesCount || 0;
+        const spoilageCount = spData?.spoilageCount || 0;
+        const totalDebt = cData?.totalDebt || 0;
+
+        const estimatedStorageKb = Math.round(
+          productCount * 0.8 +
+          customerCount * 0.6 +
+          salesCount * 1.5 +
+          spoilageCount * 0.5
+        );
+
+        let daysRemaining = 0;
+        let isExpired = false;
+
+        if (t.subscription?.plan === 'PRO') {
+          if (t.subscription?.status === 'PAUSED') {
+            daysRemaining = Number(t.subscription.remainingDaysOnPause) || 0;
+          } else if (t.subscription?.planExpiryDate) {
+            const diffMs = new Date(t.subscription.planExpiryDate).getTime() - now;
+            daysRemaining = Math.max(0, Math.ceil(diffMs / 86400000));
+            isExpired = diffMs <= 0;
+          }
+        }
+
+        return {
+          id: t._id,
+          storeName: t.storeName,
+          ownerName: t.ownerName,
+          phone: t.phone,
+          address: t.address,
+          subscription: {
+            ...t.subscription,
+            startDate: t.subscription?.startDate || t.createdAt,
+            daysRemaining,
+            isExpired,
+            isTrial: !!t.subscription?.isTrial,
+          },
+          referral: t.referral || {
+            code: '',
+            referralCount: 0,
+            bonusDaysEarned: 0,
+          },
+          latestClaim: latestClaim ? {
+            utrNumber: latestClaim.utrNumber,
+            amount: latestClaim.amount,
+            status: latestClaim.status,
+            planDurationMonths: latestClaim.planDurationMonths,
+            createdAt: latestClaim.createdAt,
+            rejectionReason: latestClaim.rejectionReason,
+          } : null,
+          customerCount,
+          productCount,
+          salesCount,
+          spoilageCount,
+          storageKb: estimatedStorageKb,
+          featureOverrides: t.featureOverrides || {},
+          quotaOverrides: t.quotaOverrides || {},
+          totalDebt,
+          isActive: uData ? uData.isActive : true,
+          lastLoginAt: uData?.lastLoginAt,
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt,
+        };
+      });
 
       res.json({ stores: enrichedStores });
     } catch (err: any) {
@@ -577,7 +625,7 @@ router.post('/stores/:id/reset-pin', requireAuth, requireRole('SUPER_ADMIN'), as
     res.json({
       message: 'दुकानदार का PIN सफलतापूर्वक रीसेट कर दिया गया (Store owner PIN reset successfully).',
       storeId: id,
-      newPin: newPin.trim(),
+      success: true,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1205,7 +1253,7 @@ router.post('/stores/:id/reset-munim-pin', requireAuth, requireRole('SUPER_ADMIN
     res.json({
       message: `'${tenant.storeName}' के मुनीम का PIN सफलतापूर्वक रीसेट कर दिया गया।`,
       storeId: id,
-      newPin: newPin.trim(),
+      success: true,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1378,6 +1426,7 @@ router.get('/security/fraud-radar', requireAuth, requireRole('SUPER_ADMIN'), asy
       })
         .sort({ createdAt: -1 })
         .limit(20)
+        .select('metadata.utrNumber storeName ownerPhone ipAddress riskScore riskReasons createdAt')
         .lean();
 
       const duplicateUtrAlerts = duplicateUtrLogs.map((l) => ({
@@ -1438,10 +1487,11 @@ router.get('/security/audit-logs', requireAuth, requireRole('SUPER_ADMIN'), asyn
 
       if (q && typeof q === 'string' && q.trim()) {
         const cleanQ = q.trim();
+        const safeQ = cleanQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         filter.$or = [
-          { storeName: { $regex: cleanQ, $options: 'i' } },
-          { ownerPhone: { $regex: cleanQ, $options: 'i' } },
-          { ipAddress: { $regex: cleanQ, $options: 'i' } },
+          { storeName: { $regex: safeQ, $options: 'i' } },
+          { ownerPhone: { $regex: safeQ, $options: 'i' } },
+          { ipAddress: { $regex: safeQ, $options: 'i' } },
         ];
       }
 
@@ -1450,6 +1500,7 @@ router.get('/security/audit-logs', requireAuth, requireRole('SUPER_ADMIN'), asyn
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limitNum)
+          .select('createdAt eventType storeName ownerPhone ipAddress isProxy riskScore riskLevel riskReasons actionTaken')
           .lean(),
         SecurityAuditLog.countDocuments(filter),
       ]);
