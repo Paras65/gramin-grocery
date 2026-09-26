@@ -26,6 +26,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Customer Deduplication & Mobile Number Validation (ग्राहक नाम व मोबाइल दोहराव सुरक्षा)](#customer-deduplication--mobile-number-validation-ग्राहक-नाम-व-मोबाइल-दोहराव-सुरक्षा)
    - [Customer Credit Limit Guard (ग्राहक उधारी सीमा व सुरक्षा अलर्ट)](#customer-credit-limit-guard-ग्राहक-उधारी-सीमा-व-सुरक्षा-अलर्ट)
    - [Harvest & Scheme Repayment Dates (धान खरीदी / महतारी वंदन)](#harvest--scheme-repayment-dates-धान-खरीदी--महतारी-वंदन)
+   - [Harvest & Promise Date Overdue Alert Banner (वादा तारीख पार ग्राहक अलर्ट व त्वरित WhatsApp स्मरण)](#harvest--promise-date-overdue-alert-banner-वादा-तारीख-पार-ग्राहक-अलर्ट-व-त्वरित-whatsapp-स्मरण)
    - [Recording Payments Received (जमा) & New Credit (उधार)](#recording-payments-received-जमा--new-credit-उधार)
    - [Zero-Balance Debt Settlement Celebration & Clearance Receipt (पूर्ण हिसाब चुकता व पावती पर्ची)](#zero-balance-debt-settlement-celebration--clearance-receipt-पूर्ण-हिसाब-चुकता-व-पावती-पर्ची)
    - [WhatsApp Payment Receipts & Reminders (जमा रसीद व तगादा)](#whatsapp-payment-receipts--reminders-जमा-रसीद-व-तगादा)
@@ -45,6 +46,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Logging Power-Cut & Heat Losses (दूध/दही/कोल्ड ड्रिंक)](#logging-power-cut--heat-losses-दूधदहीकोल्ड-ड्रिंक)
    - [Cause-Wise Loss Breakdown & History Filtering (कारण अनुसार वर्गीकरण व फ़िल्टर)](#cause-wise-loss-breakdown--history-filtering-कारण-अनुसार-वर्गीकरण-व-फ़िल्टर)
    - [Tracking Upcoming Expiry Items & Clearance Pricing (एक्सपायरी रडार व रियायती बिक्री)](#tracking-upcoming-expiry-items--clearance-pricing-एक्सपायरी-रडार-व-रियायती-बिक्री)
+   - [Morning Counter Expiry Radar & WhatsApp Distributor Claim (मुख्य काउंटर पर एक्सपायरी चेतावनी व डिस्ट्रीब्यूटर क्लेम)](#morning-counter-expiry-radar--whatsapp-distributor-claim-मुख्य-काउंटर-पर-एक्सपायरी-चेतावनी-व-डिस्ट्रीब्यूटर-क्लेम)
    - [1-Click WhatsApp Distributor Return Claim (डिस्ट्रीब्यूटर वापसी क्लेम)](#1-click-whatsapp-distributor-return-claim-डिस्ट्रीब्यूटर-वापसी-क्लेम)
    - [Safe Spoilage Deletion & Stock Restoration (गलती से हटाए रिकॉर्ड पर स्टॉक बहाली)](#safe-spoilage-deletion--stock-restoration-गलती-से-हटाए-रिकॉर्ड-पर-स्टॉक-बहाली)
 6. [Inventory Management (दुकान का पूरा स्टॉक)](#6-inventory-management-दुकान-का-पूरा-स्टॉक)
@@ -82,6 +84,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
     - [UPI & 360° Day Business Overview (डिजिटल बिक्री व कुल दिन का कारोबार)](#upi--360-day-business-overview-डिजिटल-बिक्री-व-कुल-दिन-का-कारोबार)
     - [Daily Shop Expenses & Quick Category Chips (दुकान के खर्चे व त्वरित बटन)](#daily-shop-expenses--quick-category-chips-दुकान-के-खर्चे-व-त्वरित-बटन)
     - [Cash Reconciliation & Reopen Guard (गल्ला अंतर मिलान व पुनः खोलने की सुरक्षा)](#cash-reconciliation--reopen-guard-गल्ला-अंतर-मिलान-व-पुनः-खोलने-की-सुरक्षा)
+   - [Evening Cash Close Navigation Reminder (शाम का गल्ला मिलान स्मरण बैज)](#evening-cash-close-navigation-reminder-शाम-का-गल्ला-मिलान-स्मरण-बैज)
     - [1-Click WhatsApp Day Summary (व्हाट्सएप पर दिन सारांश)](#1-click-whatsapp-day-summary-व्हाट्सएप-पर-दिन-सारांश)
     - [Past Cash Drawer Archive & Historical Slips (पिछला गल्ला इतिहास व पुरानी पर्ची)](#past-cash-drawer-archive--historical-slips-पिछला-गल्ला-इतिहास-व-पुरानी-पर्ची)
     - [Automated 30-Day Storage Maintenance (स्वचालित 30-दिन बैकग्राउंड सफाई)](#automated-30-day-storage-maintenance-स्वचालित-30-दिन-बैकग्राउंड-सफाई)
@@ -279,6 +282,11 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 - 🏛️ **Mahtari Vandan / PM-KISAN:** Aligned with monthly or quarterly government scheme transfers.
 - 🎪 **Weekly Haat-Bazaar:** Aligned with the local weekly market day.
 
+### Harvest & Promise Date Overdue Alert Banner (वादा तारीख पार ग्राहक अलर्ट व त्वरित WhatsApp स्मरण)
+- **वादा तारीख बीतने पर स्वतः चेतावनी:** जब किसी ग्राहक के खाते में दर्ज की गई वादा तारीख (उदा. धान खरीदी, महतारी वंदन या कोई तय तारीख) बीत जाती है और ग्राहक पर उधारी बाकी रहती है, तो बही-खाता स्क्रीन के सबसे ऊपर एक स्पष्ट लाल-अंबर चेतावनी बैनर स्वतः प्रदर्शित होता है।
+- **कुल वसूली योग्य रकम व ग्राहक संख्या:** इस बैनर में एक नज़र में दिखता है कि कितने ग्राहकों की वादा तारीख पार हो चुकी है और उनसे कुल कितनी रकम (`₹`) वसूल होनी बाकी है।
+- **1-क्लिक त्वरित WhatsApp तगादा:** बैनर में प्रत्येक अतिदेय ग्राहक के नाम के ठीक सामने हरा WhatsApp बटन दिया गया है। बिना अलग से ग्राहक कार्ड ढूंढे, दुकानदार सीधे इस बटन को दबाकर सम्मानजनक भाषा में याद दिलाने वाला संदेश (तगादा) भेज सकता है जिसमें वादा तारीख और बकाया राशि का पूरा विवरण रहता है।
+
 ### Recording Payments Received (जमा) & New Credit (उधार)
 - **जमा (+):** Green button to record a partial or full payment. Deducts from the customer's balance.
 - **उधार (-):** Red button to add a new credit amount directly to the customer's ledger.
@@ -368,6 +376,12 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 - **एक्सपायरी रडार (Expiry Radar):** अगले 7 से 30 दिनों में एक्सपायर होने वाले पैकेटबंद सामानों (जैसे ब्रेड, बिस्कुट, नमकीन, मसाले) की सूची सीधे अलर्ट कार्ड्स में दिखाई देती है।
 - **🏷️ रियायती दर (Clearance Sale Shortcut):** जो सामान जल्दी एक्सपायर होने वाला है, उसे फेंकने या नुकसान में डालने के बजाय दुकानदार कार्ड पर ही दिए गए **"🏷️ रियायती दर"** बटन को दबाकर तुरंत बिक्री दर घटा सकता है (उदा. ₹50 वाले पैकेट को ₹40 कर देना)। यह नया भाव सीधे काउंटर बिलिंग में सक्रिय हो जाता है ताकि सामान समय रहते बिक जाए।
 - **⚡ खराबी दर्ज (Quick Spoilage Log):** यदि कोई सामान पूरी तरह खराब हो चुका है, तो कार्ड से ही 1-क्लिक में खराबी दर्ज करने वाला फॉर्म खुल जाता है जिसमें सामान का नाम, मात्रा व थोक भाव पहले से भरे रहते हैं।
+
+### Morning Counter Expiry Radar & WhatsApp Distributor Claim (मुख्य काउंटर पर एक्सपायरी चेतावनी व डिस्ट्रीब्यूटर क्लेम)
+- **मुख्य बिलिंग काउंटर पर सुबह का अलर्ट:** दुकान खोलते ही मुख्य बिलिंग काउंटर (POS) पर उन सभी सामानों का विशिष्ट चेतावनी बैनर चमकता है जो एक्सपायर हो चुके हैं या अगले 7 दिनों में समाप्त होने वाले हैं। इससे दुकानदार ग्राहक को सामान सौंपने से पहले ही उसे काउंटर से अलग कर सकता है।
+- **मुफ़्त बनाम प्रो योजना रडार (Tiered Display):** 'गाँव स्टार्टर' मुफ़्त योजना में सबसे पहले समाप्त होने वाले शीर्ष 3 सामानों का त्वरित अलर्ट दिखता है, जबकि 'ग्रामिन प्रो' में दुकान के सभी आगामी एक्सपायरी सामानों की पूर्ण सूची प्रदर्शित होती है।
+- **1-क्लिक डिस्ट्रीब्यूटर क्लेम व्हाट्सएप:** बैनर पर लगे बटन को दबाते ही सभी एक्सपायरी सामानों, उनकी मात्रा और खरीद भाव के साथ डिस्ट्रीब्यूटर के लिए लिखित क्लेम संदेश तैयार हो जाता है।
+- **काउंटर बंद (Dismiss) सुविधा:** सुबह एक बार अलर्ट देख लेने के बाद दुकानदार बैनर को अस्थायी रूप से बंद (Dismiss) कर सकता है ताकि दिनभर ग्राहकों की बिलिंग में कोई रुकावट न आए।
 
 ### 1-Click WhatsApp Distributor Return Claim (डिस्ट्रीब्यूटर वापसी क्लेम)
 - **शहर के डिस्ट्रीब्यूटर को एक्सपायरी माल की वापसी:** किराना स्टोर में एक्सपायर या एक्सपायरी के नजदीक माल की वापसी (Credit Note / Replacement) के लिए डिस्ट्रीब्यूटर को लिखित लिस्ट देनी होती है।
@@ -619,6 +633,11 @@ Gramin Kirana is crafted with a high-contrast, authentic **Village Premium (ग�
   - **📈 अतिरिक्त नकद (Surplus):** गल्ले में अधिक पैसे होने पर नीले रंग में बढ़त दिखती है।
   - **⚠️ नकद कम है (Deficit):** गल्ले में पैसे कम होने पर लाल रंग में चेतावनी दिखती है ताकि मुनीम या स्टाफ से तुरंत जांच की जा सके।
 - **गल्ला पुनः खोलना व संशोधन (Reopen Guard):** यदि शाम को गल्ला बंद करने के बाद कोई देर रात ग्राहक आ जाए या कोई खर्च लिखना छूट गया हो, तो दुकानदार **"🔓 गल्ला पुनः खोलें / संशोधित करें"** बटन दबाकर आज के हिसाब को फिर से खोल सकता है और नया सुधार करके दोबारा सुरक्षित कर सकता है।
+
+### Evening Cash Close Navigation Reminder (शाम का गल्ला मिलान स्मरण बैज)
+- **शाम 7 बजे के बाद स्वतः स्मरण:** यदि दिनभर दुकान में बिक्री हुई है और शाम 7:00 बजे (19:00) के बाद भी आज का गल्ला हिसाब बंद नहीं किया गया है, तो मुख्य नेविगेशन बार में 'गल्ला' बटन पर एक चमकता हुआ अंबर बैज **"मिलान बाकी"** और मोबाइल बॉटम बार पर चमकता हुआ बिंदु (Pulsating Dot) प्रदर्शित होता है।
+- **रोकड़ भूल से बचाव:** दुकान बढ़ाते समय भागदौड़ में अक्सर मुनीम या मालिक नकद गिनना भूल जाते हैं। यह बैज दुकान बंद करने से पहले वास्तविक रोकड़ गिनने, UPI आवक मिलाने और खर्च दर्ज करने की याद दिलाता है।
+- **हिसाब सुरक्षित होते ही बैज स्वतः समाप्त:** जैसे ही दुकानदार आज का गल्ला मिलान करके **"🔒 आज का गल्ला बंद करें"** दबाता है, यह बैज अपने-आप हट जाता है।
 
 ### 1-Click WhatsApp Day Summary (व्हाट्सएप पर दिन सारांश)
 - **📲 व्हाट्सएप:** 1-क्लिक में दुकान के नाम, गाँव के पते, सुबह के गल्ले, नकद बिक्री, जमा वसूली, UPI आवक, खर्चों और मिलान स्थिति के साथ एक सुंदर संदेश तैयार हो जाता है जिसे दुकान मालिक या मुनीम को भेजा जा सकता है।

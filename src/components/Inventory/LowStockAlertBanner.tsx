@@ -4,6 +4,7 @@ import { X, Send, Package, AlertTriangle } from 'lucide-react';
 import { db } from '../../db';
 import type { Product } from '../../types';
 import { syncService } from '../../services/syncService';
+import { openWhatsApp } from '../../utils/whatsapp';
 
 interface LowStockAlertBannerProps {
   onDismiss: () => void;
@@ -34,12 +35,11 @@ export const LowStockAlertBanner: React.FC<LowStockAlertBannerProps> = ({ onDism
     const lines = lowStockItems.map(
       (p: Product) => `• ${p.hindiName || p.name}: केवल ${p.stockQty} ${p.unit} बचा`
     );
-    const msg = encodeURIComponent(
+    const msg =
       `🔔 *${shopName}* — कम स्टॉक सूचना (${today})\n\n` +
       lines.join('\n') +
-      `\n\n📦 कुल ${lowStockItems.length} सामान जल्दी मंगवाएं।`
-    );
-    window.open(`https://wa.me/?text=${msg}`, '_blank');
+      `\n\n📦 कुल ${lowStockItems.length} सामान जल्दी मंगवाएं।`;
+    openWhatsApp(undefined, msg);
   };
 
   return (

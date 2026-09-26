@@ -108,6 +108,8 @@ export const translations = {
       logLossBtn: '+ नुकसान दर्ज करें',
       expiringSoon: 'अगले 7 दिनों में एक्सपायर होने वाले सामान',
       noExpiring: 'कोई सामान जल्द एक्सपायर नहीं होने वाला है।',
+      expiringBannerTitle: 'सामान एक्सपायरी चेतावनी',
+      distributorClaimBtn: '📲 डिस्ट्रीब्यूटर वापसी क्लेम (WhatsApp)',
       reasonLabels: {
         POWER_CUT: '⚡ बिजली कटौती / लोड शेडिंग (दूध/दही/कोल्ड ड्रिंक)',
         HEAT_DAMAGE: '☀️ अत्यधिक गर्मी / नमी से खराबी',
@@ -180,7 +182,9 @@ export const translations = {
       noHistory: 'आज कोई गल्ला बंद नहीं हुआ है',
       todayDate: 'आज की तारीख',
       bluetoothConnect: 'ब्लूटूथ प्रिंटर से जोड़ें',
-      printFallback: 'ब्राउज़र प्रिंट (58mm)'
+      printFallback: 'ब्राउज़र प्रिंट (58mm)',
+      eveningReminder: 'शाम का गल्ला मिलान बाकी है',
+      closePendingBadge: 'मिलान बाकी'
     },
     haatMode: {
       title: 'साप्ताहिक हाट-बाजार मोड',
@@ -343,6 +347,8 @@ export const translations = {
       logLossBtn: '+ नुकसान दर्ज करव',
       expiringSoon: 'आगू 7 दिन म एक्सपायर होवइया सामान',
       noExpiring: 'कोनो सामान अभी एक्सपायर नइ होवत हे।',
+      expiringBannerTitle: 'सामान एक्सपायरी चेतावनी',
+      distributorClaimBtn: '📲 डिस्ट्रीब्यूटर वापसी क्लेम (WhatsApp)',
       reasonLabels: {
         POWER_CUT: '⚡ करंट कटे ले / लोड शेडिंग (दूध/दही/कोल्ड ड्रिंक खराब)',
         HEAT_DAMAGE: '☀️ घाम (गर्मी) अउ सीलन ले खराबी',
@@ -415,7 +421,9 @@ export const translations = {
       noHistory: 'आज कोनो गल्ला बंद नइ होए हे',
       todayDate: 'आज के तारीख',
       bluetoothConnect: 'ब्लूटूथ प्रिंटर जोड़व',
-      printFallback: 'ब्राउज़र प्रिंट (58mm)'
+      printFallback: 'ब्राउज़र प्रिंट (58mm)',
+      eveningReminder: 'सांझ के गल्ला मिलान बांचे हे',
+      closePendingBadge: 'मिलान बांचे'
     },
     haatMode: {
       title: 'साप्ताहिक अठवरिया हाट-बाजार मोड',
@@ -578,6 +586,8 @@ export const translations = {
       logLossBtn: '+ Log New Loss',
       expiringSoon: 'Expiring Within 7 Days',
       noExpiring: 'No items nearing expiry date.',
+      expiringBannerTitle: 'Product Expiry Alert',
+      distributorClaimBtn: '📲 Distributor Return Claim (WhatsApp)',
       reasonLabels: {
         POWER_CUT: '⚡ Power Cut / Load Shedding (Milk/Curd/Cold Drinks)',
         HEAT_DAMAGE: '☀️ Heat / Humidity Damage',
@@ -650,7 +660,9 @@ export const translations = {
       noHistory: 'No cash close recorded today',
       todayDate: "Today's Date",
       bluetoothConnect: 'Connect Bluetooth Printer',
-      printFallback: 'Browser Print (58mm)'
+      printFallback: 'Browser Print (58mm)',
+      eveningReminder: 'Evening Cash Close is pending',
+      closePendingBadge: 'Close Due'
     },
     haatMode: {
       title: 'Weekly Haat-Bazaar High-Speed Mode',

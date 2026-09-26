@@ -15,6 +15,7 @@ import { DailyCashClose } from './components/CashClose/DailyCashClose';
 import { HaatBazaarMode } from './components/Haat/HaatBazaarMode';
 import { WelcomeLandingPage } from './components/Landing/WelcomeLandingPage';
 import { LowStockAlertBanner } from './components/Inventory/LowStockAlertBanner';
+import { ExpiringSoonAlertBanner } from './components/Inventory/ExpiringSoonAlertBanner';
 import { ProfitLossReport } from './components/Reports/ProfitLossReport';
 import { UpdateNotificationBanner } from './components/Common/UpdateNotificationBanner';
 import { AnnouncementBanner } from './components/Common/AnnouncementBanner';
@@ -22,10 +23,12 @@ import { SuperAdminDashboard } from './components/Admin/SuperAdminDashboard';
 import { AdminLoginModal } from './components/Admin/AdminLoginModal';
 import { StoreSetupWizardModal } from './components/Auth/StoreSetupWizardModal';
 import { CustomerPassbookModal } from './components/Khata/CustomerPassbookModal';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { syncService } from './services/syncService';
 import { adminService } from './services/adminService';
 import type { Customer, UserRole } from './types';
 import { db } from './db';
+import { getTodayISODate } from './utils/formatters';
 
 const MainApp: React.FC = () => {
   const { t } = useLanguage();
@@ -37,6 +40,19 @@ const MainApp: React.FC = () => {
   const [posSearchQuery, setPosSearchQuery] = useState<string>('');
   const [isDbReady, setIsDbReady] = useState<boolean>(false);
   const [lowStockDismissed, setLowStockDismissed] = useState<boolean>(false);
+  const [expiringSoonDismissed, setExpiringSoonDismissed] = useState<boolean>(false);
+
+  // Proactive Evening Cash Close Reminder (after 7 PM / 19:00 if sales exist but cash close is unverified)
+  const isEveningCashCloseDue = useLiveQuery(async () => {
+    const hour = new Date().getHours();
+    if (hour < 19) return false;
+    const today = getTodayISODate();
+    const alreadyClosed = await db.dailyCashClose.where('date').equals(today).first();
+    if (alreadyClosed) return false;
+    const startOfDay = `${today}T00:00:00.000Z`;
+    const todaySalesCount = await db.sales.where('timestamp').aboveOrEqual(startOfDay).count();
+    return todaySalesCount > 0;
+  }, []) || false;
 
   const [isAdminMode, setIsAdminMode] = useState<boolean>(() => adminService.isSuperAdmin());
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState<boolean>(false);
@@ -246,11 +262,17 @@ const MainApp: React.FC = () => {
           setIsDemoExploring(false);
         }}
         onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+        isEveningCashCloseDue={isEveningCashCloseDue}
       />
 
       {/* Low Stock Morning Alert Banner — shows once per session when logged in */}
       {!lowStockDismissed && (
         <LowStockAlertBanner onDismiss={() => setLowStockDismissed(true)} />
+      )}
+
+      {/* Expiring Goods Morning Counter Alert Banner — shows once per session when logged in */}
+      {!expiringSoonDismissed && (
+        <ExpiringSoonAlertBanner onDismiss={() => setExpiringSoonDismissed(true)} />
       )}
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-2.5 sm:p-5 pb-24 md:pb-8">
@@ -386,13 +408,22 @@ const MainApp: React.FC = () => {
 
         <button
           onClick={() => { setActiveTab('cashClose'); setIsMoreMenuOpen(false); }}
-          className={`flex-1 py-1 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors ${
+          className={`flex-1 py-1 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center gap-0.5 cursor-pointer transition-colors relative ${
             activeTab === 'cashClose' 
               ? 'text-amber-950 bg-amber-100 ring-1 ring-amber-400/60' 
               : 'text-stone-600 hover:text-stone-900'
           }`}
+          title={isEveningCashCloseDue ? 'शाम का गल्ला मिलान बाकी है' : undefined}
         >
-          <span className="text-base leading-none">🏦</span>
+          <span className="text-base leading-none relative">
+            🏦
+            {isEveningCashCloseDue && (
+              <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+              </span>
+            )}
+          </span>
           <span className="truncate max-w-[65px] leading-tight">{t.tabs.cashClose}</span>
         </button>
 

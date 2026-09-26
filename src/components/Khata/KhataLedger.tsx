@@ -101,6 +101,15 @@ export const KhataLedger: React.FC = () => {
     .filter((c: Customer) => c.dueReason === 'KHARIF_DHAN')
     .reduce((sum: number, c: Customer) => sum + (c.balanceDue || 0), 0);
 
+  // Overdue promise / harvest customers with pending balances
+  const overduePromiseCustomers = React.useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return customers.filter((c: Customer) => {
+      if ((c.balanceDue || 0) <= 0) return false;
+      return !!c.dueDate && c.dueDate <= today;
+    });
+  }, [customers]);
+
   // Clearance Receipt WhatsApp sender
   const sendClearanceReceiptWhatsApp = (cust: Customer, amount: number) => {
     const store = syncService.getStoreInfo();
@@ -359,13 +368,7 @@ export const KhataLedger: React.FC = () => {
     text += `🔴 *कुल अंतिम बाकी रकम: ₹${customer.balanceDue}*\n`;
     text += `🙏 शुद्ध ग्रामीण हिसाब। सहयोग के लिए धन्यवाद!`;
 
-    const encoded = encodeURIComponent(text);
-    const phone = customer.phone.replace(/[^0-9]/g, '');
-    const url = phone.length >= 10 
-      ? `https://wa.me/91${phone}?text=${encoded}`
-      : `https://wa.me/?text=${encoded}`;
-
-    window.open(url, '_blank');
+    openWhatsApp(customer.phone, text);
   };
 
   return (
@@ -443,6 +446,46 @@ export const KhataLedger: React.FC = () => {
           </button>
         )}
       </div>
+
+      {/* Overdue Harvest & Promise Date Alert Banner */}
+      {overduePromiseCustomers.length > 0 && (
+        <div
+          role="region"
+          aria-label="वादा तारीख पार ग्राहक अलर्ट"
+          className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/90 border border-amber-300 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-slide-down"
+        >
+          <div className="flex items-start gap-2.5 min-w-0">
+            <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0 mt-0.5 border border-amber-200">
+              <Calendar className="w-4 h-4 text-amber-700" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-black text-amber-950 flex items-center gap-1.5 flex-wrap">
+                <span>🌾 वादा तारीख पार: {overduePromiseCustomers.length} ग्राहकों का भुगतान समय आ चुका है!</span>
+                <span className="bg-rose-100 text-rose-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-rose-200">
+                  कुल बकाया: ₹{overduePromiseCustomers.reduce((s, c) => s + (c.balanceDue || 0), 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-900/80 m-0 mt-0.5 font-medium truncate sm:whitespace-normal">
+                धान खरीदी या वादा तारीख के अनुसार आज तगादा संदेश भेजें ताकि उधारी समय पर वसूल हो सके।
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              overduePromiseCustomers.forEach((c, idx) => {
+                setTimeout(() => sendWhatsAppReminder(c), idx * 800);
+              });
+            }}
+            className="w-full sm:w-auto px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 shrink-0"
+            title="सभी वादा पार ग्राहकों को एक-एक कर WhatsApp तगादा भेजें"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>वादा स्मरण भेजें ({overduePromiseCustomers.length})</span>
+          </button>
+        </div>
+      )}
 
       {/* Filter Bar: Mohalla / Para Filter & Search */}
       <div className="village-card p-3 rounded-2xl bg-white flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">

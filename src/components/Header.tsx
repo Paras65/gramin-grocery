@@ -18,6 +18,7 @@ interface HeaderProps {
   onBackToLanding?: () => void;
   onOpenWizard?: () => void;
   onOpenAdminLogin?: () => void;
+  isEveningCashCloseDue?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -28,7 +29,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMunimLogin, 
   onBackToLanding,
   onOpenWizard,
-  onOpenAdminLogin
+  onOpenAdminLogin,
+  isEveningCashCloseDue = false
 }) => {
   const { language, toggleLanguage, t } = useLanguage();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -504,6 +506,7 @@ export const Header: React.FC<HeaderProps> = ({
         <nav className="flex flex-wrap gap-1.5 py-1.5">
           {tabs.map(tab => {
             const isActive = activeTab === tab.id;
+            const isCashCloseAlert = tab.id === 'cashClose' && isEveningCashCloseDue;
             return (
               <button
                 key={tab.id}
@@ -516,6 +519,11 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <span>{tab.icon}</span>
                 <span>{tab.label}</span>
+                {isCashCloseAlert && (
+                  <span className="px-1.5 py-0.2 text-[9px] font-black bg-amber-400 text-stone-950 rounded-full animate-pulse" title="शाम का गल्ला मिलान बाकी है">
+                    मिलान बाकी
+                  </span>
+                )}
               </button>
             );
           })}
