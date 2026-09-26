@@ -21,8 +21,8 @@ export const StoreSetupWizardModal: React.FC<StoreSetupWizardModalProps> = ({
   const storeInfo = syncService.getStoreInfo();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [storeName, setStoreName] = useState(storeInfo?.storeName || 'जय माँ बम्लेश्वरी किराना स्टोर');
-  const [villageName, setVillageName] = useState(storeInfo?.village || 'आरंग (Arang)');
+  const [storeName, setStoreName] = useState(storeInfo?.storeName || '');
+  const [villageName, setVillageName] = useState(storeInfo?.village || '');
   const [upiId, setUpiId] = useState(() => localStorage.getItem('gk_store_upi_id') || '');
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<{ added: number; total: number } | null>(null);

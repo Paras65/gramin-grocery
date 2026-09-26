@@ -46,12 +46,12 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
   const [ownerName, setOwnerName] = useState('');
   const [regMobile, setRegMobile] = useState('');
   const [regPin, setRegPin] = useState('');
-  const [regPincode, setRegPincode] = useState('493441');
-  const [village, setVillage] = useState('आरंग');
-  const [block, setBlock] = useState('आरंग');
-  const [district, setDistrict] = useState('रायपुर (Raipur)');
+  const [regPincode, setRegPincode] = useState('');
+  const [village, setVillage] = useState('');
+  const [block, setBlock] = useState('');
+  const [district, setDistrict] = useState('');
   const [isLookingUpPin, setIsLookingUpPin] = useState(false);
-  const [detectedVillages, setDetectedVillages] = useState<string[]>(['आरंग', 'भानसोज', 'लखोली', 'गुल्लू', 'रसनी']);
+  const [detectedVillages, setDetectedVillages] = useState<string[]>([]);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState('');

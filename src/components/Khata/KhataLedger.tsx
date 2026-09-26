@@ -44,7 +44,7 @@ export const KhataLedger: React.FC = () => {
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [newCustName, setNewCustName] = useState('');
   const [newCustPhone, setNewCustPhone] = useState('');
-  const [newCustPara, setNewCustPara] = useState('Patel Para (पटेल पारा)');
+  const [newCustPara, setNewCustPara] = useState('');
   const [newCustBalance, setNewCustBalance] = useState('');
   const [newCustCreditLimit, setNewCustCreditLimit] = useState('2000');
   const [newCustDueReason, setNewCustDueReason] = useState<DueReason>('KHARIF_DHAN');
@@ -231,7 +231,7 @@ export const KhataLedger: React.FC = () => {
       id: customerId,
       name: cleanName,
       phone: cleanPhone,
-      para: newCustPara,
+      para: newCustPara.trim() || 'सामान्य',
       balanceDue: initialBal,
       creditLimit: isNaN(parseFloat(newCustCreditLimit)) ? 2000 : Math.max(0, parseFloat(newCustCreditLimit)),
       dueDate: newCustDueDate,

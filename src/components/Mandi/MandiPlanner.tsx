@@ -36,12 +36,7 @@ interface ReceiveItemRow {
   isCustom?: boolean;
 }
 
-const defaultWholesalers: Wholesaler[] = [
-  { id: 'ws_1', name: 'साहू किराना भंडार', phone: '9827100001', mandiLocation: 'तहसील कृषि उपज मंडी', category: 'अनाज व दालें' },
-  { id: 'ws_2', name: 'महावीर तेल ट्रेडर्स', phone: '9827100002', mandiLocation: 'गंज बाज़ार', category: 'तेल व घी' },
-  { id: 'ws_3', name: 'अग्रवाल किराना मर्चेंट', phone: '9827100003', mandiLocation: 'मुख्य गल्ला मंडी', category: 'मसाले व शक्कर' },
-  { id: 'ws_4', name: 'बालाजी FMCG डिस्ट्रीब्यूटर', phone: '9827100004', mandiLocation: 'स्टेशन रोड', category: 'साबुन व बिस्कुट' }
-];
+const defaultWholesalers: Wholesaler[] = [];
 
 export const MandiPlanner: React.FC = () => {
   const { language, t } = useLanguage();
@@ -61,17 +56,17 @@ export const MandiPlanner: React.FC = () => {
     if (oldName || oldPhone) {
       return [{
         id: 'ws_default',
-        name: oldName || 'साहू किराना भंडार',
-        phone: oldPhone || '9827100001',
+        name: oldName || 'थोक व्यापारी',
+        phone: oldPhone || '',
         mandiLocation: 'तहसील मंडी',
         category: 'अनाज व किराना'
-      }, ...defaultWholesalers.slice(1)];
+      }];
     }
     return defaultWholesalers;
   });
 
   const [selectedWholesalerId, setSelectedWholesalerId] = useState<string>(() => {
-    return localStorage.getItem('gk_selected_wholesaler_id') || (wholesalers[0]?.id || 'ws_1');
+    return localStorage.getItem('gk_selected_wholesaler_id') || (wholesalers[0]?.id || '');
   });
 
   const [showWholesalerModal, setShowWholesalerModal] = useState<boolean>(false);
@@ -339,10 +334,6 @@ export const MandiPlanner: React.FC = () => {
   };
 
   const handleDeleteWholesaler = (id: string) => {
-    if (wholesalers.length <= 1) {
-      alert('कम से कम एक थोक व्यापारी सूची में रहना आवश्यक है।');
-      return;
-    }
     const target = wholesalers.find(w => w.id === id);
     if (!target) return;
     if (confirm(`क्या आप व्यापारी "${target.name}" को हटाना चाहते हैं?`)) {
@@ -355,6 +346,11 @@ export const MandiPlanner: React.FC = () => {
   };
 
   const shareToWholesalerWhatsApp = () => {
+    if (mandiRows.length === 0) return;
+    if (!activeWholesaler || !activeWholesaler.phone) {
+      alert('कृपया पहले डायरी (✏️) में थोक व्यापारी जोड़ें या उनका फ़ोन नंबर दर्ज करें।');
+      return;
+    }
     const dateStr = new Date().toLocaleDateString('hi-IN', {
       day: 'numeric',
       month: 'short',
@@ -432,11 +428,15 @@ export const MandiPlanner: React.FC = () => {
               onChange={e => setSelectedWholesalerId(e.target.value)}
               className="p-2 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs font-bold text-stone-900 outline-hidden focus:border-amber-500 max-w-xs"
             >
-              {wholesalers.map(w => (
-                <option key={w.id} value={w.id}>
-                  {w.name} ({w.category || 'किराना'}) - {w.mandiLocation || 'मंडी'}
-                </option>
-              ))}
+              {wholesalers.length === 0 ? (
+                <option value="">कोई व्यापारी नहीं (डायरी ✏️ से जोड़ें)</option>
+              ) : (
+                wholesalers.map(w => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({w.category || 'किराना'}) - {w.mandiLocation || 'मंडी'}
+                  </option>
+                ))
+              )}
             </select>
 
             <button
