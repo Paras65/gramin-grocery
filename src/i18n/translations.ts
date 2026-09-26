@@ -290,6 +290,53 @@ export const translations = {
         startBtn: '🚀 हाँ, अभ्यास बिल सीखें',
         dismissBtn: 'बाद में'
       }
+    },
+    share: {
+      title: 'साथी दुकानदार को शेयर करें',
+      subtitle: 'गाँव के अन्य व्यापारी भाइयों को डिजिटल किराना से जोड़ें',
+      whatsappBtn: 'WhatsApp पर शेयर करें',
+      instagramBtn: 'Instagram Bio / DM लिंक',
+      shareSheetBtn: 'अन्य ऐप पर भेजें',
+      copyBtn: 'लिंक कॉपी करें',
+      copied: 'लिंक कॉपी हो गया! ✅',
+      referralNotice: '🎁 रेफरल बोनस: साथी को जोड़ने पर आप दोनों को +15 दिन प्रो ट्रायल मुफ़्त!',
+      messageTemplate: 'नमस्ते! मैं अपनी दुकान पर "ग्रामीण किराना" ऐप का उपयोग कर रहा हूँ। यह 100% बिना इंटरनेट चलता है — तुरंत बिलिंग, उधारी बही-खाता, बारकोड स्कैनर और ब्लूटूथ प्रिंटर सब कुछ मुफ़्त है। आप भी अपनी दुकान के लिए आज़माएं:\n\n'
+    },
+    faqs: {
+      title: 'अक्सर पूछे जाने वाले सवाल (FAQs)',
+      subtitle: 'गाँव के दुकानदारों द्वारा सबसे ज़्यादा पूछे जाने वाले सवालों के सीधे जवाब',
+      badge: 'मदद व समाधान',
+      startShopAction: '👉 अभी अपनी दुकान शुरू करें (15 सेकंड में) ➔',
+      items: [
+        {
+          q: 'क्या यह ऐप सच में बिना इंटरनेट (100% ऑफ़लाइन) काम करता है?',
+          a: 'जी हाँ! ग्रामीण किराना को विशेष रूप से गाँव के कमजोर नेटवर्क व बिजली कटौती को ध्यान में रखकर बनाया गया है। बिलिंग, उधारी बही-खाता, बारकोड स्कैनिंग, हाट मोड और गल्ला हिसाब बिना इंटरनेट के बिल्कुल सुपरफ़ास्ट चलते हैं। नेटवर्क आने पर डेटा स्वतः सुरक्षित रूप से सिंक हो जाता है।'
+        },
+        {
+          q: 'क्या "गाँव स्टार्टर" प्लान सच में हमेशा मुफ़्त (Free Forever) है?',
+          a: 'बिल्कुल! गाँव स्टार्टर प्लान ₹0 आजीवन मुफ़्त है। इसमें ऑफ़लाइन बिलिंग, असीमित उधारी खाता, बारकोड स्कैनर, साप्ताहिक हाट मोड और 58mm ब्लूटूथ प्रिंटिंग के लिए कभी कोई चार्ज नहीं लिया जाता।'
+        },
+        {
+          q: 'यदि मेरा फोन खराब, चोरी या गुम हो जाए, तो क्या दुकान का डेटा सुरक्षित रहेगा?',
+          a: 'हाँ, 100% सुरक्षित! ऐप में "डेटा बैकअप" (JSON फ़ाइल) डाउनलोड करने की सुविधा है। इसके अलावा प्रो प्लान में सुरक्षित क्लाउड ऑटो-बैकअप मिलता है, जिससे नए फोन में सिर्फ अपना मोबाइल नंबर व गुप्त पिन डालते ही पूरी दुकान, सभी ग्राहकों की उधारी और स्टॉक 1 सेकंड में वापस आ जाता है।'
+        },
+        {
+          q: 'क्या मुझे कोई महंगा कंप्यूटर, बारकोड गन या प्रिंटर खरीदना पड़ेगा?',
+          a: 'बिल्कुल नहीं! आप अपने किसी भी साधारण 4G एंड्रॉयड स्मार्टफोन से पूरा काम कर सकते हैं। बारकोड स्कैनिंग सीधे फोन के कैमरे से होती है। यदि आप ग्राहकों को पक्की पर्ची देना चाहते हैं, तो मात्र ₹1200-₹1500 का कोई भी सस्ता पॉकेट ब्लूटूथ थर्मल प्रिंटर जोड़ सकते हैं।'
+        },
+        {
+          q: 'क्या ग्राहकों को उनके WhatsApp पर उधारी और बिल की रसीद मिलेगी?',
+          a: 'हाँ! हर बिल कटने पर, उधारी सामान ले जाने पर या जमा मिलने पर आप केवल 1 टैप में ग्राहक के WhatsApp पर सुंदर रसीद भेज सकते हैं। साथ ही ग्राहक को एक सुरक्षित डिजिटल पासबुक लिंक मिलता है, जिससे वह अपने फोन पर पूरा पुराना हिसाब देख सकता है।'
+        },
+        {
+          q: 'दुकान पर मुनीम या लड़का बैठता है — क्या वह मेरा मुनाफ़ा और थोक खरीद भाव देख पाएगा?',
+          a: 'बिल्कुल नहीं! आप मुनीम के लिए अलग 4-अंकों का गुप्त PIN सेट कर सकते हैं। मुनीम केवल ग्राहक का बिल काट सकता है। दुकान का शुद्ध मुनाफ़ा, थोक खरीद भाव, गल्ला हिसाब, मंडी डायरी और सेटिंग्स मुनीम से पूरी तरह सुरक्षित और छिपे रहते हैं।'
+        },
+        {
+          q: 'ऐप में अपनी दुकान शुरू करने में कितना समय लगता है?',
+          a: 'सिर्फ 15 से 30 सेकंड! अपना मोबाइल नंबर और 4-अंकों का गुप्त पिन बनाएं। दुकान सेटअप विज़ार्ड की मदद से गाँव में बिकने वाले 52 प्रसिद्ध किराना सामान (शक्कर, तेल, दाल, बिस्कुट, साबुन आदि) केवल 1 क्लिक में लोड हो जाते हैं।'
+        }
+      ]
     }
   },
   cg: {
@@ -581,6 +628,53 @@ export const translations = {
         startBtn: '🚀 हव, अभ्यास बिल सीखव',
         dismissBtn: 'पाछू'
       }
+    },
+    share: {
+      title: 'संगी व्यापारी ला शेयर करव',
+      subtitle: 'गाँव के दूसर दुकानदार संगी मन ला डिजिटल किराना ले जोड़व',
+      whatsappBtn: 'WhatsApp म शेयर करव',
+      instagramBtn: 'Instagram Bio / DM लिंक',
+      shareSheetBtn: 'दूसर ऐप म भेजव',
+      copyBtn: 'लिंक कॉपी करव',
+      copied: 'लिंक कॉपी होगे! ✅',
+      referralNotice: '🎁 रेफरल बोनस: संगी ला जोड़े बर दूनों ला +15 दिन प्रो ट्रायल मुफ़्त!',
+      messageTemplate: 'नमस्ते! मैं अपन दुकान म "ग्रामीण किराना" ऐप चलावत हौं। ये 100% बिना नेट के चलथे — तुरते बिलिंग, उधारी बही-खाता, बारकोड स्कैनर अउ ब्लूटूथ प्रिंटर सब मुफ़्त हे। तहुँ अपन दुकान बर आज़माव:\n\n'
+    },
+    faqs: {
+      title: 'अक्सर पूछे जाने वाले सवाल (FAQs)',
+      subtitle: 'गाँव के दुकानदार मन के सबले बड़े सवाल के सीधा जवाब',
+      badge: 'मदद अउ समाधान',
+      startShopAction: '👉 अभी अपन दुकान शुरू करव (15 सेकंड म) ➔',
+      items: [
+        {
+          q: 'का ये ऐप सच म बिना इंटरनेट (100% ऑफ़लाइन) चलथे?',
+          a: 'हव! ग्रामीण किराना ला गाँव के कमजोर नेटवर्क अउ बिजली कटौती ला देख के बनाए गे हे। बिलिंग, उधारी बही-खाता, बारकोड स्कैन, हाट-बाजार मोड अउ गल्ला हिसाब बिना नेट के सुपरफ़ास्ट चलथे। नेटवर्क आए म डाटा अपने-आप क्लाउड म सुरक्षित हो जाथे।'
+        },
+        {
+          q: 'का "गाँव स्टार्टर" प्लान सच म जिनगी भर मुफ़्त (Free Forever) हे?',
+          a: 'बिल्कुल! गाँव स्टार्टर प्लान ₹0 जिनगी भर मुफ़्त हे। एमा ऑफ़लाइन बिलिंग, असीमित उधारी खाता, बारकोड स्कैनर, हाट मोड अउ ब्लूटूथ प्रिंटिंग बर कभू कोनो पइसा नइ लागे।'
+        },
+        {
+          q: 'यदि मोर मोबाइल फूट जाय, चोरी हो जाय, त का दुकान के डाटा बांचही?',
+          a: 'हव, 100% बांचही! ऐप म "डाटा बैकअप" (JSON फ़ाइल) डाउनलोड करे के सुविधा हे। एकर अलावा प्रो प्लान म क्लाउड ऑटो-बैकअप मिलथे, जेकर से नवा फोन म सिरिफ अपन मोबाइल नंबर अउ गुप्त पिन डारतेच पूरा दुकान 1 सेकंड म वापस आ जाथे।'
+        },
+        {
+          q: 'का मोला कोनो महँगा कंप्यूटर, बारकोड गन या प्रिंटर बिसाए ला परही?',
+          a: 'नइ! तँय अपन कोनो भी साधारण 4G एंड्रॉयड स्मार्टफोन ले पूरा काम कर सकथस। बारकोड स्कैनिंग मोबाइल के कैमरा ले होथे। यदि ग्राहक ला पर्ची देना हे, त 1200-1500 रुपिया के कोनो भी ब्लूटूथ प्रिंटर जोड़ सकथस।'
+        },
+        {
+          q: 'का ग्राहक ला ओकर WhatsApp म उधारी अउ बिल के रसीद मिलही?',
+          a: 'हव! हर बिल बने म, उधारी ले जाए म या जमा मिले म 1 टैप म ग्राहक के WhatsApp म सुंदर रसीद भेज सकथस। संग म ग्राहक ला डिजिटल पासबुक लिंक मिलथे, जेकर ले वो अपन फोन म पूरा हिसाब देख सकथे।'
+        },
+        {
+          q: 'दुकान म मुनीम या लइका बइठथे — का वो मोर मुनाफ़ा अउ थोक भाव देख पाही?',
+          a: 'बिल्कुल नइ! मुनीम बर अलग 4-अंक के गुप्त PIN बना सकथस। मुनीम सिरिफ बिल काट सकथे। दुकान के शुद्ध नफ़ा, थोक भाव, गल्ला हिसाब अउ सेटिंग्स मुनीम ले पूरी तरह लुके रहिथे।'
+        },
+        {
+          q: 'ऐप म अपन दुकान शुरू करे म कतका समय लगही?',
+          a: 'सिरिफ 15 ले 30 सेकंड! अपन मोबाइल नंबर अउ 4-अंक के गुप्त पिन बनाव। दुकान सेटअप विज़ार्ड ले गाँव म बिकने वाला 52 किराना सामान 1 क्लिक म लोड हो जाथे।'
+        }
+      ]
     }
   },
   en: {
@@ -872,6 +966,53 @@ export const translations = {
         startBtn: '🚀 Yes, Try Practice Bill',
         dismissBtn: 'Later'
       }
+    },
+    share: {
+      title: 'Share with Fellow Shopkeepers',
+      subtitle: 'Introduce local village merchants to digital billing and ledgers',
+      whatsappBtn: 'Share on WhatsApp',
+      instagramBtn: 'Instagram Bio / DM Link',
+      shareSheetBtn: 'Share via Other Apps',
+      copyBtn: 'Copy Link',
+      copied: 'Link Copied! ✅',
+      referralNotice: '🎁 Referral Bonus: Both you and your friend get +15 Days of Pro Trial Free!',
+      messageTemplate: 'Hello! I am using the "Gramin Kirana" app for my village store. It runs 100% offline — quick POS billing, Udhaar khata, barcode scanning, and bluetooth receipts are all free. Try it for your store:\n\n'
+    },
+    faqs: {
+      title: 'Frequently Asked Questions (FAQs)',
+      subtitle: 'Clear answers to common questions asked by village store owners',
+      badge: 'Help & Answers',
+      startShopAction: '👉 Start Your Store Now (in 15 seconds) ➔',
+      items: [
+        {
+          q: 'Does this app really work 100% offline without the internet?',
+          a: 'Yes! Gramin Kirana is engineered specifically for rural areas with weak networks or power outages. POS billing, Udhaar ledger, barcode scanning, weekly Haat mode, and evening cash closing work superfast completely offline. Data automatically syncs when connectivity is available.'
+        },
+        {
+          q: 'Is the "Village Starter" plan truly Free Forever?',
+          a: 'Absolutely! The Village Starter plan is ₹0 lifetime free. Offline billing, unlimited Udhaar Khata, camera barcode scanning, weekly Haat mode, and 58mm Bluetooth receipt printing carry zero charges forever.'
+        },
+        {
+          q: 'If my phone is lost, damaged, or upgraded, is my store data safe?',
+          a: 'Yes, 100% safe! You can download a complete offline JSON backup at any time. Additionally, the Pro plan offers secure cloud auto-sync, so entering your mobile number and secret PIN on any new phone restores your store, customer debts, and inventory in seconds.'
+        },
+        {
+          q: 'Do I need to buy an expensive computer, barcode gun, or printer?',
+          a: 'Not at all! You can run everything from any regular 4G Android smartphone. Barcode scanning uses your phone camera. If you wish to provide paper receipts, any affordable ₹1200-₹1500 wireless Bluetooth thermal printer can be paired instantly.'
+        },
+        {
+          q: 'Will customers receive digital receipts and Khata passbooks on WhatsApp?',
+          a: 'Yes! Upon generating a bill, extending credit, or receiving a repayment, you can send an itemized receipt to the customer via WhatsApp in 1 tap. Customers also receive a secure passbook link to review their complete balance history on their own phone.'
+        },
+        {
+          q: 'If staff or a cashier works the counter, can they see my profit margins and wholesale purchase rates?',
+          a: 'No! You can configure a 4-digit Munim PIN. Staff can only bill customers and record credit. Wholesale purchase rates, net profit reports, evening cash drawer closing, and store settings remain strictly locked and private.'
+        },
+        {
+          q: 'How long does it take to set up and start using the app?',
+          a: 'Only 15 to 30 seconds! Enter your mobile number and choose a 4-digit PIN. The Store Setup Wizard can pre-load 52 popular village grocery products (sugar, edible oils, pulses, spices, soap, biscuits) in just 1 tap.'
+        }
+      ]
     }
   }
 };

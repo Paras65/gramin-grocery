@@ -19,11 +19,24 @@ import {
   RefreshCw,
   Check,
   Gift,
-  MessageCircle
+  MessageCircle,
+  Share2,
+  Copy,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { syncService } from '../../services/syncService';
 import { lookupPincode } from '../../utils/pincodeService';
+
+const InstagramIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
 
 interface WelcomeLandingPageProps {
   onExploreDemo: () => void;
@@ -75,6 +88,86 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
       ? `https://wa.me/${supportWhatsApp}?text=${text}`
       : `https://wa.me/?text=${text}`;
     window.open(targetUrl, '_blank');
+  };
+
+  // Share & FAQ States & Handlers (Edge Cases S1, S2, S3, S4, S5, F1, F2)
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [copySuccess, setCopySuccess] = useState<boolean>(false);
+  const [canNativeShare, setCanNativeShare] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && !!navigator.share) {
+      setCanNativeShare(true);
+    }
+  }, []);
+
+  const getCleanShareUrl = () => {
+    if (typeof window !== 'undefined') {
+      return window.location.origin + window.location.pathname;
+    }
+    return 'https://gramin-grocery.web.app/';
+  };
+
+  const handleShare = async () => {
+    const cleanUrl = getCleanShareUrl();
+    const title = t.appName || 'ग्रामीण किराना';
+    const text = ((t as any).share?.messageTemplate || 'नमस्ते! मैं अपनी दुकान पर "ग्रामीण किराना" ऐप का उपयोग कर रहा हूँ:\n\n') + cleanUrl;
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title,
+          text,
+          url: cleanUrl,
+        });
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.warn('Share error:', err);
+        }
+      }
+    } else {
+      handleWhatsAppShare();
+    }
+  };
+
+  const handleWhatsAppShare = () => {
+    const cleanUrl = getCleanShareUrl();
+    const template = (t as any).share?.messageTemplate || 'नमस्ते! मैं अपनी दुकान पर "ग्रामीण किराना" ऐप का उपयोग कर रहा हूँ:\n\n';
+    const text = encodeURIComponent(template + cleanUrl);
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  };
+
+  const handleCopyLink = () => {
+    const cleanUrl = getCleanShareUrl();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(cleanUrl)
+        .then(() => {
+          setCopySuccess(true);
+          setTimeout(() => setCopySuccess(false), 2500);
+        })
+        .catch(() => {
+          fallbackCopy(cleanUrl);
+        });
+    } else {
+      fallbackCopy(cleanUrl);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2500);
+    } catch (err) {
+      console.warn('Fallback copy error:', err);
+    }
   };
 
   const handlePincodeChange = async (val: string) => {
@@ -176,6 +269,17 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
             >
               <Globe className="w-3.5 h-3.5 text-amber-400" />
               <span>{language === 'hi' ? 'हिन्दी' : language === 'cg' ? 'छत्तीसगढ़ी' : 'English'}</span>
+            </button>
+
+            {/* Quick Share Button in Navbar */}
+            <button
+              type="button"
+              onClick={handleShare}
+              className="flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95"
+              title="ऐप शेयर करें / Share App"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">शेयर</span>
             </button>
 
             <button
@@ -685,6 +789,77 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
         </div>
       </section>
 
+      {/* Share with Fellow Shopkeepers & Referral Bonus Section */}
+      <section className="py-10 px-4 sm:px-6 bg-gradient-to-b from-stone-900 via-stone-850 to-stone-900 text-stone-100 border-t border-b border-amber-600/30">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-gradient-to-br from-stone-800/90 via-stone-800/70 to-stone-900/90 rounded-3xl p-6 sm:p-8 border-2 border-amber-500/50 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+            
+            {/* Left Content */}
+            <div className="space-y-3 text-center md:text-left flex-1 min-w-0">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-black">
+                <Gift className="w-3.5 h-3.5" />
+                <span>{(t as any).share?.referralNotice || '🎁 रेफरल बोनस: साथी को जोड़ने पर आप दोनों को +15 दिन प्रो ट्रायल मुफ़्त!'}</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight m-0">
+                {(t as any).share?.title || 'साथी दुकानदार को शेयर करें'}
+              </h2>
+              <p className="text-xs sm:text-sm text-stone-300 font-medium leading-relaxed m-0 max-w-xl">
+                {(t as any).share?.subtitle || 'गाँव के अन्य व्यापारी भाइयों को डिजिटल किराना से जोड़ें और बिना इंटरनेट 100% ऑफ़लाइन बिलिंग का लाभ दें।'}
+              </p>
+            </div>
+
+            {/* Right Action Buttons */}
+            <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 w-full md:w-auto shrink-0">
+              {/* WhatsApp Share Button */}
+              <button
+                type="button"
+                onClick={handleWhatsAppShare}
+                className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-emerald-900/40 flex items-center justify-center gap-2 cursor-pointer transition active:scale-95"
+              >
+                <MessageCircle className="w-4 h-4 fill-white" />
+                <span>{(t as any).share?.whatsappBtn || 'WhatsApp पर शेयर करें'}</span>
+              </button>
+
+              {/* Instagram / System Share (Web Share API) Button */}
+              {canNativeShare && (
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 hover:opacity-90 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 shadow-md"
+                >
+                  <InstagramIcon className="w-4 h-4" />
+                  <span>{(t as any).share?.instagramBtn || 'Instagram / अन्य ऐप पर भेजें'}</span>
+                </button>
+              )}
+
+              {/* Copy Link Button with Toast */}
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className={`w-full sm:w-auto px-4 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 ${
+                  copySuccess
+                    ? 'bg-emerald-950 text-emerald-300 border-emerald-500 shadow-xs'
+                    : 'bg-stone-700/80 hover:bg-stone-700 text-stone-200 border-stone-600'
+                }`}
+              >
+                {copySuccess ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>{(t as any).share?.copied || 'लिंक कॉपी हो गया! ✅'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>{(t as any).share?.copyBtn || 'लिंक कॉपी करें'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Comparison Section */}
       <section className="py-12 px-4 sm:px-6 bg-[#faf8f3]">
         <div className="max-w-4xl mx-auto space-y-8">
@@ -836,6 +1011,108 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Frequently Asked Questions (FAQs) Accordion Section */}
+      <section className="py-14 px-4 sm:px-6 bg-[#faf8f3] border-t border-stone-200/80">
+        <div className="max-w-3xl mx-auto space-y-8">
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5">
+              <HelpCircle className="w-3.5 h-3.5 text-amber-700" />
+              <span>{(t as any).faqs?.badge || 'मदद व समाधान'}</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-stone-950 tracking-tight m-0">
+              {(t as any).faqs?.title || 'अक्सर पूछे जाने वाले सवाल (FAQs)'}
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 font-medium">
+              {(t as any).faqs?.subtitle || 'गाँव के दुकानदारों द्वारा सबसे ज़्यादा पूछे जाने वाले सवालों के सीधे जवाब'}
+            </p>
+          </div>
+
+          {/* Accordion Questions List */}
+          <div className="space-y-3">
+            {((t as any).faqs?.items || []).map((faq: { q: string; a: string }, idx: number) => {
+              const isOpen = openFaqIndex === idx;
+              return (
+                <div
+                  key={idx}
+                  className={`rounded-2xl transition-all border ${
+                    isOpen
+                      ? 'bg-white border-amber-500 shadow-md ring-2 ring-amber-400/20'
+                      : 'bg-white/80 hover:bg-white border-stone-200/90 shadow-2xs'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setOpenFaqIndex(isOpen ? null : idx);
+                      }
+                    }}
+                    role="button"
+                    aria-expanded={isOpen}
+                    tabIndex={0}
+                    className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-3 cursor-pointer min-h-[48px]"
+                  >
+                    <span className="text-sm sm:text-base font-black text-stone-900 leading-snug break-words">
+                      {faq.q}
+                    </span>
+                    <div className="p-1 rounded-full bg-stone-100 text-stone-600 shrink-0">
+                      {isOpen ? (
+                        <ChevronUp className="w-5 h-5 text-amber-700" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-stone-500" />
+                      )}
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-4 sm:px-5 pb-5 pt-1 text-xs sm:text-sm text-stone-700 leading-relaxed font-medium border-t border-stone-100 animate-fade-in space-y-3">
+                      <p className="m-0 break-words">{faq.a}</p>
+
+                      {/* Direct CTA button for register/start question (Edge Case F5) */}
+                      {idx === 6 && (
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAuthMode('register');
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs transition cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <span>{(t as any).faqs?.startShopAction || '👉 अभी अपनी दुकान शुरू करें (15 सेकंड में) ➔'}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom Reassurance Help Note */}
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-400/40 text-center space-y-1">
+            <p className="text-xs font-black text-amber-950 m-0">
+              💡 कोई और सवाल या सहायता चाहिए?
+            </p>
+            <p className="text-[11px] text-stone-600 m-0">
+              हमारी टीम से सीधे WhatsApp पर सहायता पाने के लिए नीचे दिए गए बटन पर टैप करें।
+            </p>
+            <button
+              type="button"
+              onClick={handleSupportWhatsApp}
+              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition cursor-pointer shadow-xs active:scale-95"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span>WhatsApp हेल्पलाइन से जुड़ें</span>
+            </button>
           </div>
         </div>
       </section>
