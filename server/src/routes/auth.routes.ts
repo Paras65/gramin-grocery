@@ -67,12 +67,18 @@ router.post('/register-store', authLimiter, async (req: Request, res: Response) 
     if (data.referralCode && data.referralCode.trim()) {
       const cleanRef = data.referralCode.trim().toUpperCase();
       referrerTenant = await Tenant.findOne({ 'referral.code': cleanRef });
-      if (referrerTenant) {
-        if (referrerTenant.phone !== data.phone) {
-          referredByCode = referrerTenant.referral.code;
-          initialProDays += 15; // Bonus +15 days for new store (Total 29 days!)
-        }
+      if (!referrerTenant) {
+        return res.status(400).json({
+          error: 'अमान्य रेफरल कोड! कृपया सही कोड जांचें या यह बॉक्स खाली छोड़ दें।',
+        });
       }
+      if (referrerTenant.phone === data.phone) {
+        return res.status(400).json({
+          error: 'आप स्वयं का रेफरल कोड उपयोग नहीं कर सकते।',
+        });
+      }
+      referredByCode = referrerTenant.referral.code;
+      initialProDays += 15; // Bonus +15 days for new store (Total 29 days!)
     }
 
     const planExpiryDate = new Date(now.getTime() + initialProDays * 24 * 60 * 60 * 1000);
@@ -113,7 +119,7 @@ router.post('/register-store', authLimiter, async (req: Request, res: Response) 
     });
 
     // If referred, credit referrer store with +15 days
-    if (referrerTenant) {
+    if (referrerTenant && referredByCode) {
       const bonusMs = 15 * 24 * 60 * 60 * 1000;
       const refExpiry = referrerTenant.subscription?.planExpiryDate ? new Date(referrerTenant.subscription.planExpiryDate).getTime() : 0;
       if (referrerTenant.subscription?.plan === 'PRO' && refExpiry > now.getTime()) {

@@ -648,6 +648,7 @@ class SyncService {
             ...currentStore,
             plan: syncResult.subscription.plan,
             planExpiryDate: syncResult.subscription.planExpiryDate,
+            isTrial: syncResult.subscription.isTrial !== undefined ? syncResult.subscription.isTrial : currentStore.isTrial,
           };
           localStorage.setItem('gk_store_info', JSON.stringify(updatedStore));
           this.notifyAuth();

@@ -443,7 +443,7 @@ export const StoreAuthModal: React.FC<StoreAuthModalProps> = ({ isOpen, onClose,
                   <input
                     type="text"
                     value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase().replace(/\s+/g, ''))}
                     placeholder="उदा: REF-XXXX (वैकल्पिक)"
                     className="w-full px-3 py-1.5 border border-amber-300 rounded-xl text-xs font-black uppercase text-amber-950 tracking-wider bg-white outline-hidden focus:border-amber-600"
                   />
