@@ -226,7 +226,8 @@ export const HaatBazaarMode: React.FC = () => {
           const prod = await db.products.get(item.product.id);
           if (prod) {
             await db.products.update(item.product.id, {
-              stockQty: Math.max(0, prod.stockQty - item.quantity)
+              stockQty: Math.max(0, prod.stockQty - item.quantity),
+              updatedAt: timestamp
             });
           }
         }

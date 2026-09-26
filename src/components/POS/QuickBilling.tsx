@@ -548,7 +548,10 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           const currentProd = await db.products.get(item.product.id);
           if (currentProd) {
             const updatedStock = Math.max(0, currentProd.stockQty - item.quantity);
-            await db.products.update(item.product.id, { stockQty: Math.round(updatedStock * 100) / 100 });
+            await db.products.update(item.product.id, { 
+              stockQty: Math.round(updatedStock * 100) / 100,
+              updatedAt: timestamp
+            });
           }
         }
       }

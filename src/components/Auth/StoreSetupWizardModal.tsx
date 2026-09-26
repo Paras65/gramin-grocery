@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { 
   Sparkles, CheckCircle2, ShoppingBag, Store, 
-  ArrowRight, QrCode, X, RefreshCw
+  ArrowRight, QrCode, X, RefreshCw, Search
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { seedStandardRuralEssentials } from '../../db';
+import { seedStandardRuralEssentials, INITIAL_PRODUCTS } from '../../db';
 import { syncService } from '../../services/syncService';
 
 interface StoreSetupWizardModalProps {
@@ -12,6 +12,17 @@ interface StoreSetupWizardModalProps {
   onClose: () => void;
   onComplete: () => void;
 }
+
+const CATEGORY_META: Record<string, { label: string; icon: string }> = {
+  staples: { label: 'अनाज व आटा', icon: '🌾' },
+  pulses: { label: 'दालें व दलहन', icon: '🍲' },
+  oils: { label: 'तेल व घी', icon: '🪔' },
+  spices: { label: 'मसाले व चीनी', icon: '🌶️' },
+  snacks: { label: 'चाय व बिस्कुट', icon: '🍪' },
+  hygiene: { label: 'साबुन व सर्फ', icon: '🧼' },
+  dairy: { label: 'डेयरी व दूध', icon: '🥛' },
+  rural_special: { label: 'ग्रामीण दैनिक', icon: '🌿' },
+};
 
 export const StoreSetupWizardModal: React.FC<StoreSetupWizardModalProps> = ({
   isOpen,
@@ -27,7 +38,57 @@ export const StoreSetupWizardModal: React.FC<StoreSetupWizardModalProps> = ({
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<{ added: number; total: number } | null>(null);
 
+  // Step 2 Customization State
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(() => new Set(INITIAL_PRODUCTS.map(p => p.name)));
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [zeroInitialStock, setZeroInitialStock] = useState<boolean>(false);
+
   if (!isOpen) return null;
+
+  const toggleItem = (name: string) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  };
+
+  const toggleCategory = (cat: string) => {
+    const catItems = INITIAL_PRODUCTS.filter(p => p.category === cat).map(p => p.name);
+    const allSelected = catItems.every(name => selectedItems.has(name));
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      catItems.forEach(name => {
+        if (allSelected) {
+          next.delete(name);
+        } else {
+          next.add(name);
+        }
+      });
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedItems(new Set(INITIAL_PRODUCTS.map(p => p.name)));
+  };
+
+  const deselectAll = () => {
+    setSelectedItems(new Set());
+  };
+
+  const displayedItems = INITIAL_PRODUCTS.filter(p => {
+    const matchesCat = filterCategory === 'all' || p.category === filterCategory;
+    const matchesSearch = !searchQuery.trim() || 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      p.hindiName.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
 
   const handleSaveProfile = () => {
     if (upiId.trim()) {
@@ -47,9 +108,10 @@ export const StoreSetupWizardModal: React.FC<StoreSetupWizardModalProps> = ({
   };
 
   const handleSeedCatalog = async () => {
+    if (selectedItems.size === 0) return;
     setIsSeeding(true);
     try {
-      const res = await seedStandardRuralEssentials();
+      const res = await seedStandardRuralEssentials(Array.from(selectedItems), zeroInitialStock);
       setSeedResult(res);
       setStep(3);
       try {
@@ -71,7 +133,7 @@ export const StoreSetupWizardModal: React.FC<StoreSetupWizardModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl border border-stone-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl border border-stone-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         
         {/* Wizard Header */}
         <div className="bg-gradient-to-r from-amber-700 via-amber-600 to-orange-600 p-5 sm:p-6 text-white relative">
@@ -189,76 +251,201 @@ export const StoreSetupWizardModal: React.FC<StoreSetupWizardModalProps> = ({
           )}
 
           {step === 2 && (
-            <div className="space-y-4">
-              <div className="text-center mb-2">
+            <div className="space-y-3.5">
+              <div className="text-center mb-1">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                  चरण 2: 1-क्लिक सामान सूची
+                  चरण 2: सामान कस्टमाइज़ करें
                 </span>
-                <h3 className="text-lg font-black text-stone-900 mt-2">
-                  52 आवश्यक ग्रामीण किराना सामान जोड़ें
+                <h3 className="text-lg font-black text-stone-900 mt-1.5">
+                  अपनी दुकान के सामान चुनें (Customize Catalog)
                 </h3>
                 <p className="text-xs text-stone-600">
-                  एक-एक सामान टाइप करने की ज़रूरत नहीं! छत्तीसगढ़ व ग्रामीण भारत के 52 सबसे लोकप्रिय सामान असली थोक व फुटकर रेट के साथ तुरंत लोड करें।
+                  जो सामान आप अपनी दुकान में रखते हैं केवल उन्हें चुनें। श्रेणी या सामान को 1-टैप में अनचेक कर सकते हैं।
                 </p>
               </div>
 
-              {/* Category preview pills */}
-              <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-2.5">
-                <div className="text-xs font-black text-stone-700 uppercase tracking-wider">
-                  शामिल प्रमुख श्रेणियां:
+              {/* Quick Actions & Counter Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-stone-100/80 p-2.5 rounded-2xl border border-stone-200 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-stone-700">
+                    चयनित सामान:
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full font-black bg-emerald-600 text-white text-xs">
+                    {selectedItems.size} / {INITIAL_PRODUCTS.length}
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-white p-2.5 rounded-xl border border-stone-200 flex items-center gap-2">
-                    <span className="text-base">🌾</span>
-                    <div>
-                      <div className="font-bold text-stone-800">अनाज व आटा</div>
-                      <div className="text-[10px] text-stone-500">चावल, गेहूं आटा, बेसन, सूजी, मैदा, पोहा</div>
-                    </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={selectAll}
+                    className="px-2.5 py-1 bg-white hover:bg-stone-50 border border-stone-300 rounded-lg font-bold text-stone-700 transition cursor-pointer"
+                  >
+                    सब चुनें ({INITIAL_PRODUCTS.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={deselectAll}
+                    className="px-2.5 py-1 bg-white hover:bg-stone-50 border border-stone-300 rounded-lg font-bold text-stone-700 transition cursor-pointer"
+                  >
+                    सब हटाएं
+                  </button>
+                </div>
+              </div>
+
+              {/* Category Filter Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => setFilterCategory('all')}
+                  className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition cursor-pointer ${
+                    filterCategory === 'all'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                  }`}
+                >
+                  सभी ({INITIAL_PRODUCTS.length})
+                </button>
+                {Object.entries(CATEGORY_META).map(([catKey, meta]) => {
+                  const catCount = INITIAL_PRODUCTS.filter(p => p.category === catKey).length;
+                  const catSelectedCount = INITIAL_PRODUCTS.filter(p => p.category === catKey && selectedItems.has(p.name)).length;
+                  return (
+                    <button
+                      key={catKey}
+                      type="button"
+                      onClick={() => setFilterCategory(catKey)}
+                      className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition flex items-center gap-1 cursor-pointer ${
+                        filterCategory === catKey
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                      }`}
+                    >
+                      <span>{meta.icon}</span>
+                      <span>{meta.label}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                        catSelectedCount === catCount ? 'bg-emerald-700 text-white' : 'bg-stone-300 text-stone-800'
+                      }`}>
+                        {catSelectedCount}/{catCount}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Search & Category Toggle Bar */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="सामान खोजें (उदा. शक्कर, पारले, तेल)..."
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-200 text-xs font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                {filterCategory !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(filterCategory)}
+                    className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl font-bold text-xs whitespace-nowrap border border-stone-200 transition cursor-pointer"
+                  >
+                    इस श्रेणी को ऑन/ऑफ करें
+                  </button>
+                )}
+              </div>
+
+              {/* Scrollable Item Checklist */}
+              <div className="max-h-52 sm:max-h-60 overflow-y-auto divide-y divide-stone-100 bg-white rounded-2xl border border-stone-200 shadow-inner">
+                {displayedItems.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-stone-500">
+                    कोई सामान नहीं मिला। खोज शब्द बदलें।
                   </div>
-                  <div className="bg-white p-2.5 rounded-xl border border-stone-200 flex items-center gap-2">
-                    <span className="text-base">🍲</span>
-                    <div>
-                      <div className="font-bold text-stone-800">दालें व दलहन</div>
-                      <div className="text-[10px] text-stone-500">रहर, चना, उड़द, मूंग, मसूर, छोले</div>
-                    </div>
+                ) : (
+                  displayedItems.map((p) => {
+                    const isSelected = selectedItems.has(p.name);
+                    const catMeta = CATEGORY_META[p.category] || { label: p.category, icon: '📦' };
+                    return (
+                      <div
+                        key={p.name}
+                        onClick={() => toggleItem(p.name)}
+                        className={`flex items-center justify-between p-2.5 sm:px-3.5 transition cursor-pointer select-none ${
+                          isSelected ? 'bg-amber-50/40 hover:bg-amber-50/70' : 'bg-stone-50/40 hover:bg-stone-100 text-stone-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}} // handled by parent onClick
+                            className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-stone-300 pointer-events-none"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-xs font-bold truncate ${isSelected ? 'text-stone-900' : 'text-stone-500 line-through'}`}>
+                                {p.hindiName}
+                              </span>
+                              <span className="text-[10px] text-stone-400 truncate hidden sm:inline">
+                                ({p.name})
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-stone-500 flex items-center gap-2 mt-0.5">
+                              <span>{catMeta.icon} {catMeta.label}</span>
+                              <span>•</span>
+                              <span>बिक्री दर: <strong className="text-stone-800">₹{p.sellingPrice}</strong>/{p.unit}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0 pl-2">
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                            isSelected ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-500'
+                          }`}>
+                            {isSelected ? 'जुड़ेगा' : 'हटाया'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Zero Initial Stock Option Card */}
+              <div 
+                onClick={() => setZeroInitialStock(prev => !prev)}
+                className="bg-amber-50/60 border border-amber-200 rounded-2xl p-3 flex items-start gap-2.5 cursor-pointer select-none transition hover:bg-amber-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={zeroInitialStock}
+                  onChange={() => {}}
+                  className="w-4 h-4 mt-0.5 rounded text-amber-600 focus:ring-amber-500 border-stone-300 pointer-events-none"
+                />
+                <div>
+                  <div className="text-xs font-bold text-amber-950">
+                    📦 शुरुआत में सबका स्टॉक 0 रखें (शून्य स्टॉक मोड)
                   </div>
-                  <div className="bg-white p-2.5 rounded-xl border border-stone-200 flex items-center gap-2">
-                    <span className="text-base">🪔</span>
-                    <div>
-                      <div className="font-bold text-stone-800">तेल व घी</div>
-                      <div className="text-[10px] text-stone-500">सरसों तेल, सोयाबीन, देसी घी</div>
-                    </div>
-                  </div>
-                  <div className="bg-white p-2.5 rounded-xl border border-stone-200 flex items-center gap-2">
-                    <span className="text-base">🌶️</span>
-                    <div>
-                      <div className="font-bold text-stone-800">मसाले व चीनी</div>
-                      <div className="text-[10px] text-stone-500">शक्कर, गुड़, नमक, हल्दी, मिर्च, जीरा</div>
-                    </div>
-                  </div>
-                  <div className="bg-white p-2.5 rounded-xl border border-stone-200 flex items-center gap-2">
-                    <span className="text-base">🧼</span>
-                    <div>
-                      <div className="font-bold text-stone-800">साबुन व सर्फ</div>
-                      <div className="text-[10px] text-stone-500">घड़ी, व्हील, रिन, विम, लाइफबॉय</div>
-                    </div>
-                  </div>
-                  <div className="bg-white p-2.5 rounded-xl border border-stone-200 flex items-center gap-2">
-                    <span className="text-base">🌿</span>
-                    <div>
-                      <div className="font-bold text-stone-800">ग्रामीण दैनिक</div>
-                      <div className="text-[10px] text-stone-500">बीड़ी 502, माचिस, अगरबत्ती, कॉइल</div>
-                    </div>
+                  <div className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                    यदि टिक करेंगे तो सामान के नाम और भाव जुड़ेंगे, लेकिन स्टॉक 0 रहेगा ताकि आप अपनी दुकान का वास्तविक स्टॉक बाद में भर सकें।
                   </div>
                 </div>
               </div>
 
-              <div className="pt-2">
+              {/* Action Buttons */}
+              <div className="pt-1">
                 <button
                   type="button"
                   onClick={handleSeedCatalog}
-                  disabled={isSeeding}
-                  className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-[0.99] text-white rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/30 transition-all cursor-pointer disabled:opacity-50"
+                  disabled={isSeeding || selectedItems.size === 0}
+                  className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-[0.99] text-white rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/30 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isSeeding ? (
                     <>
@@ -268,14 +455,14 @@ export const StoreSetupWizardModal: React.FC<StoreSetupWizardModalProps> = ({
                   ) : (
                     <>
                       <Sparkles className="w-5 h-5 text-emerald-200" />
-                      🌾 52 आवश्यक सामानों के साथ दुकान लोड करें
+                      🌾 चयनित ({selectedItems.size}) सामान दुकान में जोड़ें
                     </>
                   )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setStep(3)}
-                  className="w-full mt-2 py-2 text-xs font-bold text-stone-500 hover:text-stone-700 text-center cursor-pointer"
+                  className="w-full mt-2 py-1.5 text-xs font-bold text-stone-500 hover:text-stone-700 text-center cursor-pointer"
                 >
                   मैं अपने सामान खुद एक-एक करके दर्ज करूँगा (Skip)
                 </button>

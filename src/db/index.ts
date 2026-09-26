@@ -235,14 +235,21 @@ export async function initializeDatabaseIfEmpty() {
 }
 
 /**
- * 1-Click Store Onboarding: Seed standard 52 rural essentials into the store catalog.
- * Skips items that already exist by name to prevent duplication.
+ * 1-Click Store Onboarding: Seed standard rural essentials into the store catalog.
+ * Supports customizable item selection and optional zero initial stock.
  */
-export async function seedStandardRuralEssentials(): Promise<{ added: number; total: number }> {
+export async function seedStandardRuralEssentials(
+  selectedNames?: string[],
+  zeroInitialStock: boolean = false
+): Promise<{ added: number; total: number }> {
   let added = 0;
   const allExisting = await db.products.toArray();
 
-  for (const p of INITIAL_PRODUCTS) {
+  const itemsToSeed = selectedNames && selectedNames.length > 0
+    ? INITIAL_PRODUCTS.filter(p => selectedNames.includes(p.name))
+    : INITIAL_PRODUCTS;
+
+  for (const p of itemsToSeed) {
     const cleanBc = (p.barcode || '').trim();
     const normName = p.name.trim().toLowerCase();
     const normHindi = p.hindiName.trim().toLowerCase();
@@ -260,6 +267,7 @@ export async function seedStandardRuralEssentials(): Promise<{ added: number; to
       const slug = (cleanBc || normName).replace(/[^a-z0-9]/g, '_').substring(0, 24);
       const newProd: Product = {
         ...p,
+        stockQty: zeroInitialStock ? 0 : p.stockQty,
         id: `prod_seed_${slug}`,
         updatedAt: new Date().toISOString()
       };
