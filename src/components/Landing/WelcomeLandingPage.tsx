@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Store,
   WifiOff,
@@ -17,7 +17,9 @@ import {
   Clock,
   MapPin,
   RefreshCw,
-  Check
+  Check,
+  Gift,
+  MessageCircle
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { syncService } from '../../services/syncService';
@@ -50,12 +52,30 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
   const [village, setVillage] = useState('');
   const [block, setBlock] = useState('');
   const [district, setDistrict] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [isLookingUpPin, setIsLookingUpPin] = useState(false);
   const [detectedVillages, setDetectedVillages] = useState<string[]>([]);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [supportWhatsApp, setSupportWhatsApp] = useState<string | null>(null);
+
+  useEffect(() => {
+    syncService.getSubscriptionConfig().then((cfg) => {
+      if (cfg?.supportWhatsApp) {
+        setSupportWhatsApp(cfg.supportWhatsApp);
+      }
+    }).catch(console.warn);
+  }, []);
+
+  const handleSupportWhatsApp = () => {
+    const text = encodeURIComponent('नमस्ते Gramin Kirana टीम, मुझे ग्रामिन प्रो प्लान (₹99/माह) व 14-दिन मुफ़्त ट्रायल के बारे में जानकारी चाहिए।');
+    const targetUrl = supportWhatsApp
+      ? `https://wa.me/${supportWhatsApp}?text=${text}`
+      : `https://wa.me/?text=${text}`;
+    window.open(targetUrl, '_blank');
+  };
 
   const handlePincodeChange = async (val: string) => {
     const clean = val.replace(/\D/g, '').slice(0, 6);
@@ -112,6 +132,7 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
         village: village.trim() || 'गाँव',
         block: block.trim() || village.trim() || 'ब्लॉक',
         district: district.trim() || 'रायपुर',
+        referralCode: referralCode.trim().toUpperCase() || undefined,
       });
       onLoginSuccess();
     } catch (err: any) {
@@ -240,13 +261,16 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
                     setAuthMode('register');
                     setErrorMessage('');
                   }}
-                  className={`flex-1 py-2 text-xs sm:text-sm font-black rounded-xl transition cursor-pointer ${
+                  className={`flex-1 py-2 text-xs sm:text-sm font-black rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
                     authMode === 'register'
                       ? 'bg-stone-900 text-amber-400 shadow-xs'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  🏪 + नई दुकान जोड़ें
+                  <span>🏪 नई दुकान जोड़ें</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
+                    🎁 14-दिन मुफ़्त
+                  </span>
                 </button>
               </div>
 
@@ -457,6 +481,29 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
                     <span className="text-[10px] text-stone-500 mt-0.5 block">
                       रोज़ाना दुकान खोलने के लिए 4 अंकों का पिन
                     </span>
+                  </div>
+
+                  {/* Field 5: Optional Referral Code for +15 Extra Days */}
+                  <div className="bg-amber-50/80 p-2.5 rounded-xl border border-amber-300/80 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-black text-amber-950 flex items-center gap-1.5">
+                        <Gift className="w-3.5 h-3.5 text-amber-600" />
+                        <span>रेफरल कोड (Referral Code):</span>
+                      </label>
+                      <span className="text-[10px] text-amber-800 font-bold bg-amber-200/90 px-1.5 py-0.5 rounded-md">
+                        +15 दिन अतिरिक्त प्रो
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value.toUpperCase().replace(/\s+/g, ''))}
+                      placeholder="उदा: REF-XXXX (वैकल्पिक)"
+                      className="w-full px-3 py-1.5 border border-amber-300 rounded-xl text-xs font-black uppercase text-amber-950 tracking-wider bg-white outline-none focus:border-amber-600"
+                    />
+                    <p className="text-[10px] text-amber-900 m-0 font-medium">
+                      💡 किसी साथी दुकानदार का कोड डालने पर 14 दिन की जगह पूरे <strong>29 दिन का प्रो मुफ़्त</strong> मिलेगा!
+                    </p>
                   </div>
 
                   {/* Optional Advanced Details Expander */}
@@ -708,62 +755,86 @@ export const WelcomeLandingPage: React.FC<WelcomeLandingPageProps> = ({
 
             {/* Pro Tier */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border-2 border-amber-400 shadow-md flex flex-col justify-between relative overflow-hidden">
-              <div className="absolute top-4 right-4 bg-amber-500 text-stone-950 px-3 py-0.5 rounded-full text-[10px] font-black">
-                क्लाउड सुरक्षा
+              <div className="absolute top-4 right-4 bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 px-3 py-1 rounded-full text-[10px] font-black shadow-xs flex items-center gap-1">
+                <Gift className="w-3 h-3" />
+                <span>14 दिन मुफ़्त ट्रायल</span>
               </div>
 
               <div>
-                <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-black">
-                  प्रीमियम बैकअप
+                <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-black">
+                  🚀 ग्रामिन प्रो
                 </span>
                 <h3 className="text-xl font-black text-stone-950 mt-3 m-0">
-                  🚀 ग्रामिन प्रो प्लान
+                  उन्नत किराना प्रो प्लान
                 </h3>
                 <div className="flex items-baseline gap-1 my-3">
-                  <span className="text-4xl font-black text-stone-950">₹49</span>
-                  <span className="text-xs text-stone-500 font-bold">/ प्रति माह (या ₹499/साल)</span>
+                  <span className="text-4xl font-black text-stone-950">₹99</span>
+                  <span className="text-xs text-stone-500 font-bold">/ प्रति माह (या ₹999/साल)</span>
                 </div>
-                <p className="text-xs text-stone-600 leading-relaxed mb-4">
-                  क्लाउड ऑटो-सिंक, अलग मुनीम/स्टाफ खाता और 24×7 प्राथमिकता सहायता।
+                <p className="text-xs text-stone-600 leading-relaxed mb-3">
+                  क्लाउड ऑटो-सिंक, WhatsApp तगादा ब्लास्ट, मुनीम सुरक्षा PIN और कम-स्टॉक अलर्ट।
                 </p>
 
-                <ul className="space-y-2 text-xs text-stone-700 font-medium border-t border-stone-200 pt-4">
+                <div className="mb-4 p-2.5 rounded-2xl bg-amber-50 border border-amber-300 text-[11px] text-amber-950 space-y-1">
+                  <div className="font-black flex items-center gap-1.5 text-amber-900">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>🎁 14-दिन मुफ़्त स्वागत ट्रायल:</span>
+                  </div>
+                  <p className="m-0 text-stone-700 leading-relaxed">
+                    नई दुकान रजिस्टर करते ही 14 दिन का प्रो ट्रायल स्वतः सक्रिय होता है। किसी क्रेडिट कार्ड की आवश्यकता नहीं!
+                  </p>
+                </div>
+
+                <ul className="space-y-2 text-xs text-stone-700 font-medium border-t border-stone-200 pt-3">
                   <li className="flex items-center gap-2 font-bold text-stone-900">
-                    <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>मुफ़्त प्लान की सब खूबियाँ शामिल</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>मुफ़्त प्लान की सभी खूबियाँ शामिल</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>ऑटो क्लाउड सिंक (फ़ोन टूटने पर भी 0 नुकसान)</span>
+                    <span>📲 WhatsApp तगादा ब्लास्ट — उधारी वसूली संदेश</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>मुनीम खाता (थोक भाव व मुनाफ़ा गुप्त)</span>
+                    <span>☁️ सुरक्षित क्लाउड बैकअप (मोबाइल खोने पर 0 नुकसान)</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>एक से अधिक फ़ोन/टैबलेट पर डेटा शेयरिंग</span>
+                    <span>👥 मुनीम PIN सुरक्षा — थोक खरीद भाव व लाभ गुप्त</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>24×7 प्राथमिकता तकनीकी सहयोग</span>
+                    <span>🔔 सुबह का कम-स्टॉक अलर्ट — मंडी खरीदारी आसान</span>
+                  </li>
+                  <li className="flex items-center gap-2 font-bold text-emerald-800 bg-emerald-50 p-1.5 rounded-xl border border-emerald-200">
+                    <Gift className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>🤝 रेफरल बोनस: साथी को जोड़ने पर दोनों को +15 दिन!</span>
                   </li>
                 </ul>
               </div>
 
-              <button
-                onClick={() => {
-                  window.open(
-                    `https://wa.me/919876543210?text=${encodeURIComponent(
-                      'नमस्ते Gramin Kirana टीम, मुझे ग्रामिन प्रो प्लान की जानकारी चाहिए।'
-                    )}`,
-                    '_blank'
-                  );
-                }}
-                className="w-full mt-6 py-2.5 rounded-2xl bg-stone-900 hover:bg-stone-800 text-amber-400 font-bold text-xs transition cursor-pointer shadow-sm"
-              >
-                प्रो प्लान की जानकारी लें (WhatsApp) ➔
-              </button>
+              <div className="space-y-2 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('register');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-500 text-stone-950 font-black text-xs transition cursor-pointer shadow-md active:scale-98 flex items-center justify-center gap-1.5"
+                >
+                  <Gift className="w-4 h-4" />
+                  <span>14-दिन मुफ़्त प्रो ट्रायल शुरू करें ➔</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSupportWhatsApp}
+                  className="w-full py-2 rounded-2xl bg-stone-900 hover:bg-stone-800 text-stone-300 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>WhatsApp पर सहायता लें</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
