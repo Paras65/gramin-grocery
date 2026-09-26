@@ -194,6 +194,7 @@ export const AllStock: React.FC = () => {
 
     setIsMerging(true);
     try {
+      const deletedIds: string[] = [];
       await db.transaction('rw', db.products, async () => {
         for (const group of duplicateGroups) {
           const { primary, duplicates } = group;
@@ -211,11 +212,25 @@ export const AllStock: React.FC = () => {
 
           for (const dup of duplicates) {
             if (dup.id) {
+              deletedIds.push(dup.id);
               await db.products.delete(dup.id);
             }
           }
         }
       });
+
+      // Record deleted IDs in localStorage for cloud sync deletion
+      if (deletedIds.length > 0 && typeof window !== 'undefined') {
+        try {
+          const existing = JSON.parse(localStorage.getItem('gk_deleted_product_uuids') || '[]');
+          const merged = Array.from(new Set([...existing, ...deletedIds]));
+          localStorage.setItem('gk_deleted_product_uuids', JSON.stringify(merged));
+        } catch (_) {}
+      }
+
+      // Trigger cloud sync to immediately clean server MongoDB duplicates
+      syncService.triggerSync().catch(console.error);
+
       setShowDeduplicateDetails(false);
       showNotification(`✅ सभी ${duplicateGroups.length} डुप्लीकेट सामान सफलतापूर्वक एक में मिला दिए गए!`);
     } catch (err) {

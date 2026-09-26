@@ -167,11 +167,71 @@ export async function purgeDummySeedData() {
   }
 }
 
+/**
+ * Automatically merges local duplicate products in Dexie (by barcode or normalized name+unit)
+ * and records any removed duplicate IDs so they can be deleted on the cloud server.
+ */
+export async function deduplicateLocalProducts(): Promise<number> {
+  try {
+    const allProducts = await db.products.toArray();
+    const seenMap = new Map<string, Product>();
+    const duplicateIdsToDelete: string[] = [];
+
+    for (const p of allProducts) {
+      if (!p.id) continue;
+      const bc = (p.barcode || '').trim();
+      const normName = (p.name || '').trim().toLowerCase();
+      const normHindi = (p.hindiName || '').trim().toLowerCase();
+      const unit = (p.unit || '').trim().toLowerCase();
+
+      const key = bc ? `bc_${bc}` : `name_${normName || normHindi}_${unit}`;
+
+      if (seenMap.has(key)) {
+        const primary = seenMap.get(key)!;
+        primary.stockQty = (primary.stockQty || 0) + (p.stockQty || 0);
+        duplicateIdsToDelete.push(p.id);
+      } else {
+        seenMap.set(key, { ...p });
+      }
+    }
+
+    if (duplicateIdsToDelete.length > 0) {
+      await db.transaction('rw', db.products, async () => {
+        for (const primary of seenMap.values()) {
+          if (primary.id) {
+            await db.products.update(primary.id, {
+              stockQty: primary.stockQty,
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }
+        for (const id of duplicateIdsToDelete) {
+          await db.products.delete(id);
+        }
+      });
+
+      // Record deleted IDs for sync deletion on server
+      if (typeof window !== 'undefined') {
+        try {
+          const existing = JSON.parse(localStorage.getItem('gk_deleted_product_uuids') || '[]');
+          const merged = Array.from(new Set([...existing, ...duplicateIdsToDelete]));
+          localStorage.setItem('gk_deleted_product_uuids', JSON.stringify(merged));
+        } catch (_) {}
+      }
+    }
+
+    return duplicateIdsToDelete.length;
+  } catch (err) {
+    console.error('deduplicateLocalProducts error:', err);
+    return 0;
+  }
+}
+
 export async function initializeDatabaseIfEmpty() {
   // Always purge any lingering dummy/seed customer records from previous test runs
   await purgeDummySeedData();
-  // Do NOT automatically auto-inject products into store database.
-  // Stores start with their own real products. Standard essentials are available via the Setup Wizard if requested.
+  // Ensure no duplicate product rows exist locally
+  await deduplicateLocalProducts();
 }
 
 /**
@@ -180,23 +240,35 @@ export async function initializeDatabaseIfEmpty() {
  */
 export async function seedStandardRuralEssentials(): Promise<{ added: number; total: number }> {
   let added = 0;
+  const allExisting = await db.products.toArray();
+
   for (const p of INITIAL_PRODUCTS) {
-    let existing = await db.products.where('name').equalsIgnoreCase(p.name.trim()).first();
-    if (!existing && p.barcode) {
-      existing = await db.products.where('barcode').equals(p.barcode.trim()).first();
-    }
+    const cleanBc = (p.barcode || '').trim();
+    const normName = p.name.trim().toLowerCase();
+    const normHindi = p.hindiName.trim().toLowerCase();
+    const unit = p.unit.trim().toLowerCase();
+
+    const existing = allExisting.find(item => {
+      if (cleanBc && item.barcode && item.barcode.trim() === cleanBc) return true;
+      const itemN = (item.name || '').trim().toLowerCase();
+      const itemH = (item.hindiName || '').trim().toLowerCase();
+      const itemU = (item.unit || '').trim().toLowerCase();
+      return (itemN === normName || itemH === normHindi || itemN === normHindi) && itemU === unit;
+    });
+
     if (!existing) {
-      existing = await db.products.where('hindiName').equalsIgnoreCase(p.hindiName.trim()).first();
-    }
-    if (!existing) {
-      await db.products.add({
+      const slug = (cleanBc || normName).replace(/[^a-z0-9]/g, '_').substring(0, 24);
+      const newProd: Product = {
         ...p,
-        id: 'prod_' + Math.random().toString(36).substring(2, 9),
+        id: `prod_seed_${slug}`,
         updatedAt: new Date().toISOString()
-      });
+      };
+      await db.products.add(newProd);
+      allExisting.push(newProd);
       added++;
     }
   }
+  await deduplicateLocalProducts();
   const total = await db.products.count();
   return { added, total };
 }
@@ -205,9 +277,12 @@ export async function seedDemoSandboxData() {
   const count = await db.products.count();
   if (count === 0) {
     for (const p of INITIAL_PRODUCTS) {
+      const cleanBc = (p.barcode || '').trim();
+      const normName = p.name.trim().toLowerCase();
+      const slug = (cleanBc || normName).replace(/[^a-z0-9]/g, '_').substring(0, 24);
       await db.products.add({
         ...p,
-        id: 'prod_' + Math.random().toString(36).substring(2, 9)
+        id: `prod_seed_${slug}`
       });
     }
   }

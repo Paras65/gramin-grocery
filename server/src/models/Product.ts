@@ -13,6 +13,7 @@ export interface IProduct extends Document {
   unit: 'kg' | 'g' | 'liter' | 'packet' | 'piece' | 'pouch';
   minStockThreshold: number;
   isLoose: boolean;
+  barcode?: string;
   expiryDate?: Date;
   isDeleted: boolean;
   createdAt: Date;
@@ -39,6 +40,7 @@ const ProductSchema = new Schema<IProduct>(
     },
     minStockThreshold: { type: Number, default: 5 },
     isLoose: { type: Boolean, default: false },
+    barcode: { type: String, trim: true },
     expiryDate: { type: Date },
     isDeleted: { type: Boolean, default: false },
   },
@@ -49,6 +51,7 @@ ProductSchema.plugin(autoTenantPlugin);
 
 // Compound Indexes for fast counter POS & Mandi Restock queries
 ProductSchema.index({ tenantId: 1, clientUUID: 1 }, { unique: true });
+ProductSchema.index({ tenantId: 1, barcode: 1 });
 ProductSchema.index({ tenantId: 1, category: 1 });
 ProductSchema.index({ tenantId: 1, stockQty: 1 }); // Mandi restock planner low stock radar
 

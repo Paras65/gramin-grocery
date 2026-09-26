@@ -10,6 +10,50 @@ import { Tenant } from '../models/Tenant.js';
 
 const router = Router();
 
+/**
+ * Automatically deduplicate and merge duplicate product records for a tenant in MongoDB.
+ * Consolidates duplicate stock into the primary record and deletes duplicates.
+ */
+async function deduplicateTenantProducts(tenantId: any) {
+  try {
+    const allProducts = await Product.find({ tenantId, isDeleted: { $ne: true } }).sort({ updatedAt: -1 });
+    const seenKeys = new Map<string, any>();
+    const idsToDelete: any[] = [];
+    const modifiedPrimaries: any[] = [];
+
+    for (const p of allProducts) {
+      const bc = (p.barcode || '').trim();
+      const normName = (p.name || '').trim().toLowerCase();
+      const normHindi = (p.hindiName || '').trim().toLowerCase();
+      const unit = (p.unit || '').trim().toLowerCase();
+
+      // Form a consistent identity key
+      const key = bc ? `bc_${bc}` : `name_${normName || normHindi}_${unit}`;
+
+      if (seenKeys.has(key)) {
+        const primary = seenKeys.get(key);
+        // Consolidate stock into primary record
+        primary.stockQty = (primary.stockQty || 0) + (p.stockQty || 0);
+        if (!modifiedPrimaries.includes(primary)) {
+          modifiedPrimaries.push(primary);
+        }
+        idsToDelete.push(p._id);
+      } else {
+        seenKeys.set(key, p);
+      }
+    }
+
+    if (idsToDelete.length > 0) {
+      await Product.deleteMany({ _id: { $in: idsToDelete } });
+      for (const primary of modifiedPrimaries) {
+        await primary.save();
+      }
+    }
+  } catch (err) {
+    console.error('deduplicateTenantProducts error:', err);
+  }
+}
+
 // High-Throughput Idempotent Delta Sync Endpoint
 router.post('/sync', requireAuth, async (req: Request, res: Response) => {
   try {
@@ -141,38 +185,80 @@ router.post('/sync', requireAuth, async (req: Request, res: Response) => {
       }
     }
 
-    // 5. Process Incoming Product Mutations
+    // Process Incoming Deleted Products (Permanently remove deleted duplicates/items)
+    if (mutations?.deletedProductUUIDs && Array.isArray(mutations.deletedProductUUIDs) && mutations.deletedProductUUIDs.length > 0) {
+      await Product.deleteMany({
+        tenantId,
+        clientUUID: { $in: mutations.deletedProductUUIDs },
+      });
+    }
+
+    // 5. Process Incoming Product Mutations (Idempotent Matching by UUID, Barcode, or Name+Unit)
     if (mutations?.products && Array.isArray(mutations.products)) {
       for (const prod of mutations.products) {
         if (!prod.clientUUID || !prod.name) continue;
 
-        await Product.findOneAndUpdate(
-          { tenantId, clientUUID: prod.clientUUID },
-          {
-            $set: {
-              name: prod.name,
-              hindiName: prod.hindiName || prod.name,
-              category: prod.category || 'staples',
-              purchasePrice: prod.purchasePrice || 0,
-              sellingPrice: prod.sellingPrice || 0,
-              stockQty: prod.stockQty || 0,
-              unit: prod.unit || 'kg',
-              minStockThreshold: prod.minStockThreshold || 5,
-              isLoose: prod.isLoose || false,
-              barcode: prod.barcode,
-              expiryDate: prod.expiryDate ? new Date(prod.expiryDate) : undefined,
-            },
-          },
-          { upsert: true }
-        );
+        const cleanBarcode = (prod.barcode || '').trim();
+        const normName = (prod.name || '').trim();
+        const normHindi = (prod.hindiName || '').trim() || normName;
+        const unit = prod.unit || 'kg';
+
+        // Check if item already exists by clientUUID, barcode, or name + unit
+        const queryOr: any[] = [{ clientUUID: prod.clientUUID }];
+        if (cleanBarcode) {
+          queryOr.push({ barcode: cleanBarcode });
+        }
+        queryOr.push({ name: normName, unit });
+        queryOr.push({ hindiName: normHindi, unit });
+
+        const existing = await Product.findOne({
+          tenantId,
+          $or: queryOr,
+        });
+
+        if (existing) {
+          existing.clientUUID = prod.clientUUID; // keep client-server UUID in sync
+          existing.name = normName;
+          existing.hindiName = normHindi;
+          existing.category = prod.category || existing.category || 'staples';
+          existing.purchasePrice = prod.purchasePrice !== undefined ? prod.purchasePrice : existing.purchasePrice;
+          existing.sellingPrice = prod.sellingPrice !== undefined ? prod.sellingPrice : existing.sellingPrice;
+          existing.stockQty = prod.stockQty !== undefined ? prod.stockQty : existing.stockQty;
+          existing.unit = unit;
+          existing.minStockThreshold = prod.minStockThreshold || existing.minStockThreshold || 5;
+          existing.isLoose = prod.isLoose !== undefined ? prod.isLoose : existing.isLoose;
+          if (cleanBarcode) existing.barcode = cleanBarcode;
+          if (prod.expiryDate) existing.expiryDate = new Date(prod.expiryDate);
+          await existing.save();
+        } else {
+          await Product.create({
+            tenantId,
+            clientUUID: prod.clientUUID,
+            name: normName,
+            hindiName: normHindi,
+            category: prod.category || 'staples',
+            purchasePrice: prod.purchasePrice || 0,
+            sellingPrice: prod.sellingPrice || 0,
+            stockQty: prod.stockQty || 0,
+            unit,
+            minStockThreshold: prod.minStockThreshold || 5,
+            isLoose: prod.isLoose || false,
+            barcode: cleanBarcode || undefined,
+            expiryDate: prod.expiryDate ? new Date(prod.expiryDate) : undefined,
+          });
+        }
       }
     }
+
+    // Run automated deduplication to ensure zero duplicate products remain for this store in MongoDB
+    await deduplicateTenantProducts(tenantId);
 
     // 6. Query Server Deltas (Fetch records created/updated after client's lastSyncTimestamp)
     const sinceDate = lastSyncTimestamp ? new Date(lastSyncTimestamp) : new Date(0);
 
     const updatedProducts = await Product.find({
       tenantId,
+      isDeleted: { $ne: true },
       updatedAt: { $gt: sinceDate },
     }).lean();
 

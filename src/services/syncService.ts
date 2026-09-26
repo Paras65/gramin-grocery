@@ -1,4 +1,4 @@
-import { db, clearDatabase, initializeDatabaseIfEmpty } from '../db';
+import { db, clearDatabase, initializeDatabaseIfEmpty, deduplicateLocalProducts } from '../db';
 import type { Customer, Product, Sale, SpoilageLog, Transaction, TenantInfo, UserRole, PaymentClaim } from '../types';
 import { API_BASE } from '../utils/apiConfig';
 
@@ -278,6 +278,7 @@ class SyncService {
 
     // Initial sync upon login (pulls real records from cloud)
     await this.triggerSync();
+    await deduplicateLocalProducts();
     return data;
   }
 
@@ -314,6 +315,7 @@ class SyncService {
 
     // Initial sync with cloud for newly registered store
     await this.triggerSync();
+    await deduplicateLocalProducts();
     return data;
   }
 
@@ -383,9 +385,18 @@ class SyncService {
         customers = await db.customers.toArray();
       }
 
+      // Deleted products tracking
+      let deletedProductUUIDs: string[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          deletedProductUUIDs = JSON.parse(localStorage.getItem('gk_deleted_product_uuids') || '[]');
+        } catch (_) {}
+      }
+
       const payload = {
         lastSyncTimestamp,
         mutations: {
+          deletedProductUUIDs,
           products: products.map((p: Product) => ({
             clientUUID: p.id,
             name: p.name,
@@ -457,11 +468,43 @@ class SyncService {
 
       const syncResult = await res.json();
 
+      // Clear synced deleted UUIDs from local storage
+      if (deletedProductUUIDs.length > 0 && typeof window !== 'undefined') {
+        try {
+          const currentDeleted = JSON.parse(localStorage.getItem('gk_deleted_product_uuids') || '[]');
+          const remaining = currentDeleted.filter((id: string) => !deletedProductUUIDs.includes(id));
+          if (remaining.length > 0) {
+            localStorage.setItem('gk_deleted_product_uuids', JSON.stringify(remaining));
+          } else {
+            localStorage.removeItem('gk_deleted_product_uuids');
+          }
+        } catch (_) {}
+      }
+
       // 2. Apply incoming cloud deltas to local Dexie IndexedDB (Full 2-Way Sync)
       if (syncResult.deltas) {
         // Delta A: Products
         if (syncResult.deltas.products?.length) {
           for (const p of syncResult.deltas.products) {
+            const cleanBc = (p.barcode || '').trim();
+            const normName = (p.name || '').trim().toLowerCase();
+            const normHindi = (p.hindiName || '').trim().toLowerCase();
+            const unit = (p.unit || '').trim().toLowerCase();
+
+            // Look for any existing local product that matches barcode or name+unit with a different id
+            const existing = await db.products.filter(item => {
+              if (item.id === p.clientUUID) return false;
+              if (cleanBc && item.barcode && item.barcode.trim() === cleanBc) return true;
+              const itemName = (item.name || '').trim().toLowerCase();
+              const itemHindi = (item.hindiName || '').trim().toLowerCase();
+              const itemUnit = (item.unit || '').trim().toLowerCase();
+              return (itemName === normName || itemHindi === normHindi || itemName === normHindi) && itemUnit === unit;
+            }).first();
+
+            if (existing && existing.id) {
+              await db.products.delete(existing.id);
+            }
+
             await db.products.put({
               id: p.clientUUID,
               name: p.name,
@@ -478,6 +521,7 @@ class SyncService {
               updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : new Date().toISOString(),
             });
           }
+          await deduplicateLocalProducts();
         }
 
         // Delta B: Customers

@@ -386,6 +386,8 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 ### Catalog Deduplication Audit & 1-Click Merger Tool (स्टॉक ऑडिट व डुप्लीकेट सफाई)
 - **स्वचालित डुप्लीकेट पहचान:** यदि पूर्व में दर्ज सामानों में से किसी दो सामानों का बारकोड एक जैसा हो, या एक ही नाम व इकाई (जैसे दो बार "अरवा चावल (kg)") के अलग-अलग रिकॉर्ड बने हों, तो इन्वेंट्री स्क्रीन के शीर्ष पर एक स्पष्ट ऑडिट बैनर दिखाई देता है।
 - **1-क्लिक में सभी डुप्लीकेट मिलाएं (1-Click Consolidator):** **"सभी डुप्लीकेट मिलाएं"** बटन दबाते ही सिस्टम सभी डुप्लीकेट रिकॉर्ड्स का स्टॉक आपस में जोड़ देता है, सबसे बेहतर भाव सुरक्षित रखता है, और अतिरिक्त फालतू रिकॉर्ड्स को हटाकर दुकान का स्टॉक 100% सटीक व साफ़ कर देता है।
+- **लॉगिन व सिंक पर स्वचालित सुरक्षा (Automated Login & Cloud Sync Protection):** जब दुकानदार किसी भी फोन या टैबलेट पर दुकान लॉगिन करते हैं, तो सिस्टम स्थानीय मेमोरी और क्लाउड बैकअप दोनों स्तरों पर बारकोड व नाम के आधार पर डुप्लीकेट सामानों की स्वतः पहचान करके उनका स्टॉक मुख्य रिकॉर्ड में सुरक्षित जोड़ देता है। इससे हर बार लॉगिन करने पर डुप्लीकेट सामान दोबारा जुड़ने की समस्या जड़ से समाप्त हो जाती है।
+- **क्लाउड से डुप्लीकेट रिकॉर्ड की पूर्ण सफाई (Permanent Cloud Removal of Merged Duplicates):** जब दुकानदार इन्वेंट्री में "सभी डुप्लीकेट मिलाएं" चुनते हैं, तो हटाए गए डुप्लीकेट रिकॉर्ड क्लाउड सर्वर से भी स्थायी रूप से हटा दिए जाते हैं ताकि अगले लॉगिन या दूसरे डिवाइस पर वे दोबारा कभी लौटकर न आएं।
 
 ### Quick Price Revisions (+1, +2, -1) (तुरंत दर बदलाव)
 - When commodity wholesale prices fluctuate in the mandi, use the quick **-1**, **+1**, or **+2** adjustment buttons directly on each item card/table row.
@@ -521,6 +523,7 @@ Gramin Kirana supports distinct operational roles and multi-store privacy to ens
 ### Multi-Store Local Switching Isolation Guarantee (सुरक्षित दुकान बदलाव)
 - When multiple shopkeepers or branches share a single counter tablet or phone, Gramin Kirana enforces complete privacy isolation.
 - **डेटा अलगाव (Safe Store Switching):** When logging out of one shop and logging into another, the previous shop's local counter cache is cleanly detached so that customer lists, credit balances, and sales history never bleed or mix between shops.
+- **स्टॉक दोहराव सुरक्षा (Duplicate Stock Prevention on Login):** लॉगिन करते समय क्लाउड से माल का स्टॉक लोड होते वक्त सिस्टम यह सुनिश्चित करता है कि एक ही सामान के डुप्लीकेट रिकॉर्ड न बनें। यदि पूर्व में कोई डुप्लीकेट रह गए हों, तो सिस्टम उनके स्टॉक को एक में मिलाकर अतिरिक्त रिकॉर्ड को स्वतः हटा देता है।
 - **लॉगआउट सुरक्षा चेतावनी (Pending Sync Warning):** If you attempt to log out while offline transactions are still pending upload, the app warns you to connect to the internet first so that no village bills are left un-synced.
 
 ---
