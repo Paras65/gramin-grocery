@@ -79,6 +79,7 @@ class SyncService {
     isPro: boolean;
     isExpired: boolean;
     daysRemaining?: number;
+    isTrial?: boolean;
   } {
     const store = this.getStoreInfo();
     const rawPlan = store?.plan || 'FREE';
@@ -101,6 +102,7 @@ class SyncService {
       isPro,
       isExpired: isExpired && (rawPlan === 'PRO' || hasExpiry),
       daysRemaining,
+      isTrial: !!store?.isTrial,
     };
   }
 

@@ -488,10 +488,14 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
       'जिला (District)',
       'राज्य (State)',
       'प्लान (Subscription)',
+      'ट्रायल स्थिति (Trial Status)',
       'प्लान स्थिति (Status)',
       'प्रो सक्रिय तारीख',
       'वैधता समाप्ति तारीख',
       'शेष दिन (Days Remaining)',
+      'रेफरल कोड (Referral Code)',
+      'जुड़े दुकानदार (Referral Count)',
+      'बोनस दिन (Bonus Days)',
       'पिछला UTR',
       'पंजीकरण तारीख',
       'कुल ग्राहक',
@@ -507,10 +511,14 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
       `"${(store.address?.district || '').replace(/"/g, '""')}"`,
       `"${(store.address?.state || 'Chhattisgarh').replace(/"/g, '""')}"`,
       `"${store.subscription.plan}"`,
+      store.subscription.isTrial ? 'हाँ (14-दिन ट्रायल)' : 'नहीं',
       `"${store.subscription.status}"`,
       `"${store.subscription.startDate ? new Date(store.subscription.startDate).toLocaleDateString('hi-IN') : ''}"`,
       `"${store.subscription.planExpiryDate ? new Date(store.subscription.planExpiryDate).toLocaleDateString('hi-IN') : ''}"`,
       store.subscription.daysRemaining ?? '',
+      `"${store.referral?.code || ''}"`,
+      store.referral?.referralCount ?? 0,
+      store.referral?.bonusDaysEarned ?? 0,
       `"${store.latestClaim ? store.latestClaim.utrNumber : ''}"`,
       `"${new Date(store.createdAt).toLocaleDateString('hi-IN')}"`,
       store.customerCount,
@@ -1034,16 +1042,25 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                                   isPro
                                     ? store.subscription.status === 'PAUSED'
                                       ? 'bg-blue-100 text-blue-900 border-blue-300'
+                                      : store.subscription.isTrial
+                                      ? 'bg-purple-100 text-purple-900 border-purple-300'
                                       : 'bg-emerald-100 text-emerald-900 border-emerald-300'
                                     : 'bg-amber-100 text-amber-900 border-amber-300'
                                 }`}>
                                   {isPro 
                                     ? store.subscription.status === 'PAUSED'
                                       ? '⏸️ प्रो रुका हुआ (PAUSED)'
+                                      : store.subscription.isTrial
+                                      ? '🎁 14-दिन प्रो ट्रायल (TRIAL)'
                                       : '🚀 ग्रामिन प्रो (PRO)' 
                                     : '🌾 गाँव स्टार्टर (FREE)'
                                   }
                                 </span>
+                                {store.referral?.code && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-800 border border-purple-200 flex items-center gap-1" title="रेफरल कोड व जुड़े दुकानदार">
+                                    🎟️ {store.referral.code} ({store.referral.referralCount || 0} रेफर / +{store.referral.bonusDaysEarned || 0} दिन)
+                                  </span>
+                                )}
                                 {!store.isActive && (
                                   <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300">
                                     ⛔ निलंबित (Suspended)

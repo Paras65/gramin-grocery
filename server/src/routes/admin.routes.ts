@@ -217,6 +217,12 @@ router.get('/stores', requireAuth, requireRole('SUPER_ADMIN'), async (req: Reque
               startDate: t.subscription?.startDate || t.createdAt,
               daysRemaining,
               isExpired,
+              isTrial: !!t.subscription?.isTrial,
+            },
+            referral: t.referral || {
+              code: '',
+              referralCount: 0,
+              bonusDaysEarned: 0,
             },
             latestClaim: latestClaim ? {
               utrNumber: latestClaim.utrNumber,

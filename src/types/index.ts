@@ -186,6 +186,12 @@ export interface AdminStoreSummary {
     pauseReason?: string;
     daysRemaining?: number;
     isExpired?: boolean;
+    isTrial?: boolean;
+  };
+  referral?: {
+    code: string;
+    referralCount: number;
+    bonusDaysEarned: number;
   };
   latestClaim?: {
     utrNumber: string;

@@ -384,12 +384,16 @@ export const BackupRestore: React.FC = () => {
                   ? 'bg-amber-100 text-amber-800 border-amber-400'
                   : 'bg-emerald-100 text-emerald-800 border-emerald-400'
               }`}>
-                {syncService.getSubscriptionStatus().isPro ? '👑 ग्रामिन प्रो' : '🌾 गाँव स्टार्टर (मुफ़्त)'}
+                {syncService.getSubscriptionStatus().isPro
+                  ? (syncService.getSubscriptionStatus().isTrial ? '🎁 14-दिन प्रो ट्रायल' : '👑 ग्रामिन प्रो')
+                  : '🌾 गाँव स्टार्टर (मुफ़्त)'}
               </span>
             </div>
             <p className="text-xs text-stone-600 m-0 mt-0.5 font-medium">
               {syncService.getSubscriptionStatus().isPro
-                ? 'क्लाउड सिंक व स्टाफ लॉगिन सक्रिय है।'
+                ? (syncService.getSubscriptionStatus().isTrial
+                  ? '14-दिन मुफ़्त प्रो ट्रायल सक्रिय है (क्लाउड सिंक व सभी सुविधाएं खुली हैं)।'
+                  : 'क्लाउड सिंक व स्टाफ लॉगिन सक्रिय है।')
                 : '100% ऑफ़लाइन चालू। बिना किसी शुल्क के आजीवन मुफ़्त।'}
             </p>
           </div>
