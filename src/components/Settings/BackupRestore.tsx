@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, Upload, ShieldCheck, RefreshCw, Sparkles, Printer, Smartphone, CheckCircle2, Bluetooth, LogOut, QrCode, Archive, BookOpen } from 'lucide-react';
 import { exportDatabaseToJSON, importDatabaseFromJSON, initializeDatabaseIfEmpty, db, archiveOldSales, exportFiscalYearArchiveJSON, getStorageStats, archiveSettledKhata, exportArchivedKhataJSON } from '../../db';
 import { useLanguage } from '../../context/LanguageContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { syncService } from '../../services/syncService';
 import { SubscriptionModal } from '../Subscription/SubscriptionModal';
 import { pwaService } from '../../services/pwaService';
@@ -19,6 +20,7 @@ import {
 
 export const BackupRestore: React.FC = () => {
   const { language, t } = useLanguage();
+  const { confirm } = useConfirm();
   const isCashier = syncService.getUserInfo()?.role === 'CASHIER';
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -163,12 +165,24 @@ export const BackupRestore: React.FC = () => {
   const handleStoreLogout = async () => {
     const pending = await syncService.getPendingSyncCount();
     if (pending > 0) {
-      const ok = window.confirm(
-        `⚠️ चेतावनी: आपके ${pending} बिल/खाता रिकॉर्ड्स अभी क्लाउड पर सुरक्षित नहीं हुए हैं!\n\nयदि आप अभी लॉगआउट करेंगे तो ऑफ़लाइन डेटा नष्ट हो सकता है।\n\nक्या आप सच में लॉगआउट करना चाहते हैं?`
-      );
+      const ok = await confirm({
+        title: 'असुरक्षित ऑफ़लाइन डेटा चेतावनी!',
+        message: `⚠️ आपके ${pending} बिल/खाता रिकॉर्ड्स अभी क्लाउड पर सुरक्षित नहीं हुए हैं!\n\nयदि आप अभी लॉगआउट करेंगे तो ऑफ़लाइन डेटा नष्ट हो सकता है। क्या आप सच में लॉगआउट करना चाहते हैं?`,
+        confirmText: 'हाँ, फिर भी लॉगआउट करें',
+        cancelText: 'वापस जाएं (रद्द करें)',
+        variant: 'danger',
+        icon: '⚠️'
+      });
       if (!ok) return;
     } else {
-      const ok = window.confirm('क्या आप सच में अपनी दुकान से लॉगआउट करना चाहते हैं?');
+      const ok = await confirm({
+        title: 'दुकान से लॉगआउट?',
+        message: 'क्या आप सच में अपनी दुकान से लॉगआउट करना चाहते हैं?\n(लॉगआउट के बाद दोबारा PIN से लॉगिन करना होगा)',
+        confirmText: 'हाँ, लॉगआउट करें',
+        cancelText: 'दुकान पर रहें',
+        variant: 'warning',
+        icon: '🚪'
+      });
       if (!ok) return;
     }
     await syncService.logout(true);
@@ -202,12 +216,17 @@ export const BackupRestore: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const confirm = window.confirm(
-      language === 'hi'
+    const ok = await confirm({
+      title: 'डेटा बैकअप रिस्टोर करें?',
+      message: language === 'hi'
         ? 'क्या आप सुनिश्चित हैं? यह मौजूदा डेटा को बैकअप फ़ाइल के डेटा से बदल देगा।'
-        : 'Are you sure? This will replace current data with data from the backup file.'
-    );
-    if (!confirm) return;
+        : 'Are you sure? This will replace current data with data from the backup file.',
+      confirmText: language === 'hi' ? 'हाँ, रिस्टोर करें' : 'Yes, Restore',
+      cancelText: language === 'hi' ? 'रद्द करें' : 'Cancel',
+      variant: 'warning',
+      icon: '📂'
+    });
+    if (!ok) return;
 
     try {
       setIsProcessing(true);
@@ -230,12 +249,17 @@ export const BackupRestore: React.FC = () => {
   };
 
   const handleResetToDemo = async () => {
-    const confirm = window.confirm(
-      language === 'hi'
-        ? 'क्या आप डेटा को छत्तीसगढ़ के डिफ़ॉल्ट डेमो डेटा (36 सामान, गाँव के ग्राहक) पर रीसेट करना चाहते हैं?'
-        : 'Reset data to default Chhattisgarh village demo items and customers?'
-    );
-    if (!confirm) return;
+    const ok = await confirm({
+      title: 'डिफ़ॉल्ट डेमो डेटा पर रीसेट करें?',
+      message: language === 'hi'
+        ? 'क्या आप डेटा को छत्तीसगढ़ के डिफ़ॉल्ट डेमो डेटा (36 सामान, गाँव के ग्राहक) पर रीसेट करना चाहते हैं?\n(वर्तमान कस्टम रिकॉर्ड्स हट जाएंगे)'
+        : 'Reset data to default Chhattisgarh village demo items and customers?',
+      confirmText: language === 'hi' ? 'हाँ, रीसेट करें' : 'Yes, Reset',
+      cancelText: language === 'hi' ? 'रद्द करें' : 'Cancel',
+      variant: 'danger',
+      icon: '🔄'
+    });
+    if (!ok) return;
 
     await db.products.clear();
     await db.customers.clear();

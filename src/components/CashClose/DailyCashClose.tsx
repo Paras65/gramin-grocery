@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db, autoArchiveIfDue } from '../../db';
 import { useLanguage } from '../../context/LanguageContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import type { DailyCashClose as DailyCashCloseType, DailyExpense } from '../../types';
 import {
   connectBluetoothPrinter,
@@ -20,6 +21,7 @@ const fmtINR = (n: number) => formatINR(n);
 // ─── Component ────────────────────────────────────────────────────────────────
 export const DailyCashClose: React.FC = () => {
   const { t } = useLanguage();
+  const { confirm } = useConfirm();
   const tc = t.cashClose;
 
   const today = todayStr();
@@ -201,8 +203,16 @@ export const DailyCashClose: React.FC = () => {
     setShowDenomModal(false);
   };
 
-  const handleReopenDay = () => {
-    if (window.confirm(tc.reopenConfirm || 'क्या आप आज के गल्ला रिकॉर्ड को पुनः खोलकर सुधारना चाहते हैं?')) {
+  const handleReopenDay = async () => {
+    const ok = await confirm({
+      title: 'बंद गल्ला पुनः खोलें?',
+      message: tc.reopenConfirm || 'क्या आप आज के गल्ला रिकॉर्ड को पुनः खोलकर सुधारना चाहते हैं?\n(सत्यापित रोकड़ स्थिति अनलॉक हो जाएगी)',
+      confirmText: 'हाँ, पुनः खोलें',
+      cancelText: 'रद्द करें',
+      variant: 'warning',
+      icon: '🔓'
+    });
+    if (ok) {
       if (savedRecord) {
         setPhysicalCash(String(savedRecord.physicalCashInDrawer));
         if (savedRecord.openingCash) setOpeningCash(String(savedRecord.openingCash));

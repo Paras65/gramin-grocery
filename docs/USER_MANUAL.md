@@ -62,6 +62,7 @@ Welcome to **Gramin Kirana**, an easy-to-use digital billing, Udhaar (Khata) man
    - [Offline Data Export & Restore](#offline-data-export--restore)
    - [Fiscal Year Archiving & Local Storage Cleanup (वित्तीय वर्ष डेटा आर्काइव व स्थानीय स्टोरेज सफाई)](#fiscal-year-archiving--local-storage-cleanup-वित्तीय-वर्ष-डेटा-आर्काइव-व-स्थानीय-स्टोरेज-सफाई)
    - [Installing App on Phone or PC (PWA होमस्क्रीन ऐप)](#installing-app-on-phone-or-pc-pwa-होमस्क्रीन-ऐप)
+   - [Unified High-Safety Confirmation & Accident Prevention Dialogs (एकरूप ग्रामीण सुरक्षा पुष्टि व गलती-रोधी डायलॉग)](#unified-high-safety-confirmation--accident-prevention-dialogs-एकरूप-ग्रामीण-सुरक्षा-पुष्टि-व-गलती-रोधी-डायलॉग)
 9. [Store Login & Multi-Staff Access (दुकानदार लॉगिन व मुनीम खाता)](#9-store-login--multi-staff-access-दुकानदार-लॉगिन-व-मुनीम-खाता)
    - [Registering Your Store & PIN Recovery Helpline (15 सेकंड में सुपर-फास्ट दुकान पंजीकरण)](#registering-your-store--pin-recovery-helpline-15-सेकंड-में-सुपर-फास्ट-दुकान-पंजीकरण)
    - [1-Click Store Onboarding Wizard & Customizable Rural Kirana Catalog (दुकान सेटअप विज़ार्ड व कस्टमाइज़ेबल किराना सामान)](#1-click-store-onboarding-wizard--customizable-rural-kirana-catalog-दुकान-सेटअप-विज़ार्ड-व-कस्टमाइज़ेबल-किराना-सामान)
@@ -473,6 +474,22 @@ Instead of arbitrary monthly deadlines, you can tag each customer's expected rep
 - **Benefits:**
   - Opens in full-screen mode like a native app with zero browser address bar clutter.
   - Starts up instantly and functions **100% offline** even during deep rural network blackouts.
+
+### Unified High-Safety Confirmation & Accident Prevention Dialogs (एकरूप ग्रामीण सुरक्षा पुष्टि व गलती-रोधी डायलॉग)
+- **धूप-अनुकूल व एकरूप सुरक्षा डिज़ाइन (Consistent Touch-Friendly Dialogs):**
+  - काउंटर पर ग्राहकों की भीड़ या जल्दबाजी में अनजाने में कोई गलत बटन दबने से दुकान के जरूरी डेटा के नुकसान को रोकने के लिए पूरे ऐप में एकरूप, उच्च-सुरक्षा संवाद खिड़कियां (Confirm Modals) लागू की गई हैं।
+  - साधारण ब्राउज़र की छोटी अंग्रेजी पॉपअप के स्थान पर अब स्पष्ट हिंदी/स्थानीय भाषा में बड़े, आसानी से पढ़े जा सकने वाले बटन मिलते हैं।
+- **प्रमुख सुरक्षा सुरक्षा-चक्र (Protected Actions):**
+  - **⚡ चालू बिल रद्द करना (Clear POS Cart):** यदि बिलिंग के दौरान "गाड़ी खाली करें" बटन गलती से दब जाए, तो सिस्टम तुरंत सामान की संख्या और कुल राशि दिखाकर पुष्टि मांगता है ताकि बना बनाया बिल नष्ट न हो।
+  - **🎪 हाट-बाज़ार बिल निरस्तीकरण:** साप्ताहिक हाट की आपाधापी में गलती से कार्ट खाली होने से रोकने के लिए सुरक्षा चक्र।
+  - **🚪 दुकान लॉगआउट सुरक्षा:** यदि कोई ऑफ़लाइन बिल अभी क्लाउड पर सुरक्षित नहीं हुए हैं, तो सिस्टम लाल रंग की चेतावनी देकर पहले आगाह करता है ताकि दुकानदार का एक भी रुपया न छूटे।
+  - **🔓 बंद गल्ला पुनः खोलना:** शाम को रोकड़ मिलान होने के बाद यदि कोई दोबारा गल्ला खोलना चाहे, तो अनधिकृत हेरफेर से बचाने के लिए पुष्टि ली जाती है।
+  - **📦 डुप्लीकेट सामान विलय व बारकोड टकराव:** इन्वेंट्री में बारकोड टकराव होने या सामानों को आपस में मिलाते समय स्पष्ट चेतावनी मिलती है।
+  - **🛡️ खराब सामान रिकॉर्ड व स्टॉक बहाली:** खराबी रिकॉर्ड हटाते समय दुकानदार से पूछा जाता है कि क्या वे काटा गया स्टॉक वापस इन्वेंटरी में जोड़ना चाहते हैं या केवल रिकॉर्ड हटाना चाहते हैं।
+  - **📲 WhatsApp तगादा ब्लास्ट:** सभी बकायेदारों को सामूहिक तगादा भेजने से पहले कुल ग्राहकों की संख्या दिखाकर पुष्टि ली जाती है।
+- **मोबाइल फ्रेंडली बॉटम-शीट (Single-Hand Touch Ergonomics):**
+  - स्मार्टफोन पर यह खिड़की नीचे से एक आरामदायक बॉटम-शीट (Bottom Sheet) के रूप में खुलती है, जिसके बड़े 46mm बटन एक हाथ से आसानी से दबाए जा सकते हैं।
+  - नुकसानदेह क्रियाओं (जैसे बिल हटाना) पर "रद्द करें" बटन स्वतः सुरक्षित प्राथमिकता में रहता है।
 
 ---
 

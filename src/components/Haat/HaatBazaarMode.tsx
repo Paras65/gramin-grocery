@@ -9,6 +9,7 @@ import {
 import { db } from '../../db';
 import type { Product, Sale } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { printReceipt } from '../../utils/thermalPrint';
 import { DemoLimitModal } from '../Demo/DemoLimitModal';
 import { StoreAuthModal } from '../Auth/StoreAuthModal';
@@ -22,6 +23,7 @@ interface HaatCartItem {
 
 export const HaatBazaarMode: React.FC = () => {
   const { language, t } = useLanguage();
+  const { confirm } = useConfirm();
   const th = t.haatMode;
 
   const products = useLiveQuery(() => db.products.toArray()) || [];
@@ -106,6 +108,22 @@ export const HaatBazaarMode: React.FC = () => {
 
   // Change to return
   const changeToReturn = tenderCash !== null && tenderCash >= cartTotal ? tenderCash - cartTotal : 0;
+
+  const handleClearHaatCart = async () => {
+    if (cart.length === 0) return;
+    const ok = await confirm({
+      title: 'हाट चालू बिल रद्द करें?',
+      message: `हाट कार्ट में ${cart.length} प्रकार के सामान (कुल ₹${cartTotal}) जोड़े गए हैं।\nक्या आप वाकई इस बिल को रद्द करना चाहते हैं?`,
+      confirmText: 'हाँ, बिल रद्द करें',
+      cancelText: 'नहीं, चालू रखें',
+      variant: 'danger',
+      icon: '🗑️'
+    });
+    if (ok) {
+      setCart([]);
+      setTenderCash(null);
+    }
+  };
 
   // Audio confirmation
   const playHaatChime = () => {
@@ -556,7 +574,8 @@ export const HaatBazaarMode: React.FC = () => {
               </div>
               {cart.length > 0 && (
                 <button
-                  onClick={() => { setCart([]); setTenderCash(null); }}
+                  type="button"
+                  onClick={handleClearHaatCart}
                   className="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

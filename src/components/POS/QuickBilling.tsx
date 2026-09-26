@@ -10,6 +10,7 @@ import {
 import { db } from '../../db';
 import type { CartItem, Customer, PaymentMode, Product } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { printReceipt } from '../../utils/thermalPrint';
 import { QRCodeSVG } from 'qrcode.react';
 import { buildUpiPayUrl, isValidUpiId } from '../../utils/qrCode';
@@ -38,6 +39,7 @@ export interface HeldBill {
 
 export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery = '', onSwitchToHaat }) => {
   const { language, t } = useLanguage();
+  const { confirm } = useConfirm();
   const products = useLiveQuery(() => db.products.toArray()) || [];
   const customers = useLiveQuery(() => db.customers.toArray()) || [];
 
@@ -309,6 +311,26 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
   const discountAmount = Math.min(totalBillAmount, Math.max(0, parseFloat(discount) || 0));
   const finalBillAmount = Math.max(0, Math.round((totalBillAmount - discountAmount) * 100) / 100);
   const totalCartItemsCount = cart.reduce((sum, item) => sum + (item.product.isLoose ? 1 : item.quantity), 0);
+
+  const handleClearCart = async () => {
+    if (cart.length === 0) return;
+    const ok = await confirm({
+      title: 'चालू बिल रद्द करें?',
+      message: `बिल में ${totalCartItemsCount} सामान (कुल ₹${finalBillAmount}) जोड़े गए हैं।\nक्या आप वाकई इस बिल को रद्द कर पूरी गाड़ी खाली करना चाहते हैं?`,
+      confirmText: 'हाँ, गाड़ी खाली करें',
+      cancelText: 'नहीं, चालू रखें',
+      variant: 'danger',
+      icon: '🗑️'
+    });
+    if (ok) {
+      setCart([]);
+      setDiscount('');
+      setSplitCashPaid('');
+      setCashTendered('');
+      setSelectedCustomerId('');
+      setCustomerSearchQuery('');
+    }
+  };
 
   const parsedSplitCash = paymentMode === 'UDHAAR'
     ? Math.min(finalBillAmount, Math.max(0, parseFloat(splitCashPaid) || 0))
@@ -663,7 +685,7 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
               </button>
               <button
                 type="button"
-                onClick={() => setCart([])}
+                onClick={handleClearCart}
                 className="text-xs text-rose-700 hover:text-rose-800 flex items-center gap-1 font-bold cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />

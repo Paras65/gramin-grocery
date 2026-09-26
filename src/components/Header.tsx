@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Wifi, WifiOff, Globe, Mic, Store, Cloud, RefreshCw, ArrowRight, Sparkles, LogOut, Download, Printer, X, Crown } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { syncService } from '../services/syncService';
 import { SubscriptionModal } from './Subscription/SubscriptionModal';
 import { pwaService } from '../services/pwaService';
@@ -33,6 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
   isEveningCashCloseDue = false
 }) => {
   const { language, toggleLanguage, t } = useLanguage();
+  const { confirm } = useConfirm();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [storeInfo, setStoreInfo] = useState(syncService.getStoreInfo());
   const [userInfo, setUserInfo] = useState(syncService.getUserInfo());
@@ -116,12 +118,24 @@ export const Header: React.FC<HeaderProps> = ({
   const handleStoreLogout = async () => {
     const pending = await syncService.getPendingSyncCount();
     if (pending > 0) {
-      const ok = window.confirm(
-        `⚠️ चेतावनी: आपके ${pending} बिल/खाता रिकॉर्ड्स अभी क्लाउड पर सुरक्षित नहीं हुए हैं!\n\nयदि आप अभी लॉगआउट करेंगे तो ऑफ़लाइन डेटा नष्ट हो सकता है।\n\nक्या आप सच में लॉगआउट करना चाहते हैं?`
-      );
+      const ok = await confirm({
+        title: 'असुरक्षित ऑफ़लाइन डेटा चेतावनी!',
+        message: `⚠️ आपके ${pending} बिल/खाता रिकॉर्ड्स अभी क्लाउड पर सुरक्षित नहीं हुए हैं!\n\nयदि आप अभी लॉगआउट करेंगे तो ऑफ़लाइन डेटा नष्ट हो सकता है। क्या आप सच में लॉगआउट करना चाहते हैं?`,
+        confirmText: 'हाँ, फिर भी लॉगआउट करें',
+        cancelText: 'वापस जाएं (रद्द करें)',
+        variant: 'danger',
+        icon: '⚠️'
+      });
       if (!ok) return;
     } else {
-      const ok = window.confirm('क्या आप सच में अपनी दुकान से लॉगआउट करना चाहते हैं?');
+      const ok = await confirm({
+        title: 'दुकान से लॉगआउट?',
+        message: 'क्या आप सच में अपनी दुकान से लॉगआउट करना चाहते हैं?\n(लॉगआउट के बाद दोबारा PIN से लॉगिन करना होगा)',
+        confirmText: 'हाँ, लॉगआउट करें',
+        cancelText: 'दुकान पर रहें',
+        variant: 'warning',
+        icon: '🚪'
+      });
       if (!ok) return;
     }
     await syncService.logout(true);

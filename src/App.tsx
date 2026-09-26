@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 import { initializeDatabaseIfEmpty, seedDemoSandboxData } from './db';
 import { Header } from './components/Header';
 import { QuickBilling } from './components/POS/QuickBilling';
@@ -534,7 +535,9 @@ const MainApp: React.FC = () => {
 export default function App() {
   return (
     <LanguageProvider>
-      <MainApp />
+      <ConfirmProvider>
+        <MainApp />
+      </ConfirmProvider>
     </LanguageProvider>
   );
 }

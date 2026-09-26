@@ -8,6 +8,7 @@ import {
 import { db } from '../../db';
 import type { Customer, DueReason, Transaction } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { printCustomerStatement } from '../../utils/thermalPrint';
 import { syncService } from '../../services/syncService';
 import { openWhatsApp } from '../../utils/whatsapp';
@@ -17,6 +18,7 @@ import { SubscriptionModal } from '../Subscription/SubscriptionModal';
 
 export const KhataLedger: React.FC = () => {
   const { t } = useLanguage();
+  const { confirm, alert } = useConfirm();
   const customers = useLiveQuery(() => db.customers.toArray()) || [];
   const transactions = useLiveQuery(() => db.transactions.toArray()) || [];
   const isPro = syncService.isPro();
@@ -299,16 +301,25 @@ export const KhataLedger: React.FC = () => {
   };
 
   // PRO: Blast WhatsApp reminder to ALL overdue customers
-  const blastWhatsAppReminders = () => {
+  const blastWhatsAppReminders = async () => {
     const overdue = customers.filter((c: Customer) => c.balanceDue > 0);
     if (overdue.length === 0) {
-      alert('सभी ग्राहकों का हिसाब साफ है। कोई बकाया नहीं!');
+      await alert({
+        title: 'हिसाब साफ है',
+        message: 'सभी ग्राहकों का हिसाब साफ है। वर्तमान में कोई बकाया नहीं है!',
+        variant: 'success',
+        icon: '✅'
+      });
       return;
     }
-    const ok = window.confirm(
-      `${overdue.length} ग्राहकों को WhatsApp तगादा भेजना है?\n` +
-      `(प्रत्येक के लिए एक-एक WhatsApp खुलेगा)`
-    );
+    const ok = await confirm({
+      title: 'WhatsApp तगादा ब्लास्ट',
+      message: `${overdue.length} बकायेदार ग्राहकों को WhatsApp तगादा संदेश भेजना है?\n\n(प्रत्येक ग्राहक के लिए एक-एक करके WhatsApp खुलेगा)`,
+      confirmText: 'हाँ, तगादा शुरू करें',
+      cancelText: 'रद्द करें',
+      variant: 'info',
+      icon: '📲'
+    });
     if (!ok) return;
     overdue.forEach((c: Customer, i: number) => {
       setTimeout(() => sendWhatsAppReminder(c), i * 800);

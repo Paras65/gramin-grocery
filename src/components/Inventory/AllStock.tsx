@@ -4,11 +4,13 @@ import { Search, Plus, Edit2, Package, X, Sparkles, AlertTriangle, Check, Layers
 import { db } from '../../db';
 import type { Product } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { syncService } from '../../services/syncService';
 import { DailyRateSheetModal } from '../Mandi/DailyRateSheetModal';
 
 export const AllStock: React.FC = () => {
   const { language, t } = useLanguage();
+  const { confirm, alert } = useConfirm();
   const isCashier = syncService.getRole() === 'munim' || syncService.getUserInfo()?.role === 'CASHIER';
   const products = useLiveQuery(() => db.products.toArray()) || [];
 
@@ -190,7 +192,15 @@ export const AllStock: React.FC = () => {
   const handleMergeAllDuplicates = async () => {
     if (duplicateGroups.length === 0) return;
     const confirmMsg = `क्या आप सभी ${duplicateGroups.length} डुप्लीकेट सामानों को मिलाना चाहते हैं?\n\n- सभी का स्टॉक आपस में जुड़ जाएगा।\n- डुप्लीकेट रिकॉर्ड साफ़ हो जाएंगे।\n- कोई डेटा या हिसाब नष्ट नहीं होगा।`;
-    if (!confirm(confirmMsg)) return;
+    const ok = await confirm({
+      title: 'डुप्लीकेट सामान एक में मिलाएं?',
+      message: confirmMsg,
+      confirmText: 'हाँ, डुप्लीकेट मिलाएं',
+      cancelText: 'रद्द करें',
+      variant: 'warning',
+      icon: '🔄'
+    });
+    if (!ok) return;
 
     setIsMerging(true);
     try {
@@ -235,7 +245,12 @@ export const AllStock: React.FC = () => {
       showNotification(`✅ सभी ${duplicateGroups.length} डुप्लीकेट सामान सफलतापूर्वक एक में मिला दिए गए!`);
     } catch (err) {
       console.error('Failed to merge duplicates:', err);
-      alert('डुप्लीकेट मिलाने में त्रुटि हुई।');
+      await alert({
+        title: 'त्रुटि',
+        message: 'डुप्लीकेट मिलाने में त्रुटि हुई। कृपया पुनः प्रयास करें।',
+        variant: 'danger',
+        icon: '⚠️'
+      });
     } finally {
       setIsMerging(false);
     }
@@ -246,7 +261,12 @@ export const AllStock: React.FC = () => {
     if (!editingProduct || !editingProduct.id) return;
 
     if (duplicateBarcodeEditMatch) {
-      alert(`⚠️ बारकोड टकराव: यह बारकोड पहले से "${duplicateBarcodeEditMatch.hindiName}" में दर्ज है। कृपया अलग बारकोड दें।`);
+      await alert({
+        title: 'बारकोड टकराव चेतावनी',
+        message: `⚠️ यह बारकोड पहले से "${duplicateBarcodeEditMatch.hindiName}" में दर्ज है। कृपया अलग बारकोड दें।`,
+        variant: 'warning',
+        icon: '⚠️'
+      });
       return;
     }
 
@@ -275,19 +295,35 @@ export const AllStock: React.FC = () => {
     e.preventDefault();
     const trimmedName = newProdName.trim().replace(/\s+/g, ' ');
     if (!trimmedName) {
-      alert('कृपया सामान का नाम दर्ज करें!');
+      await alert({
+        title: 'अधूरा विवरण',
+        message: 'कृपया सामान का नाम दर्ज करें!',
+        variant: 'warning'
+      });
       return;
     }
 
     // Strict: block duplicate barcode
     if (duplicateBarcodeAddMatch) {
-      alert(`⚠️ बारकोड टकराव: यह बारकोड पहले से "${duplicateBarcodeAddMatch.hindiName}" में दर्ज है। कृपया अलग बारकोड दें या 'मौजूदा सामान में स्टॉक जोड़ें' बटन दबाएँ।`);
+      await alert({
+        title: 'बारकोड टकराव चेतावनी',
+        message: `⚠️ यह बारकोड पहले से "${duplicateBarcodeAddMatch.hindiName}" में दर्ज है। कृपया अलग बारकोड दें या 'मौजूदा सामान में स्टॉक जोड़ें' बटन दबाएँ।`,
+        variant: 'warning',
+        icon: '⚠️'
+      });
       return;
     }
 
     // Soft check: warn if exact duplicate name & unit
     if (duplicateNameAddMatch && duplicateNameAddMatch.unit === newProdUnit) {
-      const proceed = confirm(`⚠️ "${duplicateNameAddMatch.hindiName}" (${newProdUnit}) पहले से स्टॉक में मौजूद है (वर्तमान स्टॉक: ${duplicateNameAddMatch.stockQty} ${duplicateNameAddMatch.unit})।\n\nक्या आप सचमुच एक नया डुप्लीकेट सामान बनाना चाहते हैं?\n(सुझाव: 'Cancel' दबाकर 'मौजूदा सामान में स्टॉक जोड़ें' बटन दबाएँ)`);
+      const proceed = await confirm({
+        title: 'समान नाम का सामान पहले से मौजूद है',
+        message: `⚠️ "${duplicateNameAddMatch.hindiName}" (${newProdUnit}) पहले से स्टॉक में मौजूद है (वर्तमान स्टॉक: ${duplicateNameAddMatch.stockQty} ${duplicateNameAddMatch.unit})।\n\nक्या आप सचमुच एक नया डुप्लीकेट सामान बनाना चाहते हैं?\n(सुझाव: 'रद्द करें' दबाकर 'मौजूदा सामान में स्टॉक जोड़ें' बटन दबाएँ)`,
+        confirmText: 'हाँ, नया सामान बनाएं',
+        cancelText: 'रद्द करें (मौजूदा में जोड़ें)',
+        variant: 'warning',
+        icon: '📦'
+      });
       if (!proceed) return;
     }
 

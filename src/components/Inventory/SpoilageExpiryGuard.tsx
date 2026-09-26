@@ -7,11 +7,13 @@ import {
 import { db } from '../../db';
 import type { Product, SpoilageLog, SpoilageReason } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { syncService } from '../../services/syncService';
 import { openWhatsApp } from '../../utils/whatsapp';
 
 export const SpoilageExpiryGuard: React.FC = () => {
   const { language, t } = useLanguage();
+  const { confirm, alert } = useConfirm();
   const spoilageLogs = useLiveQuery(() => db.spoilageLogs.toArray()) || [];
   const products = useLiveQuery(() => db.products.toArray()) || [];
 
@@ -130,12 +132,14 @@ export const SpoilageExpiryGuard: React.FC = () => {
     if (log.deductedProductId && log.deductedQty && log.deductedQty > 0) {
       const prod = products.find(p => p.id === log.deductedProductId);
       const prodName = prod ? (prod.hindiName || prod.name) : log.productName;
-      const restore = window.confirm(
-        `क्या आप खराब दर्ज किया गया स्टॉक (+${log.deductedQty} ${log.unit}) वापस दुकान इन्वेंटरी में जोड़ना चाहते हैं?\n\n` +
-        `सामान: ${prodName}\n` +
-        `'OK' = रिकॉर्ड हटाएं और स्टॉक +${log.deductedQty} वापस जोड़ें\n` +
-        `'Cancel' = केवल रिकॉर्ड हटाएं (स्टॉक न जोड़ें)`
-      );
+      const restore = await confirm({
+        title: 'स्टॉक पुनः बहाल करें?',
+        message: `खराब दर्ज सामान: "${prodName}"\n\nक्या आप इसका काटा गया स्टॉक (+${log.deductedQty} ${log.unit}) वापस दुकान इन्वेंटरी में जोड़ना चाहते हैं?`,
+        confirmText: 'हाँ, स्टॉक वापस जोड़ें',
+        cancelText: 'केवल रिकॉर्ड हटाएं (स्टॉक न जोड़ें)',
+        variant: 'info',
+        icon: '📦'
+      });
 
       if (restore && prod && prod.id) {
         await db.products.update(prod.id, {
@@ -144,7 +148,15 @@ export const SpoilageExpiryGuard: React.FC = () => {
         });
       }
     } else {
-      if (!confirm(`क्या आप इस खराबी रिकॉर्ड को हटाना चाहते हैं?`)) return;
+      const ok = await confirm({
+        title: 'खराबी रिकॉर्ड हटाएं?',
+        message: 'क्या आप वाकई इस खराबी रिकॉर्ड को हटाना चाहते हैं?',
+        confirmText: 'हाँ, हटाएं',
+        cancelText: 'रद्द करें',
+        variant: 'danger',
+        icon: '🗑️'
+      });
+      if (!ok) return;
     }
 
     await db.spoilageLogs.delete(log.id);
@@ -164,7 +176,11 @@ export const SpoilageExpiryGuard: React.FC = () => {
     if (input === null) return;
     const parsed = parseFloat(input);
     if (isNaN(parsed) || parsed <= 0) {
-      alert('कृपया सही दर दर्ज करें!');
+      await alert({
+        title: 'अमान्य दर',
+        message: 'कृपया सही बिक्री दर (₹) दर्ज करें!',
+        variant: 'warning'
+      });
       return;
     }
     await db.products.update(p.id, {
