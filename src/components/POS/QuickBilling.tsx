@@ -4,7 +4,8 @@ import confetti from 'canvas-confetti';
 import { 
   Search, Trash2, CheckCircle, Share2, 
   CreditCard, Banknote, QrCode, ShoppingBag,
-  ArrowRight, X, Scale, Printer, Scan, Plus
+  ArrowRight, X, Scale, Printer, Scan, Plus,
+  Pause, Play, UserPlus, Clock
 } from 'lucide-react';
 import { db } from '../../db';
 import type { CartItem, Customer, PaymentMode, Product } from '../../types';
@@ -22,6 +23,17 @@ import { openWhatsApp } from '../../utils/whatsapp';
 interface QuickBillingProps {
   initialSearchQuery?: string;
   onSwitchToHaat?: () => void;
+}
+
+export interface HeldBill {
+  id: string;
+  heldAt: string;
+  items: CartItem[];
+  customerId?: string;
+  customerName?: string;
+  paymentMode: PaymentMode;
+  discount?: string;
+  totalAmount: number;
 }
 
 export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery = '', onSwitchToHaat }) => {
@@ -60,6 +72,29 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
   const [storeUpiId, setStoreUpiId] = useState<string>(() => localStorage.getItem('gk_store_upi_id') || '');
   const [isEditingUpi, setIsEditingUpi] = useState<boolean>(false);
   const [tempUpiInput, setTempUpiInput] = useState<string>('');
+
+  // Held Bills (Hold & Resume) State
+  const [heldBills, setHeldBills] = useState<HeldBill[]>(() => {
+    try {
+      const saved = localStorage.getItem('gk_held_bills');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isHeldBillsModalOpen, setIsHeldBillsModalOpen] = useState<boolean>(false);
+
+  // Searchable Customer Picker & Inline Quick Add Customer States
+  const [customerSearchQuery, setCustomerSearchQuery] = useState<string>('');
+  const [isCustomerPickerOpen, setIsCustomerPickerOpen] = useState<boolean>(false);
+  const [isQuickAddCustomerOpen, setIsQuickAddCustomerOpen] = useState<boolean>(false);
+  const [quickCustName, setQuickCustName] = useState<string>('');
+  const [quickCustPhone, setQuickCustPhone] = useState<string>('');
+  const [quickCustPara, setQuickCustPara] = useState<string>('मुख्य बाज़ार');
+  const [quickCustLimit, setQuickCustLimit] = useState<string>('2000');
+
+  // Cash Tender / Change Return Calculator State
+  const [cashTendered, setCashTendered] = useState<string>('');
 
   // Completed bill receipt modal
   const [lastCompletedBill, setLastCompletedBill] = useState<{
@@ -294,6 +329,123 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
     projectedBalance > customerCreditLimit
   );
 
+  // Search filtered customers for the searchable picker
+  const filteredCustomers = customers.filter(c => {
+    if (!customerSearchQuery.trim()) return true;
+    const q = customerSearchQuery.toLowerCase().trim();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.phone && c.phone.includes(q)) ||
+      c.para.toLowerCase().includes(q)
+    );
+  }).slice(0, 15);
+
+  // Cash Tender / Change Return calculations
+  const parsedCashTendered = parseFloat(cashTendered) || 0;
+  const changeToReturn = Math.max(0, Math.round((parsedCashTendered - finalBillAmount) * 100) / 100);
+  const shortCash = Math.max(0, Math.round((finalBillAmount - parsedCashTendered) * 100) / 100);
+
+  // Quick cash tender options: exact bill, next 50, next 100, next 500
+  const quickTenderOptions = [
+    finalBillAmount,
+    Math.ceil(finalBillAmount / 50) * 50 > finalBillAmount ? Math.ceil(finalBillAmount / 50) * 50 : null,
+    Math.ceil(finalBillAmount / 100) * 100 > finalBillAmount ? Math.ceil(finalBillAmount / 100) * 100 : null,
+    Math.ceil(finalBillAmount / 500) * 500 > finalBillAmount ? Math.ceil(finalBillAmount / 500) * 500 : null,
+  ].filter((v, idx, arr): v is number => v !== null && v > 0 && arr.indexOf(v) === idx).slice(0, 4);
+
+  // Bill Hold & Resume Handlers
+  const handleHoldCurrentBill = () => {
+    if (cart.length === 0) return;
+    const newHeld: HeldBill = {
+      id: 'held_' + Date.now(),
+      heldAt: new Date().toISOString(),
+      items: [...cart],
+      customerId: selectedCustomerId || undefined,
+      customerName: selectedCustomer?.name,
+      paymentMode,
+      discount,
+      totalAmount: finalBillAmount
+    };
+    const updated = [newHeld, ...heldBills.slice(0, 9)];
+    setHeldBills(updated);
+    try {
+      localStorage.setItem('gk_held_bills', JSON.stringify(updated));
+    } catch (_) {}
+    setCart([]);
+    setDiscount('');
+    setSelectedCustomerId('');
+    setPaymentMode('CASH');
+    setSplitCashPaid('');
+    setCashTendered('');
+    setCustomerSearchQuery('');
+  };
+
+  const handleResumeHeldBill = (held: HeldBill) => {
+    if (cart.length > 0) {
+      const confirmSwap = window.confirm(
+        'वर्तमान कार्ट में पहले से सामान मौजूद है। क्या आप इसे बदलकर होल्ड बिल वापस लाना चाहते हैं?'
+      );
+      if (!confirmSwap) return;
+    }
+    setCart(held.items);
+    setSelectedCustomerId(held.customerId || '');
+    setPaymentMode(held.paymentMode);
+    setDiscount(held.discount || '');
+    const updated = heldBills.filter(h => h.id !== held.id);
+    setHeldBills(updated);
+    try {
+      localStorage.setItem('gk_held_bills', JSON.stringify(updated));
+    } catch (_) {}
+    setIsHeldBillsModalOpen(false);
+  };
+
+  const handleDeleteHeldBill = (heldId: string) => {
+    const updated = heldBills.filter(h => h.id !== heldId);
+    setHeldBills(updated);
+    try {
+      localStorage.setItem('gk_held_bills', JSON.stringify(updated));
+    } catch (_) {}
+  };
+
+  // Quick Add Customer Inline Handler
+  const handleQuickAddCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = quickCustName.trim().replace(/\s+/g, ' ');
+    if (!cleanName) {
+      alert('कृपया ग्राहक का नाम दर्ज करें!');
+      return;
+    }
+    const cleanPhone = quickCustPhone.replace(/\D/g, '').slice(-10);
+    if (cleanPhone && cleanPhone.length !== 10) {
+      alert('कृपया 10-अंकों का मान्य मोबाइल नंबर दर्ज करें!');
+      return;
+    }
+    if (cleanPhone && customers.some(c => c.phone === cleanPhone)) {
+      alert('⚠️ यह मोबाइल नंबर पहले से किसी अन्य ग्राहक के खाते में दर्ज है!');
+      return;
+    }
+    const newId = 'cust_' + Math.random().toString(36).substring(2, 9);
+    const now = new Date().toISOString();
+    const limitNum = parseFloat(quickCustLimit);
+    await db.customers.add({
+      id: newId,
+      name: cleanName,
+      phone: cleanPhone,
+      para: quickCustPara.trim() || 'मुख्य बाज़ार',
+      balanceDue: 0,
+      creditLimit: !isNaN(limitNum) && limitNum > 0 ? limitNum : 2000,
+      createdAt: now,
+      updatedAt: now
+    });
+    setSelectedCustomerId(newId);
+    setIsQuickAddCustomerOpen(false);
+    setIsCustomerPickerOpen(false);
+    setQuickCustName('');
+    setQuickCustPhone('');
+    setQuickCustPara('मुख्य बाज़ार');
+    setCustomerSearchQuery('');
+  };
+
   // Save Store UPI ID inline
   const handleSaveStoreUpi = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -424,7 +576,9 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
     setCart([]);
     setDiscount('');
     setSplitCashPaid('');
+    setCashTendered('');
     setSelectedCustomerId('');
+    setCustomerSearchQuery('');
     setPaymentMode('CASH');
     setIsMobileCartOpen(false);
   };
@@ -492,15 +646,27 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {cart.length > 0 && (
-            <button
-              onClick={() => setCart([])}
-              className="text-xs text-rose-700 hover:text-rose-800 flex items-center gap-1 font-bold cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{t.pos.clearCart}</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleHoldCurrentBill}
+                className="text-xs text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2 py-0.5 rounded-lg flex items-center gap-1 font-bold cursor-pointer transition-all active:scale-95"
+                title="इस बिल को होल्ड करें ताकि दूसरे ग्राहक का बिल बना सकें"
+              >
+                <Pause className="w-3 h-3 text-amber-800" />
+                <span>होल्ड</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCart([])}
+                className="text-xs text-rose-700 hover:text-rose-800 flex items-center gap-1 font-bold cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{t.pos.clearCart}</span>
+              </button>
+            </>
           )}
           {isMobileSheet && (
             <button
@@ -512,6 +678,25 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           )}
         </div>
       </div>
+
+      {/* Held Bills Banner Indicator */}
+      {heldBills.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setIsHeldBillsModalOpen(true)}
+          className="my-2 w-full p-2 rounded-xl bg-amber-500/15 border border-amber-400/60 hover:bg-amber-500/25 flex items-center justify-between text-xs font-black text-amber-950 cursor-pointer transition-all active:scale-[0.99] shadow-2xs shrink-0"
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="p-1 rounded-lg bg-amber-200 text-amber-900">
+              <Pause className="w-3.5 h-3.5" />
+            </span>
+            <span>{heldBills.length} बिल होल्ड पर सुरक्षित हैं</span>
+          </div>
+          <span className="text-[11px] font-black text-amber-800 underline">
+            देखें / वापस लाएं ➔
+          </span>
+        </button>
+      )}
 
       {/* Cart Items List */}
       <div className="flex-1 overflow-y-auto py-2.5 space-y-2 pr-1">
@@ -821,27 +1006,227 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
           </div>
         </div>
 
-        {/* Customer Select Dropdown (For Udhaar or UPI tracking) */}
+        {/* Cash Tender / Change Return Calculator for CASH bills */}
+        {paymentMode === 'CASH' && cart.length > 0 && (
+          <div className="bg-[#faf8f3] p-2.5 rounded-xl border border-emerald-300/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-stone-700 flex items-center gap-1">
+                <span>💵 ग्राहक से मिला नकद (छुट्टे पैसे हिसाब):</span>
+              </span>
+              {cashTendered && (
+                <button
+                  type="button"
+                  onClick={() => setCashTendered('')}
+                  className="text-[10px] text-stone-500 hover:text-rose-700 font-bold underline cursor-pointer"
+                >
+                  साफ़ करें (Clear)
+                </button>
+              )}
+            </div>
+
+            {/* Quick Tender Note Chips */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {quickTenderOptions.map(amt => {
+                const isSelected = parsedCashTendered === amt;
+                return (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setCashTendered(isSelected ? '' : String(amt))}
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border cursor-pointer active:scale-95 transition-all ${
+                      isSelected
+                        ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs'
+                        : 'bg-white text-stone-700 border-emerald-200 hover:bg-emerald-50'
+                    }`}
+                  >
+                    ₹{amt}
+                  </button>
+                );
+              })}
+              <div className="flex items-center gap-1 ml-auto">
+                <span className="text-[10px] text-stone-500 font-semibold">नकद ₹:</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={cashTendered}
+                  onChange={e => setCashTendered(e.target.value)}
+                  placeholder={String(finalBillAmount)}
+                  className="w-20 p-1 text-xs bg-white border border-stone-300 rounded-lg text-right font-black text-emerald-900 outline-hidden focus:border-emerald-600"
+                />
+              </div>
+            </div>
+
+            {/* Change Return / Short Cash Status */}
+            {parsedCashTendered > 0 && (
+              <div className="pt-1.5 border-t border-emerald-200/60">
+                {parsedCashTendered > finalBillAmount ? (
+                  <div className="p-2 rounded-xl bg-emerald-100 border border-emerald-300 flex items-center justify-between text-xs font-black text-emerald-950 shadow-2xs animate-fade-in">
+                    <span>🤝 ग्राहक को वापस दें (छुट्टे पैसे):</span>
+                    <span className="text-base font-black text-emerald-900">₹{changeToReturn}</span>
+                  </div>
+                ) : parsedCashTendered === finalBillAmount ? (
+                  <div className="text-[11px] font-bold text-emerald-800 text-center py-0.5">
+                    ✓ पूरा नकद प्राप्त (कोई छुट्टे नहीं देने)
+                  </div>
+                ) : (
+                  <div className="p-1.5 rounded-lg bg-rose-50 border border-rose-200 text-[11px] font-bold text-rose-800 flex items-center justify-between">
+                    <span>कम मिला है:</span>
+                    <span className="font-black">₹{shortCash} और लें</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Customer Select / Searchable Picker (For Udhaar or UPI tracking) */}
         {(paymentMode === 'UDHAAR' || paymentMode === 'UPI') && (
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-stone-700 flex items-center justify-between">
-              <span>{t.pos.selectCustomer}:</span>
-              {paymentMode === 'UDHAAR' && (
-                <span className="text-[10px] text-rose-600 font-bold">* जरूरी है</span>
-              )}
-            </label>
-            <select
-              value={selectedCustomerId}
-              onChange={e => setSelectedCustomerId(e.target.value)}
-              className="w-full bg-stone-50 border border-stone-300 rounded-xl p-2 text-xs font-semibold text-stone-900 outline-hidden focus:border-amber-500"
-            >
-              <option value="">-- ग्राहक चुनें / Select Customer --</option>
-              {customers.map((c: Customer) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.para}) - बकाया: ₹{c.balanceDue} | सीमा: ₹{c.creditLimit ?? 2000}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-bold text-stone-700 flex items-center gap-1">
+                <span>{t.pos.selectCustomer}:</span>
+                {paymentMode === 'UDHAAR' && (
+                  <span className="text-[10px] text-rose-600 font-bold">* जरूरी है</span>
+                )}
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  if (customerSearchQuery.trim()) {
+                    setQuickCustName(customerSearchQuery.trim());
+                  }
+                  setIsQuickAddCustomerOpen(true);
+                }}
+                className="text-[11px] text-amber-800 hover:text-amber-950 font-black flex items-center gap-1 cursor-pointer bg-amber-100/80 hover:bg-amber-200 border border-amber-300 px-2 py-0.5 rounded-lg transition-all active:scale-95"
+              >
+                <UserPlus className="w-3.5 h-3.5 text-amber-800" />
+                <span>+ नया ग्राहक जोड़ें</span>
+              </button>
+            </div>
+
+            {selectedCustomer ? (
+              <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-300 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-black text-stone-900 text-xs sm:text-sm truncate">
+                      👤 {selectedCustomer.name}
+                    </span>
+                    <span className="text-[10px] bg-amber-200/90 text-amber-950 font-bold px-1.5 py-0.2 rounded-md">
+                      {selectedCustomer.para}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-stone-600 font-medium mt-0.5 flex items-center gap-2 flex-wrap">
+                    {selectedCustomer.phone && <span>📞 {selectedCustomer.phone}</span>}
+                    <span>वर्तमान बकाया: <b>₹{currentBalance}</b></span>
+                    <span>उधारी सीमा: <b>₹{customerCreditLimit}</b></span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCustomerId('');
+                    setCustomerSearchQuery('');
+                    setIsCustomerPickerOpen(true);
+                  }}
+                  className="text-[10px] font-bold text-stone-600 hover:text-rose-700 bg-white border border-stone-300 hover:border-rose-300 px-2 py-1 rounded-lg cursor-pointer shrink-0"
+                  title="दूसरा ग्राहक चुनें"
+                >
+                  बदलें ✕
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="flex items-center gap-1.5">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={customerSearchQuery}
+                      onChange={e => {
+                        setCustomerSearchQuery(e.target.value);
+                        setIsCustomerPickerOpen(true);
+                      }}
+                      onFocus={() => setIsCustomerPickerOpen(true)}
+                      placeholder="🔍 नाम, फ़ोन या पारा से खोजें..."
+                      className="w-full pl-8 pr-7 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 outline-hidden focus:border-amber-500 shadow-2xs"
+                    />
+                    {customerSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomerSearchQuery('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs font-bold"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dropdown Customer Results */}
+                {isCustomerPickerOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-amber-300 rounded-2xl shadow-xl z-40 max-h-52 overflow-y-auto p-1.5 space-y-1 animate-fade-in">
+                    <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold text-stone-500 border-b border-stone-100">
+                      <span>ग्राहक चुनें ({filteredCustomers.length})</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomerPickerOpen(false)}
+                        className="text-stone-400 hover:text-stone-700 font-bold"
+                      >
+                        बंद करें ✕
+                      </button>
+                    </div>
+
+                    {filteredCustomers.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCustomerId(c.id || '');
+                          setIsCustomerPickerOpen(false);
+                          setCustomerSearchQuery('');
+                        }}
+                        className="w-full text-left p-2 rounded-xl hover:bg-amber-50 flex items-center justify-between transition-colors cursor-pointer group"
+                      >
+                        <div>
+                          <div className="font-bold text-stone-900 text-xs flex items-center gap-1.5">
+                            <span>{c.name}</span>
+                            <span className="text-[10px] font-medium text-stone-500">({c.para})</span>
+                          </div>
+                          {c.phone && <div className="text-[10px] text-stone-500 font-mono">{c.phone}</div>}
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-[11px] font-black ${c.balanceDue > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                            ₹{c.balanceDue}
+                          </span>
+                          <div className="text-[9px] text-stone-400">सीमा: ₹{c.creditLimit ?? 2000}</div>
+                        </div>
+                      </button>
+                    ))}
+
+                    {filteredCustomers.length === 0 && (
+                      <div className="p-3 text-center">
+                        <p className="text-xs text-stone-600 font-medium m-0">
+                          {customerSearchQuery ? `'${customerSearchQuery}' नाम का कोई ग्राहक नहीं मिला` : 'कोई ग्राहक उपलब्ध नहीं'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuickCustName(customerSearchQuery.trim());
+                            setIsQuickAddCustomerOpen(true);
+                            setIsCustomerPickerOpen(false);
+                          }}
+                          className="mt-2 text-xs font-black text-amber-800 hover:underline flex items-center justify-center gap-1 mx-auto cursor-pointer"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>+ "{customerSearchQuery || 'नया'}" को तुरंत ग्राहक बनाएं</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Udhaar Credit Limit Guard Indicator */}
             {paymentMode === 'UDHAAR' && selectedCustomer && (
@@ -1133,13 +1518,18 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
         {/* Product Grid: 2 cols on mobile, 3 cols on tablet/desktop */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[calc(100vh-270px)] lg:max-h-[calc(100vh-230px)] overflow-y-auto pr-1">
           {filteredProducts.map((product: Product) => {
-            const isLow = product.stockQty <= product.minStockThreshold;
+            const isOutOfStock = product.stockQty <= 0;
+            const isLowStock = !isOutOfStock && product.stockQty <= product.minStockThreshold;
             return (
               <button
                 key={product.id}
                 onClick={() => handleProductClick(product)}
                 className={`village-card p-3 rounded-2xl text-left transition-all cursor-pointer flex flex-col justify-between relative active:scale-[0.98] ${
-                  isLow ? 'border-amber-300' : ''
+                  isOutOfStock 
+                    ? 'border-rose-300 bg-rose-50/20 hover:border-rose-400' 
+                    : isLowStock 
+                      ? 'border-amber-300 hover:border-amber-400' 
+                      : ''
                 }`}
               >
                 <div>
@@ -1168,9 +1558,13 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
                     <span className="text-[10px] font-normal text-stone-500">/{product.unit}</span>
                   </div>
                   <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                    isLow ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-stone-100 text-stone-600'
+                    isOutOfStock
+                      ? 'bg-rose-100 text-rose-900 border border-rose-300'
+                      : isLowStock
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                        : 'bg-stone-100 text-stone-600'
                   }`}>
-                    स्टॉक: {product.stockQty}
+                    {isOutOfStock ? '⚠️ 0 स्टॉक' : isLowStock ? `कम: ${product.stockQty}` : `स्टॉक: ${product.stockQty}`}
                   </div>
                 </div>
               </button>
@@ -1233,6 +1627,34 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
             </div>
             <div className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs">
               <span>बिल देखें</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Mobile Floating Held Bills Pill (Visible when cart is empty but held bills exist) */}
+      {cart.length === 0 && heldBills.length > 0 && (
+        <div className="lg:hidden fixed bottom-16 left-3 right-3 z-30 animate-fade-in">
+          <button
+            onClick={() => setIsHeldBillsModalOpen(true)}
+            className="w-full bg-stone-950 text-white p-3 rounded-2xl shadow-xl border border-amber-400/50 flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform"
+          >
+            <div className="flex items-center gap-2">
+              <div className="bg-amber-500 text-stone-950 font-black text-xs p-1.5 rounded-xl">
+                <Pause className="w-3.5 h-3.5" />
+              </div>
+              <div className="text-left">
+                <div className="text-xs font-black text-amber-200">
+                  {heldBills.length} बिल होल्ड पर सुरक्षित
+                </div>
+                <div className="text-[10px] text-stone-400">
+                  टैप करके पुराना बिल तुरंत लोड करें
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-black bg-amber-600 hover:bg-amber-500 px-3 py-1.5 rounded-xl text-white shadow-xs">
+              <span>वापस लाएं</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </div>
           </button>
@@ -1640,7 +2062,201 @@ export const QuickBilling: React.FC<QuickBillingProps> = ({ initialSearchQuery =
         </div>
       )}
 
-      {/* Store Registration & Login Modal */}
+      {/* Inline Quick Add Customer Modal */}
+      {isQuickAddCustomerOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-amber-200">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-xl bg-amber-100 text-amber-900">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <h3 className="font-black text-stone-950 text-base m-0">
+                  नया ग्राहक तुरंत जोड़ें
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsQuickAddCustomerOpen(false)}
+                className="text-stone-400 hover:text-stone-700 p-1 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickAddCustomer} className="mt-3 space-y-3">
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">
+                  ग्राहक का नाम: *
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={quickCustName}
+                  onChange={e => setQuickCustName(e.target.value)}
+                  placeholder="उदा. रमेश कुमार साहू"
+                  className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-bold text-stone-900 outline-hidden focus:border-amber-500 shadow-2xs"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">
+                  मोबाइल नंबर (WhatsApp):
+                </label>
+                <input
+                  type="tel"
+                  maxLength={10}
+                  value={quickCustPhone}
+                  onChange={e => setQuickCustPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="10 अंकों का नंबर (ऐच्छिक)"
+                  className="w-full p-2.5 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs sm:text-sm font-mono font-bold text-stone-900 outline-hidden focus:border-amber-500 shadow-2xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">
+                    पारा / मोहल्ला:
+                  </label>
+                  <input
+                    type="text"
+                    value={quickCustPara}
+                    onChange={e => setQuickCustPara(e.target.value)}
+                    placeholder="उदा. पटेल पारा"
+                    className="w-full p-2 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs font-bold text-stone-900 outline-hidden focus:border-amber-500 shadow-2xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-stone-700 block mb-1">
+                    उधारी सीमा (₹):
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="500"
+                    value={quickCustLimit}
+                    onChange={e => setQuickCustLimit(e.target.value)}
+                    placeholder="2000"
+                    className="w-full p-2 bg-[#faf8f3] border border-amber-200/80 rounded-xl text-xs font-bold text-stone-900 outline-hidden focus:border-amber-500 shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-amber-50/80 rounded-xl border border-amber-200/60 text-[11px] text-amber-950 font-medium">
+                💡 नया ग्राहक खाता में तुरंत दर्ज होगा और चालू बिल में खुद ब खुद चुन लिया जाएगा।
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsQuickAddCustomerOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-stone-100 text-stone-600 hover:bg-stone-200 cursor-pointer"
+                >
+                  रद्द करें
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl text-xs font-black bg-amber-700 hover:bg-amber-600 text-white cursor-pointer shadow-xs active:scale-95"
+                >
+                  खाता बनाएं व चुनें ➔
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Held Bills Management Modal */}
+      {isHeldBillsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl border border-amber-200">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-xl bg-amber-100 text-amber-900">
+                  <Pause className="w-4 h-4" />
+                </div>
+                <h3 className="font-black text-stone-950 text-base m-0">
+                  होल्ड किए गए बिल ({heldBills.length})
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsHeldBillsModalOpen(false)}
+                className="text-stone-400 hover:text-stone-700 p-1 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="my-3 space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+              {heldBills.length === 0 ? (
+                <div className="text-center py-8 text-stone-400">
+                  <Clock className="w-10 h-10 mx-auto mb-2 text-stone-300" />
+                  <p className="text-xs font-medium m-0">कोई होल्ड बिल नहीं है</p>
+                </div>
+              ) : (
+                heldBills.map(held => (
+                  <div
+                    key={held.id}
+                    className="p-3 rounded-2xl bg-[#faf8f3] border border-amber-200/80 space-y-2 shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-stone-900 text-xs sm:text-sm">
+                          {held.customerName ? `👤 ${held.customerName}` : '🛒 अनाम ग्राहक (काउंटर बिल)'}
+                        </span>
+                        <span className="text-[10px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.2 rounded-md">
+                          {held.items.length} सामान
+                        </span>
+                      </div>
+                      <div className="font-black text-emerald-800 text-sm">
+                        ₹{held.totalAmount}
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] text-stone-500 line-clamp-1">
+                      सामान: {held.items.map(it => it.product.hindiName || it.product.name).join(', ')}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-amber-100 text-[10px] text-stone-400">
+                      <span>
+                        समय: {new Date(held.heldAt).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteHeldBill(held.id)}
+                          className="p-1 rounded-lg text-stone-400 hover:text-rose-600 cursor-pointer"
+                          title="होल्ड बिल हटाएं"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleResumeHeldBill(held)}
+                          className="bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs px-3 py-1.5 rounded-xl cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
+                        >
+                          <Play className="w-3 h-3" />
+                          <span>बिल वापस लाएं</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-stone-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsHeldBillsModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-stone-100 text-stone-700 hover:bg-stone-200 cursor-pointer"
+              >
+                बंद करें
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <StoreAuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
