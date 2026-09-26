@@ -1,4 +1,4 @@
-import type { PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan, PlatformAnnouncement, PaymentClaim, VoucherItem } from '../types';
+import type { PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan, PlatformAnnouncement, PaymentClaim, VoucherItem, StoreStorageAnalytics, PlatformStorageOverview } from '../types';
 import { API_BASE } from '../utils/apiConfig';
 
 export interface AdminUser {
@@ -376,6 +376,44 @@ class AdminService {
     });
 
     await this.parseResponse(res, 'वाउचर हटाने में विफल');
+  }
+
+  public async getStorageAnalytics(): Promise<{ overview: PlatformStorageOverview; stores: StoreStorageAnalytics[] }> {
+    const res = await fetch(`${API_BASE}/admin/analytics/storage`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    return await this.parseResponse(res, 'स्टोरेज व अपग्रेड एनालिटिक्स लोड करने में विफल');
+  }
+
+  public async updateStoreFeatures(id: string, featureOverrides: Record<string, boolean>): Promise<{ message: string; featureOverrides: any }> {
+    const res = await fetch(`${API_BASE}/admin/stores/${id}/features`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(featureOverrides),
+    });
+
+    return await this.parseResponse(res, 'स्टोर फ़ीचर्स अपडेट करने में विफल');
+  }
+
+  public async updateStoreQuotas(id: string, quotaOverrides: Record<string, number>): Promise<{ message: string; quotaOverrides: any }> {
+    const res = await fetch(`${API_BASE}/admin/stores/${id}/quotas`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(quotaOverrides),
+    });
+
+    return await this.parseResponse(res, 'स्टोर कोटा अपडेट करने में विफल');
+  }
+
+  public async resetMunimPin(id: string, newPin: string): Promise<{ message: string; storeId: string; newPin: string }> {
+    const res = await fetch(`${API_BASE}/admin/stores/${id}/reset-munim-pin`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ newPin: newPin.trim() }),
+    });
+
+    return await this.parseResponse(res, 'मुनीम PIN रीसेट करने में विफल');
   }
 }
 

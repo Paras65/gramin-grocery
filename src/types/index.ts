@@ -138,6 +138,19 @@ export interface TenantInfo {
   referralCount?: number;
   bonusDaysEarned?: number;
   munimPin?: string; // 4-digit munim/staff PIN (local only, hashed)
+  featureOverrides?: {
+    haatMode?: boolean;
+    thermalPrinting?: boolean;
+    voiceBilling?: boolean;
+    cameraScanner?: boolean;
+    spoilageGuard?: boolean;
+    mandiPlanner?: boolean;
+  };
+  quotaOverrides?: {
+    maxProducts?: number;
+    maxCustomers?: number;
+    maxMonthlySales?: number;
+  };
 }
 
 export interface Wholesaler {
@@ -204,11 +217,77 @@ export interface AdminStoreSummary {
   daysRemaining?: number;
   isExpired?: boolean;
   customerCount: number;
+  productCount?: number;
+  salesCount?: number;
+  spoilageCount?: number;
+  storageKb?: number;
+  featureOverrides?: {
+    haatMode?: boolean;
+    thermalPrinting?: boolean;
+    voiceBilling?: boolean;
+    cameraScanner?: boolean;
+    spoilageGuard?: boolean;
+    mandiPlanner?: boolean;
+  };
+  quotaOverrides?: {
+    maxProducts?: number;
+    maxCustomers?: number;
+    maxMonthlySales?: number;
+  };
   totalDebt: number;
   isActive: boolean;
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type LeadCategory = 'HOT_UPGRADE' | 'POWER_MERCHANT' | 'NEARING_QUOTA' | 'STEADY' | 'DORMANT';
+
+export interface StoreStorageAnalytics {
+  tenantId: string;
+  storeName: string;
+  ownerName: string;
+  phone: string;
+  village: string;
+  district: string;
+  plan: TenantPlan;
+  isTrial: boolean;
+  status: 'ACTIVE' | 'EXPIRED' | 'PAUSED';
+  daysRemaining: number;
+  counts: {
+    products: number;
+    customers: number;
+    sales: number;
+    transactions: number;
+    spoilage: number;
+    totalRecords: number;
+  };
+  estimatedStorageKb: number;
+  quotaLimits: {
+    maxProducts: number;
+    maxCustomers: number;
+  };
+  storageUsedPercent: number;
+  upgradeReadinessScore: number;
+  leadCategory: LeadCategory;
+  lastActivityAt?: string;
+  isActive: boolean;
+}
+
+export interface PlatformStorageOverview {
+  totalStorageKb: number;
+  totalRecords: number;
+  collectionBreakdown: {
+    products: { count: number; estimatedKb: number };
+    customers: { count: number; estimatedKb: number };
+    sales: { count: number; estimatedKb: number };
+    transactions: { count: number; estimatedKb: number };
+    spoilage: { count: number; estimatedKb: number };
+  };
+  hotUpgradeCount: number;
+  nearingQuotaCount: number;
+  powerMerchantCount: number;
+  dormantCount: number;
 }
 
 export type AnnouncementType = 'INFO' | 'WARNING' | 'ALERT' | 'SUCCESS';

@@ -176,11 +176,14 @@ router.get('/stores', requireAuth, requireRole('SUPER_ADMIN'), async (req: Reque
         .sort({ createdAt: -1 })
         .lean();
 
-      // Enrich with live customer & sales counts, daysRemaining, latestClaim per tenant
+      // Enrich with live customer, product, sales, debt, and storage counts
       const enrichedStores = await Promise.all(
         tenants.map(async (t) => {
-          const [customerCount, debtAgg, ownerUser, latestClaim] = await Promise.all([
+          const [customerCount, productCount, salesCount, spoilageCount, debtAgg, ownerUser, latestClaim] = await Promise.all([
             Customer.countDocuments({ tenantId: t._id, isDeleted: false }).setOptions({ bypassTenantCheck: true }),
+            Product.countDocuments({ tenantId: t._id, isDeleted: false }).setOptions({ bypassTenantCheck: true }),
+            Sale.countDocuments({ tenantId: t._id }),
+            SpoilageLog.countDocuments({ tenantId: t._id }),
             Customer.aggregate([
               { $match: { tenantId: t._id, isDeleted: false } },
               { $group: { _id: null, totalDebt: { $sum: '$balanceDue' } } }
@@ -191,6 +194,13 @@ router.get('/stores', requireAuth, requireRole('SUPER_ADMIN'), async (req: Reque
               .select('utrNumber amount status planDurationMonths createdAt rejectionReason')
               .lean()
           ]);
+
+          const estimatedStorageKb = Math.round(
+            productCount * 0.8 +
+            customerCount * 0.6 +
+            salesCount * 1.5 +
+            spoilageCount * 0.5
+          );
 
           const now = Date.now();
           let daysRemaining = 0;
@@ -233,6 +243,12 @@ router.get('/stores', requireAuth, requireRole('SUPER_ADMIN'), async (req: Reque
               rejectionReason: latestClaim.rejectionReason,
             } : null,
             customerCount,
+            productCount,
+            salesCount,
+            spoilageCount,
+            storageKb: estimatedStorageKb,
+            featureOverrides: t.featureOverrides || {},
+            quotaOverrides: t.quotaOverrides || {},
             totalDebt: debtAgg[0]?.totalDebt || 0,
             isActive: ownerUser ? ownerUser.isActive : true,
             lastLoginAt: ownerUser?.lastLoginAt,
@@ -839,6 +855,326 @@ router.delete('/vouchers/:id', requireAuth, requireRole('SUPER_ADMIN'), async (r
 
     await Voucher.findByIdAndDelete(id);
     res.json({ message: 'वाउचर कोड सफलतापूर्वक निरस्त/हटा दिया गया।' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 18. Multi-Store MongoDB Storage Footprint & Upgrade Lead Pipeline Analytics
+router.get('/analytics/storage', requireAuth, requireRole('SUPER_ADMIN'), async (_req: Request, res: Response) => {
+  return runWithTenantContext({ role: 'SUPER_ADMIN' }, async () => {
+    try {
+      // Parallel Aggregations across all main data collections
+      const [
+        tenants,
+        productsAgg,
+        customersAgg,
+        salesAgg,
+        transactionsAgg,
+        spoilageAgg,
+        ownerUsers
+      ] = await Promise.all([
+        Tenant.find().select('storeName ownerName phone address subscription referral featureOverrides quotaOverrides createdAt updatedAt').lean(),
+        Product.aggregate([
+          { $match: { tenantId: { $ne: null, $exists: true } } },
+          { $group: { _id: '$tenantId', totalCount: { $sum: 1 }, activeCount: { $sum: { $cond: [{ $eq: ['$isDeleted', false] }, 1, 0] } } } }
+        ]),
+        Customer.aggregate([
+          { $match: { tenantId: { $ne: null, $exists: true } } },
+          { $group: { _id: '$tenantId', totalCount: { $sum: 1 }, activeCount: { $sum: { $cond: [{ $eq: ['$isDeleted', false] }, 1, 0] } }, totalDebt: { $sum: '$balanceDue' } } }
+        ]),
+        Sale.aggregate([
+          { $match: { tenantId: { $ne: null, $exists: true } } },
+          { $group: { _id: '$tenantId', count: { $sum: 1 }, totalSales: { $sum: '$totalAmount' } } }
+        ]),
+        Transaction.aggregate([
+          { $match: { tenantId: { $ne: null, $exists: true } } },
+          { $group: { _id: '$tenantId', count: { $sum: 1 } } }
+        ]),
+        SpoilageLog.aggregate([
+          { $match: { tenantId: { $ne: null, $exists: true } } },
+          { $group: { _id: '$tenantId', count: { $sum: 1 } } }
+        ]),
+        User.find({ role: 'OWNER' }).select('tenantId isActive lastLoginAt').lean()
+      ]);
+
+      // Fast O(N) lookup maps
+      const productMap = new Map(productsAgg.map(p => [String(p._id), p]));
+      const customerMap = new Map(customersAgg.map(c => [String(c._id), c]));
+      const salesMap = new Map(salesAgg.map(s => [String(s._id), s]));
+      const txMap = new Map(transactionsAgg.map(t => [String(t._id), t]));
+      const spoilageMap = new Map(spoilageAgg.map(sp => [String(sp._id), sp]));
+      const userMap = new Map(ownerUsers.map(u => [String(u.tenantId), u]));
+
+      let platformTotalStorageKb = 0;
+      let platformTotalRecords = 0;
+      let prodTotalCount = 0, prodTotalKb = 0;
+      let custTotalCount = 0, custTotalKb = 0;
+      let salesTotalCount = 0, salesTotalKb = 0;
+      let txTotalCount = 0, txTotalKb = 0;
+      let spTotalCount = 0, spTotalKb = 0;
+
+      let hotUpgradeCount = 0;
+      let nearingQuotaCount = 0;
+      let powerMerchantCount = 0;
+      let dormantCount = 0;
+
+      const now = Date.now();
+
+      const storeAnalyticsList = tenants.map((t) => {
+        const tid = String(t._id);
+        const pData = productMap.get(tid);
+        const cData = customerMap.get(tid);
+        const sData = salesMap.get(tid);
+        const txData = txMap.get(tid);
+        const spData = spoilageMap.get(tid);
+        const uData = userMap.get(tid);
+
+        const products = pData?.totalCount || 0;
+        const customers = cData?.totalCount || 0;
+        const sales = sData?.count || 0;
+        const transactions = txData?.count || 0;
+        const spoilage = spData?.count || 0;
+        const totalRecords = products + customers + sales + transactions + spoilage;
+
+        // Estimated storage calculation based on document schema weights
+        const estimatedStorageKb = Math.round(
+          products * 0.8 +
+          customers * 0.6 +
+          sales * 1.5 +
+          transactions * 0.4 +
+          spoilage * 0.5
+        );
+
+        // Platform sums
+        platformTotalStorageKb += estimatedStorageKb;
+        platformTotalRecords += totalRecords;
+        prodTotalCount += products;
+        prodTotalKb += Math.round(products * 0.8);
+        custTotalCount += customers;
+        custTotalKb += Math.round(customers * 0.6);
+        salesTotalCount += sales;
+        salesTotalKb += Math.round(sales * 1.5);
+        txTotalCount += transactions;
+        txTotalKb += Math.round(transactions * 0.4);
+        spTotalCount += spoilage;
+        spTotalKb += Math.round(spoilage * 0.5);
+
+        // Plan & Quota checks
+        const plan = (t.subscription?.plan as 'FREE' | 'PRO') || 'FREE';
+        const isTrial = !!t.subscription?.isTrial;
+        const defaultMaxProd = plan === 'PRO' ? 2000 : 50;
+        const defaultMaxCust = plan === 'PRO' ? 5000 : 100;
+        const maxProducts = t.quotaOverrides?.maxProducts || defaultMaxProd;
+        const maxCustomers = t.quotaOverrides?.maxCustomers || defaultMaxCust;
+
+        // Quota utilization ratio
+        const prodRatio = Math.min(1, maxProducts > 0 ? products / maxProducts : 0);
+        const custRatio = Math.min(1, maxCustomers > 0 ? customers / maxCustomers : 0);
+        const storageUsedPercent = Math.min(100, Math.round(prodRatio * 50 + custRatio * 50));
+
+        // Pro days remaining
+        let daysRemaining = 0;
+        if (plan === 'PRO') {
+          if (t.subscription?.status === 'PAUSED') {
+            daysRemaining = Number(t.subscription.remainingDaysOnPause) || 0;
+          } else if (t.subscription?.planExpiryDate) {
+            const diffMs = new Date(t.subscription.planExpiryDate).getTime() - now;
+            daysRemaining = Math.max(0, Math.ceil(diffMs / 86400000));
+          }
+        }
+
+        // Upgrade readiness scoring & classification
+        let upgradeScore = 0;
+        let leadCategory: 'HOT_UPGRADE' | 'POWER_MERCHANT' | 'NEARING_QUOTA' | 'STEADY' | 'DORMANT' = 'STEADY';
+
+        const totalDebt = cData?.totalDebt || 0;
+        const lastLoginTime = uData?.lastLoginAt ? new Date(uData.lastLoginAt).getTime() : 0;
+        const daysSinceLastLogin = lastLoginTime > 0 ? Math.floor((now - lastLoginTime) / 86400000) : 999;
+
+        if (plan === 'PRO' && !isTrial && t.subscription?.status === 'ACTIVE') {
+          leadCategory = 'POWER_MERCHANT';
+          upgradeScore = 100;
+          powerMerchantCount++;
+        } else {
+          // Free tier or active Trial
+          const invScore = prodRatio * 35;
+          const custScore = custRatio * 30;
+          const salesScore = Math.min(1, sales / 30) * 20;
+          const debtScore = Math.min(1, totalDebt / 5000) * 15;
+          upgradeScore = Math.round(invScore + custScore + salesScore + debtScore);
+
+          if (daysSinceLastLogin > 14 && sales === 0 && totalRecords < 5) {
+            leadCategory = 'DORMANT';
+            dormantCount++;
+          } else if (isTrial && daysRemaining <= 3 && totalRecords > 10) {
+            leadCategory = 'HOT_UPGRADE';
+            hotUpgradeCount++;
+          } else if (upgradeScore >= 65 || prodRatio >= 0.75 || custRatio >= 0.75) {
+            leadCategory = 'HOT_UPGRADE';
+            hotUpgradeCount++;
+          } else if (prodRatio >= 0.5 || custRatio >= 0.5) {
+            leadCategory = 'NEARING_QUOTA';
+            nearingQuotaCount++;
+          }
+        }
+
+        return {
+          tenantId: tid,
+          storeName: t.storeName,
+          ownerName: t.ownerName,
+          phone: t.phone,
+          village: t.address?.village || '',
+          district: t.address?.district || '',
+          plan,
+          isTrial,
+          status: t.subscription?.status || 'ACTIVE',
+          daysRemaining,
+          counts: {
+            products,
+            customers,
+            sales,
+            transactions,
+            spoilage,
+            totalRecords,
+          },
+          estimatedStorageKb,
+          quotaLimits: {
+            maxProducts,
+            maxCustomers,
+          },
+          storageUsedPercent,
+          upgradeReadinessScore: upgradeScore,
+          leadCategory,
+          lastActivityAt: uData?.lastLoginAt ? new Date(uData.lastLoginAt).toISOString() : t.updatedAt ? new Date(t.updatedAt).toISOString() : undefined,
+          isActive: uData ? uData.isActive : true,
+        };
+      });
+
+      // Rank by upgrade readiness desc, then storage desc
+      storeAnalyticsList.sort((a, b) => b.upgradeReadinessScore - a.upgradeReadinessScore || b.estimatedStorageKb - a.estimatedStorageKb);
+
+      res.json({
+        overview: {
+          totalStorageKb: platformTotalStorageKb,
+          totalRecords: platformTotalRecords,
+          collectionBreakdown: {
+            products: { count: prodTotalCount, estimatedKb: prodTotalKb },
+            customers: { count: custTotalCount, estimatedKb: custTotalKb },
+            sales: { count: salesTotalCount, estimatedKb: salesTotalKb },
+            transactions: { count: txTotalCount, estimatedKb: txTotalKb },
+            spoilage: { count: spTotalCount, estimatedKb: spTotalKb },
+          },
+          hotUpgradeCount,
+          nearingQuotaCount,
+          powerMerchantCount,
+          dormantCount,
+        },
+        stores: storeAnalyticsList,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+});
+
+// 19. Granular Module & Feature Flags Override for a Store
+router.patch('/stores/:id/features', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { haatMode, thermalPrinting, voiceBilling, cameraScanner, spoilageGuard, mandiPlanner } = req.body;
+
+    const tenant = await Tenant.findById(id);
+    if (!tenant) {
+      return res.status(404).json({ error: 'दुकान नहीं मिली (Store not found)' });
+    }
+
+    if (!tenant.featureOverrides) {
+      tenant.featureOverrides = {};
+    }
+
+    if (typeof haatMode === 'boolean') tenant.featureOverrides.haatMode = haatMode;
+    if (typeof thermalPrinting === 'boolean') tenant.featureOverrides.thermalPrinting = thermalPrinting;
+    if (typeof voiceBilling === 'boolean') tenant.featureOverrides.voiceBilling = voiceBilling;
+    if (typeof cameraScanner === 'boolean') tenant.featureOverrides.cameraScanner = cameraScanner;
+    if (typeof spoilageGuard === 'boolean') tenant.featureOverrides.spoilageGuard = spoilageGuard;
+    if (typeof mandiPlanner === 'boolean') tenant.featureOverrides.mandiPlanner = mandiPlanner;
+
+    await tenant.save();
+
+    res.json({
+      message: `'${tenant.storeName}' के फ़ीचर मॉड्यूल सफलतापूर्वक अपडेट किए गए।`,
+      featureOverrides: tenant.featureOverrides,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 20. Quota Limit Overrides for High-Capacity Stores
+router.patch('/stores/:id/quotas', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { maxProducts, maxCustomers, maxMonthlySales } = req.body;
+
+    const tenant = await Tenant.findById(id);
+    if (!tenant) {
+      return res.status(404).json({ error: 'दुकान नहीं मिली (Store not found)' });
+    }
+
+    if (!tenant.quotaOverrides) {
+      tenant.quotaOverrides = {};
+    }
+
+    if (typeof maxProducts === 'number' && maxProducts > 0) {
+      tenant.quotaOverrides.maxProducts = Math.min(100000, Math.floor(maxProducts));
+    }
+    if (typeof maxCustomers === 'number' && maxCustomers > 0) {
+      tenant.quotaOverrides.maxCustomers = Math.min(100000, Math.floor(maxCustomers));
+    }
+    if (typeof maxMonthlySales === 'number' && maxMonthlySales > 0) {
+      tenant.quotaOverrides.maxMonthlySales = Math.min(1000000, Math.floor(maxMonthlySales));
+    }
+
+    await tenant.save();
+
+    res.json({
+      message: `'${tenant.storeName}' की कोटा सीमाएं अद्यतन की गईं।`,
+      quotaOverrides: tenant.quotaOverrides,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 21. Reset Munim Staff 4-Digit Secret PIN
+router.post('/stores/:id/reset-munim-pin', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { newPin } = req.body;
+
+    if (!newPin || typeof newPin !== 'string' || !/^\d{4}$/.test(newPin.trim())) {
+      return res.status(400).json({ error: 'मुनीम PIN 4 अंकों की संख्या होनी चाहिए (PIN must be 4 digits).' });
+    }
+
+    const pinHash = await bcrypt.hash(newPin.trim(), 10);
+
+    const tenant = await Tenant.findById(id);
+    if (!tenant) {
+      return res.status(404).json({ error: 'दुकान नहीं मिली (Store not found).' });
+    }
+
+    // Update Munim pin hash on tenant and staff user
+    await User.updateMany(
+      { tenantId: id, role: 'STAFF' },
+      { $set: { pinHash, updatedAt: new Date() } }
+    );
+
+    res.json({
+      message: `'${tenant.storeName}' के मुनीम का PIN सफलतापूर्वक रीसेट कर दिया गया।`,
+      storeId: id,
+      newPin: newPin.trim(),
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

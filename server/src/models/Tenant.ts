@@ -33,6 +33,19 @@ export interface ITenant extends Document {
     referralCount: number;
     bonusDaysEarned: number;
   };
+  featureOverrides?: {
+    haatMode?: boolean;
+    thermalPrinting?: boolean;
+    voiceBilling?: boolean;
+    cameraScanner?: boolean;
+    spoilageGuard?: boolean;
+    mandiPlanner?: boolean;
+  };
+  quotaOverrides?: {
+    maxProducts?: number;
+    maxCustomers?: number;
+    maxMonthlySales?: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,8 +84,23 @@ const TenantSchema = new Schema<ITenant>(
       referralCount: { type: Number, default: 0 },
       bonusDaysEarned: { type: Number, default: 0 },
     },
+    featureOverrides: {
+      haatMode: { type: Boolean },
+      thermalPrinting: { type: Boolean },
+      voiceBilling: { type: Boolean },
+      cameraScanner: { type: Boolean },
+      spoilageGuard: { type: Boolean },
+      mandiPlanner: { type: Boolean },
+    },
+    quotaOverrides: {
+      maxProducts: { type: Number },
+      maxCustomers: { type: Number },
+      maxMonthlySales: { type: Number },
+    },
   },
   { timestamps: true }
 );
+
+TenantSchema.index({ 'subscription.plan': 1, 'subscription.status': 1 });
 
 export const Tenant = mongoose.model<ITenant>('Tenant', TenantSchema);

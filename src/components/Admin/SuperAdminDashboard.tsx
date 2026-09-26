@@ -6,10 +6,11 @@ import {
   Download, KeyRound, Trash2, Megaphone,
   Eye, Clock, Plus, X, Send, CreditCard,
   CheckCircle2, XCircle, Copy, CheckCheck,
-  Pause, Play, Bell, Zap, Sliders, Ticket
+  Pause, Play, Bell, Zap, Sliders, Ticket,
+  Database, SlidersHorizontal, Layers, HardDrive
 } from 'lucide-react';
 import { adminService, type PlatformOverviewResponse } from '../../services/adminService';
-import type { AdminStoreSummary, PlatformAnnouncement, AnnouncementType, AnnouncementTargetMode, PaymentClaim, VoucherItem } from '../../types';
+import type { AdminStoreSummary, PlatformAnnouncement, AnnouncementType, AnnouncementTargetMode, PaymentClaim, VoucherItem, StoreStorageAnalytics, PlatformStorageOverview, LeadCategory } from '../../types';
 import { formatINR } from '../../utils/formatters';
 import { buildWhatsAppUrl } from '../../utils/whatsapp';
 
@@ -28,8 +29,24 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
   const [selectedPlan] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
 
-  // Tabs: STORES | PAYMENTS | VOUCHERS | BROADCASTS
-  const [adminTab, setAdminTab] = useState<'STORES' | 'PAYMENTS' | 'VOUCHERS' | 'BROADCASTS'>('STORES');
+  // Tabs: STORES | PAYMENTS | VOUCHERS | BROADCASTS | STORAGE
+  const [adminTab, setAdminTab] = useState<'STORES' | 'PAYMENTS' | 'VOUCHERS' | 'BROADCASTS' | 'STORAGE'>('STORES');
+
+  // Storage & Upgrade Analytics States
+  const [storageData, setStorageData] = useState<{ overview: PlatformStorageOverview; stores: StoreStorageAnalytics[] } | null>(null);
+  const [loadingStorage, setLoadingStorage] = useState<boolean>(false);
+  const [storageSearchQuery, setStorageSearchQuery] = useState<string>('');
+  const [storageCategoryFilter, setStorageCategoryFilter] = useState<'ALL' | LeadCategory>('ALL');
+
+  // Store 360° Inspector State
+  const [inspectorStore, setInspectorStore] = useState<AdminStoreSummary | null>(null);
+  const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
+  const [editingFeatures, setEditingFeatures] = useState<Record<string, boolean>>({});
+  const [editingQuotas, setEditingQuotas] = useState<{ maxProducts: number; maxCustomers: number }>({ maxProducts: 50, maxCustomers: 100 });
+  const [savingFeatures, setSavingFeatures] = useState<boolean>(false);
+  const [savingQuotas, setSavingQuotas] = useState<boolean>(false);
+  const [newMunimPinInput, setNewMunimPinInput] = useState<string>('');
+  const [resettingMunimPin, setResettingMunimPin] = useState<boolean>(false);
 
   // Expiry & Pro Status Filter: 'ALL' | 'PRO' | 'EXPIRING_SOON' | 'PAUSED' | 'FREE' | 'EXPIRED'
   const [expiryFilter, setExpiryFilter] = useState<'ALL' | 'PRO' | 'EXPIRING_SOON' | 'PAUSED' | 'FREE' | 'EXPIRED'>('ALL');
@@ -112,6 +129,167 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
     } finally {
       setLoadingVouchers(false);
     }
+  };
+
+  const loadStorageAnalytics = async () => {
+    try {
+      setLoadingStorage(true);
+      const data = await adminService.getStorageAnalytics();
+      setStorageData(data);
+    } catch (err: any) {
+      console.error('Failed to load storage analytics:', err);
+    } finally {
+      setLoadingStorage(false);
+    }
+  };
+
+  const handleOpenInspector = (store: AdminStoreSummary) => {
+    setInspectorStore(store);
+    setEditingFeatures({
+      haatMode: !!store.featureOverrides?.haatMode,
+      thermalPrinting: !!store.featureOverrides?.thermalPrinting,
+      voiceBilling: !!store.featureOverrides?.voiceBilling,
+      cameraScanner: !!store.featureOverrides?.cameraScanner,
+      spoilageGuard: !!store.featureOverrides?.spoilageGuard,
+      mandiPlanner: !!store.featureOverrides?.mandiPlanner,
+    });
+    setEditingQuotas({
+      maxProducts: store.quotaOverrides?.maxProducts || (store.subscription.plan === 'PRO' ? 2000 : 50),
+      maxCustomers: store.quotaOverrides?.maxCustomers || (store.subscription.plan === 'PRO' ? 5000 : 100),
+    });
+    setNewMunimPinInput('');
+    setIsInspectorOpen(true);
+  };
+
+  const handleSaveFeatures = async () => {
+    if (!inspectorStore) return;
+    try {
+      setSavingFeatures(true);
+      const res = await adminService.updateStoreFeatures(inspectorStore.id, editingFeatures);
+      alert(res.message || 'फ़ीचर मॉड्यूल सफलतापूर्वक अपडेट किए गए!');
+      setStores(prev => prev.map(s => s.id === inspectorStore.id ? {
+        ...s,
+        featureOverrides: editingFeatures
+      } : s));
+      if (storageData) {
+        loadStorageAnalytics();
+      }
+    } catch (err: any) {
+      alert(`फ़ीचर अपडेट में त्रुटि: ${err.message}`);
+    } finally {
+      setSavingFeatures(false);
+    }
+  };
+
+  const handleSaveQuotas = async () => {
+    if (!inspectorStore) return;
+    try {
+      setSavingQuotas(true);
+      const res = await adminService.updateStoreQuotas(inspectorStore.id, editingQuotas);
+      alert(res.message || 'कोटा सीमाएं सफलतापूर्वक अपडेट की गईं!');
+      setStores(prev => prev.map(s => s.id === inspectorStore.id ? {
+        ...s,
+        quotaOverrides: editingQuotas
+      } : s));
+      if (storageData) {
+        loadStorageAnalytics();
+      }
+    } catch (err: any) {
+      alert(`कोटा अपडेट में त्रुटि: ${err.message}`);
+    } finally {
+      setSavingQuotas(false);
+    }
+  };
+
+  const handleResetMunimPinSubmit = async () => {
+    if (!inspectorStore) return;
+    if (!newMunimPinInput || !/^\d{4}$/.test(newMunimPinInput.trim())) {
+      alert('कृपया ठीक 4 अंकों का गुप्त PIN दर्ज करें (जैसे 1234)');
+      return;
+    }
+    try {
+      setResettingMunimPin(true);
+      const res = await adminService.resetMunimPin(inspectorStore.id, newMunimPinInput);
+      alert(`सफलता: ${res.message}\nनया मुनीम PIN: ${newMunimPinInput.trim()}`);
+      setNewMunimPinInput('');
+    } catch (err: any) {
+      alert(`मुनीम PIN रीसेट में विफल: ${err.message}`);
+    } finally {
+      setResettingMunimPin(false);
+    }
+  };
+
+  const handleSendUpgradePitch = (s: StoreStorageAnalytics) => {
+    const owner = s.ownerName && s.ownerName !== 'दुकानदार' ? s.ownerName : 'दुकानदार महोदय';
+    const msg =
+      `नमस्ते ${owner} जी 🙏\n\n` +
+      `आपकी दुकान *${s.storeName}* (${s.village}) में ग्रामीण किराना ऐप का बेहतरीन उपयोग हो रहा है!\n\n` +
+      `📊 *आपकी वर्तमान प्रगति:*\n` +
+      `• कुल दर्ज सामान: ${s.counts.products} उत्पाद\n` +
+      `• कुल बही-खाता ग्राहक: ${s.counts.customers} ग्राहक\n` +
+      `• कुल बिल व लेन-देन: ${s.counts.sales + s.counts.transactions}\n\n` +
+      `🚀 आपकी दुकान अब *ग्रामिन प्रो (Gramin Pro)* में अपग्रेड के लिए तैयार है! प्रो प्लान में आपको असीमित सामान, ब्लूटूथ थर्मल प्रिंटिंग, साप्ताहिक हाट-बाज़ार मोड और स्वचालित डिजिटल पासबुक की सुविधा मिलती है।\n\n` +
+      `विशेष ग्रामीण ऑफ़र केवल ₹99/माह या ₹899/वर्ष। क्या हम आज आपकी दुकान का प्रो प्लान सक्रिय करें?`;
+
+    const cleanPhone = s.phone.replace(/\D/g, '');
+    const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+    window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  const handleExportStorageCSV = () => {
+    if (!storageData || !storageData.stores.length) return;
+    const headers = [
+      'दुकान का नाम',
+      'संचालक',
+      'मोबाइल',
+      'गाँव',
+      'जिला',
+      'प्लान',
+      'ट्रायल स्थिति',
+      'उत्पाद संख्या',
+      'ग्राहक संख्या',
+      'बिक्री संख्या',
+      'उधार-जमा संख्या',
+      'खराबी रिकॉर्ड',
+      'कुल रिकॉर्ड',
+      'अनुमानित डेटा (KB)',
+      'स्टोरेज उपयोग %',
+      'अपग्रेड स्कोर %',
+      'लीड श्रेणी',
+      'खाता स्थिति'
+    ];
+
+    const rows = storageData.stores.map(s => [
+      `"${s.storeName.replace(/"/g, '""')}"`,
+      `"${s.ownerName.replace(/"/g, '""')}"`,
+      s.phone,
+      `"${s.village.replace(/"/g, '""')}"`,
+      `"${s.district.replace(/"/g, '""')}"`,
+      s.plan,
+      s.isTrial ? 'हाँ (TRIAL)' : 'नहीं',
+      s.counts.products,
+      s.counts.customers,
+      s.counts.sales,
+      s.counts.transactions,
+      s.counts.spoilage,
+      s.counts.totalRecords,
+      s.estimatedStorageKb,
+      `${s.storageUsedPercent}%`,
+      `${s.upgradeReadinessScore}%`,
+      s.leadCategory,
+      s.isActive ? 'सक्रिय' : 'निलंबित'
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `gramin_kirana_storage_analytics_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleGenerateVouchers = async (e: React.FormEvent) => {
@@ -810,6 +988,27 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
             <Megaphone className="w-4 h-4" />
             <span>📢 मंच घोषणाएं ({announcements.length})</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('STORAGE');
+              loadStorageAnalytics();
+            }}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm cursor-pointer transition-all shrink-0 ${
+              adminTab === 'STORAGE'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
+            }`}
+          >
+            <Database className="w-4 h-4" />
+            <span>📊 स्टोरेज व अपग्रेड एनालिटिक्स</span>
+            {storageData?.overview.hotUpgradeCount ? (
+              <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
+                {storageData.overview.hotUpgradeCount} हॉट!
+              </span>
+            ) : null}
+          </button>
         </div>
 
         {adminTab === 'STORES' ? (
@@ -1143,11 +1342,29 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                               )}
 
                               {/* Store Business Metrics Preview */}
-                              <div className="mt-2 flex items-center gap-3 flex-wrap text-xs">
+                              <div className="mt-2 flex items-center gap-2 sm:gap-3 flex-wrap text-xs">
                                 <div className="bg-white px-2.5 py-1 rounded-lg border border-stone-200">
-                                  <span className="text-stone-500 text-[11px]">कुल ग्राहक: </span>
+                                  <span className="text-stone-500 text-[11px]">ग्राहक: </span>
                                   <span className="font-bold text-stone-900">{store.customerCount}</span>
                                 </div>
+                                {store.productCount !== undefined && (
+                                  <div className="bg-white px-2.5 py-1 rounded-lg border border-stone-200">
+                                    <span className="text-stone-500 text-[11px]">सामान: </span>
+                                    <span className="font-bold text-stone-900">{store.productCount}</span>
+                                  </div>
+                                )}
+                                {store.salesCount !== undefined && (
+                                  <div className="bg-white px-2.5 py-1 rounded-lg border border-stone-200">
+                                    <span className="text-stone-500 text-[11px]">बिक्री: </span>
+                                    <span className="font-bold text-stone-900">{store.salesCount}</span>
+                                  </div>
+                                )}
+                                {store.storageKb !== undefined && (
+                                  <div className="bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                                    <span className="text-blue-700 text-[11px]">डेटा: </span>
+                                    <span className="font-bold text-blue-900">{store.storageKb} KB</span>
+                                  </div>
+                                )}
                                 <div className="bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
                                   <span className="text-rose-700 text-[11px]">कुल उधारी: </span>
                                   <span className="font-black text-rose-900">{formatINR(store.totalDebt)}</span>
@@ -1250,6 +1467,17 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                                 title="दुकानदार का गुप्त 4-अंकों का PIN रीसेट करें"
                               >
                                 <KeyRound className="w-4 h-4" />
+                              </button>
+
+                              {/* 360° Store Inspector & Module Controls */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenInspector(store)}
+                                className="text-xs font-bold px-2.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 cursor-pointer active:scale-95 transition-all flex items-center gap-1 shadow-2xs"
+                                title="360° मॉड्यूल नियंत्रण, कोटा व मुनीम PIN"
+                              >
+                                <SlidersHorizontal className="w-3.5 h-3.5 text-purple-600" />
+                                <span>नियंत्रण ⚙️</span>
                               </button>
 
                               {/* Safe Store Delete Button */}
@@ -1654,7 +1882,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
               </div>
             )}
           </div>
-        ) : (
+        ) : adminTab === 'BROADCASTS' ? (
           /* PLATFORM BROADCASTS & ANNOUNCEMENTS MANAGER */
           <div className="village-card p-4 sm:p-6 rounded-3xl bg-white border border-amber-200 shadow-2xs space-y-5">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-stone-200">
@@ -1827,6 +2055,367 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                 })}
               </div>
             )}
+          </div>
+        ) : (
+          /* MULTI-STORE DATABASE STORAGE & UPGRADE ANALYTICS PANEL */
+          <div className="village-card p-4 sm:p-6 rounded-3xl bg-white border border-amber-200 shadow-2xs space-y-5">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-stone-200">
+              <div>
+                <h2 className="text-base sm:text-lg font-black text-stone-950 m-0 flex items-center gap-2">
+                  <Database className="w-5 h-5 text-amber-600" />
+                  <span>डेटा स्टोरेज व प्रो अपग्रेड एनालिटिक्स (Storage & Upgrade Engine)</span>
+                </h2>
+                <p className="text-xs text-stone-500 m-0 font-medium">
+                  दुकान-वार MongoDB डेटा खपत, उत्पाद-ग्राहक रिकॉर्ड, और प्रो अपग्रेड के लिए सक्रिय दुकानों का स्वतः विश्लेषण
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={loadStorageAnalytics}
+                  disabled={loadingStorage}
+                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition"
+                  title="डेटा रीफ्रेश करें"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingStorage ? 'animate-spin text-amber-600' : ''}`} />
+                  <span>रीफ्रेश</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportStorageCSV}
+                  disabled={!storageData || !storageData.stores.length}
+                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition disabled:opacity-50"
+                  title="एक्सेल स्प्रेडशीट डाउनलोड करें"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>📥 स्टोरेज व अपग्रेड CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {loadingStorage && !storageData ? (
+              <div className="space-y-4 animate-pulse">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[1, 2, 3, 4].map(n => (
+                    <div key={n} className="h-24 bg-stone-100 rounded-2xl" />
+                  ))}
+                </div>
+                <div className="h-64 bg-stone-100 rounded-2xl" />
+              </div>
+            ) : storageData ? (
+              <div className="space-y-5">
+                {/* Platform Footprint KPI Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  {/* Total DB Footprint */}
+                  <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
+                    <div className="flex items-center justify-between text-stone-500 mb-1.5">
+                      <span className="text-xs font-bold uppercase tracking-wider">कुल डेटाबेस आकार</span>
+                      <HardDrive className="w-4 h-4 text-amber-700" />
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-stone-900">
+                      {(storageData.overview.totalStorageKb / 1024).toFixed(2)} MB
+                    </div>
+                    <p className="text-[11px] text-stone-500 font-medium m-0 mt-1">
+                      {storageData.overview.totalRecords.toLocaleString()} कुल सहेजे गए रिकॉर्ड्स
+                    </p>
+                  </div>
+
+                  {/* Hot Upgrade Leads */}
+                  <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200">
+                    <div className="flex items-center justify-between text-emerald-800 mb-1.5">
+                      <span className="text-xs font-bold uppercase tracking-wider">तत्काल प्रो योग्य</span>
+                      <Zap className="w-4 h-4 text-emerald-700" />
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-emerald-950">
+                      {storageData.overview.hotUpgradeCount}
+                    </div>
+                    <p className="text-[11px] text-emerald-700 font-medium m-0 mt-1">
+                      सक्रिय स्टार्टर दुकानें • 75%+ कोटा इस्तेमाल
+                    </p>
+                  </div>
+
+                  {/* Nearing Quota */}
+                  <div className="p-4 rounded-2xl bg-orange-50/70 border border-orange-200">
+                    <div className="flex items-center justify-between text-orange-800 mb-1.5">
+                      <span className="text-xs font-bold uppercase tracking-wider">कोटा सीमा के पास</span>
+                      <AlertTriangle className="w-4 h-4 text-orange-600" />
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-orange-950">
+                      {storageData.overview.nearingQuotaCount}
+                    </div>
+                    <p className="text-[11px] text-orange-700 font-medium m-0 mt-1">
+                      50 उत्पाद / 100 ग्राहक सीमा भरने के निकट
+                    </p>
+                  </div>
+
+                  {/* Power Pro Merchants */}
+                  <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-200">
+                    <div className="flex items-center justify-between text-purple-800 mb-1.5">
+                      <span className="text-xs font-bold uppercase tracking-wider">पावर प्रो स्टोर</span>
+                      <Crown className="w-4 h-4 text-purple-700" />
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-purple-950">
+                      {storageData.overview.powerMerchantCount}
+                    </div>
+                    <p className="text-[11px] text-purple-700 font-medium m-0 mt-1">
+                      सक्रिय प्रो लाइसेंस व उच्च बिक्री
+                    </p>
+                  </div>
+                </div>
+
+                {/* Collection Breakdown Strip */}
+                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200/90 text-xs">
+                  <div className="font-bold text-stone-700 mb-2 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-stone-500" />
+                    <span>संग्रह-वार रिकॉर्ड्स व डेटा खपत (MongoDB Collection Breakdown):</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    <div className="p-2 rounded-xl bg-white border border-stone-200">
+                      <div className="text-[11px] text-stone-500 font-medium">📦 किराना सामान</div>
+                      <div className="font-black text-stone-900">{storageData.overview.collectionBreakdown.products.count}</div>
+                      <div className="text-[10px] text-stone-400">~{storageData.overview.collectionBreakdown.products.estimatedKb} KB</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-white border border-stone-200">
+                      <div className="text-[11px] text-stone-500 font-medium">👥 खाता ग्राहक</div>
+                      <div className="font-black text-stone-900">{storageData.overview.collectionBreakdown.customers.count}</div>
+                      <div className="text-[10px] text-stone-400">~{storageData.overview.collectionBreakdown.customers.estimatedKb} KB</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-white border border-stone-200">
+                      <div className="text-[11px] text-stone-500 font-medium">🧾 बिक्री बिल</div>
+                      <div className="font-black text-stone-900">{storageData.overview.collectionBreakdown.sales.count}</div>
+                      <div className="text-[10px] text-stone-400">~{storageData.overview.collectionBreakdown.sales.estimatedKb} KB</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-white border border-stone-200">
+                      <div className="text-[11px] text-stone-500 font-medium">⚖️ उधार-जमा</div>
+                      <div className="font-black text-stone-900">{storageData.overview.collectionBreakdown.transactions.count}</div>
+                      <div className="text-[10px] text-stone-400">~{storageData.overview.collectionBreakdown.transactions.estimatedKb} KB</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-white border border-stone-200">
+                      <div className="text-[11px] text-stone-500 font-medium">⚠️ खराबी/एक्सपायरी</div>
+                      <div className="font-black text-stone-900">{storageData.overview.collectionBreakdown.spoilage.count}</div>
+                      <div className="text-[10px] text-stone-400">~{storageData.overview.collectionBreakdown.spoilage.estimatedKb} KB</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                  {/* Category Filter Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    {[
+                      { key: 'ALL', label: `सभी (${storageData.stores.length})` },
+                      { key: 'HOT_UPGRADE', label: `🚀 हॉट अपग्रेड (${storageData.overview.hotUpgradeCount})` },
+                      { key: 'NEARING_QUOTA', label: `🟡 कोटा सीमा के पास (${storageData.overview.nearingQuotaCount})` },
+                      { key: 'POWER_MERCHANT', label: `⚡ पावर मर्चेंट (${storageData.overview.powerMerchantCount})` },
+                      { key: 'DORMANT', label: `💤 निष्क्रिय (${storageData.overview.dormantCount})` },
+                    ].map(tab => (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setStorageCategoryFilter(tab.key as any)}
+                        className={`text-xs px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all shrink-0 ${
+                          storageCategoryFilter === tab.key
+                            ? 'bg-amber-600 text-white shadow-2xs'
+                            : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="relative sm:w-72">
+                    <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={storageSearchQuery}
+                      onChange={(e) => setStorageSearchQuery(e.target.value)}
+                      placeholder="दुकान, गाँव, संचालक खोजें..."
+                      className="w-full pl-9 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:outline-none focus:border-amber-500 font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Store Storage & Upgrade Analytics Cards */}
+                <div className="space-y-3">
+                  {storageData.stores
+                    .filter(s => {
+                      if (storageCategoryFilter !== 'ALL' && s.leadCategory !== storageCategoryFilter) {
+                        return false;
+                      }
+                      if (!storageSearchQuery.trim()) return true;
+                      const q = storageSearchQuery.toLowerCase();
+                      return (
+                        s.storeName.toLowerCase().includes(q) ||
+                        s.ownerName.toLowerCase().includes(q) ||
+                        s.phone.includes(q) ||
+                        s.village.toLowerCase().includes(q) ||
+                        s.district.toLowerCase().includes(q)
+                      );
+                    })
+                    .map(store => {
+                      const leadBadgeMap = {
+                        HOT_UPGRADE: { badge: 'bg-emerald-100 text-emerald-900 border-emerald-300', label: '🔥 हॉट अपग्रेड (तत्काल प्रो योग्य)' },
+                        NEARING_QUOTA: { badge: 'bg-amber-100 text-amber-900 border-amber-300', label: '🟡 कोटा सीमा के पास' },
+                        POWER_MERCHANT: { badge: 'bg-purple-100 text-purple-900 border-purple-300', label: '⚡ पावर मर्चेंट (सक्रिय प्रो)' },
+                        DORMANT: { badge: 'bg-stone-100 text-stone-600 border-stone-300', label: '💤 निष्क्रिय (सपोर्ट आवश्यक)' },
+                        STEADY: { badge: 'bg-blue-50 text-blue-800 border-blue-200', label: '🌾 सामान्य स्टार्टर' },
+                      }[store.leadCategory];
+
+                      return (
+                        <div
+                          key={store.tenantId}
+                          className="p-4 rounded-2xl bg-white border border-stone-200 hover:border-amber-300 shadow-2xs transition-all space-y-3"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-base font-black text-stone-900 m-0 truncate">
+                                  {store.storeName}
+                                </h3>
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${leadBadgeMap.badge}`}>
+                                  {leadBadgeMap.label}
+                                </span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  store.plan === 'PRO' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-stone-100 text-stone-700'
+                                }`}>
+                                  {store.plan === 'PRO' ? (store.isTrial ? '🎁 प्रो ट्रायल' : '🚀 प्रो प्लान') : '🌾 गाँव स्टार्टर (मुफ़्त)'}
+                                </span>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500 font-medium">
+                                <span>संचालक: <strong className="text-stone-700">{store.ownerName}</strong></span>
+                                <span>मो.: <strong className="text-stone-700">{store.phone}</strong></span>
+                                <span>📍 {store.village}{store.district ? `, ${store.district}` : ''}</span>
+                                {store.lastActivityAt && (
+                                  <span className="text-[11px] text-stone-400">
+                                    सक्रिय: {new Date(store.lastActivityAt).toLocaleDateString('hi-IN')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
+                              {/* WhatsApp Pitch */}
+                              {store.plan === 'FREE' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendUpgradePitch(store)}
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition"
+                                  title="व्हाट्सएप पर प्रो अपग्रेड ऑफ़र भेजें"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  <span>अपग्रेड पिच 💬</span>
+                                </button>
+                              )}
+
+                              {/* 360 Inspector */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const matchedStore = stores.find(s => s.id === store.tenantId);
+                                  if (matchedStore) handleOpenInspector(matchedStore);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 text-xs font-bold flex items-center gap-1 cursor-pointer active:scale-95 transition"
+                                title="360° मॉड्यूल नियंत्रण व कोटा"
+                              >
+                                <SlidersHorizontal className="w-3.5 h-3.5 text-purple-600" />
+                                <span>360° नियंत्रण</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Database Stats Badges */}
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <div className="bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200">
+                              <span className="text-stone-500 text-[11px]">📦 सामान: </span>
+                              <span className="font-bold text-stone-800">{store.counts.products}</span>
+                            </div>
+                            <div className="bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200">
+                              <span className="text-stone-500 text-[11px]">👥 ग्राहक: </span>
+                              <span className="font-bold text-stone-800">{store.counts.customers}</span>
+                            </div>
+                            <div className="bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200">
+                              <span className="text-stone-500 text-[11px]">🧾 बिक्री बिल: </span>
+                              <span className="font-bold text-stone-800">{store.counts.sales}</span>
+                            </div>
+                            <div className="bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200">
+                              <span className="text-stone-500 text-[11px]">⚖️ लेन-देन: </span>
+                              <span className="font-bold text-stone-800">{store.counts.transactions}</span>
+                            </div>
+                            <div className="bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200">
+                              <span className="text-stone-500 text-[11px]">⚠️ खराबी: </span>
+                              <span className="font-bold text-stone-800">{store.counts.spoilage}</span>
+                            </div>
+                            <div className="bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 ml-auto">
+                              <span className="text-blue-700 text-[11px] font-bold">अनुमानित डेटा: </span>
+                              <span className="font-black text-blue-950">{store.estimatedStorageKb} KB</span>
+                            </div>
+                          </div>
+
+                          {/* Quota & Upgrade Progress Meters */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-stone-100 text-xs">
+                            {/* Quota Usage */}
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[11px] font-semibold text-stone-600">
+                                <span>स्टार्टर कोटा उपयोग (Capacity)</span>
+                                <span className="font-bold text-stone-900">{store.storageUsedPercent}%</span>
+                              </div>
+                              <div className="w-full h-2 rounded-full bg-stone-100 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${
+                                    store.storageUsedPercent >= 80
+                                      ? 'bg-rose-500'
+                                      : store.storageUsedPercent >= 60
+                                      ? 'bg-amber-500'
+                                      : 'bg-emerald-500'
+                                  }`}
+                                  style={{ width: `${Math.min(100, store.storageUsedPercent)}%` }}
+                                />
+                              </div>
+                              <div className="text-[10px] text-stone-400">
+                                सीमा: {store.quotaLimits.maxProducts} उत्पाद • {store.quotaLimits.maxCustomers} ग्राहक
+                              </div>
+                            </div>
+
+                            {/* Upgrade Readiness Meter */}
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[11px] font-semibold text-stone-600">
+                                <span>प्रो अपग्रेड लीड स्कोर (Readiness)</span>
+                                <span className={`font-bold ${
+                                  store.upgradeReadinessScore >= 70 ? 'text-emerald-700' : 'text-stone-700'
+                                }`}>
+                                  {store.upgradeReadinessScore}/100
+                                </span>
+                              </div>
+                              <div className="w-full h-2 rounded-full bg-stone-100 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${
+                                    store.upgradeReadinessScore >= 70
+                                      ? 'bg-gradient-to-r from-emerald-500 to-teal-600'
+                                      : store.upgradeReadinessScore >= 45
+                                      ? 'bg-amber-500'
+                                      : 'bg-stone-300'
+                                  }`}
+                                  style={{ width: `${Math.min(100, store.upgradeReadinessScore)}%` }}
+                                />
+                              </div>
+                              <div className="text-[10px] text-stone-400">
+                                इन्वेंट्री संतृप्ति, ग्राहक संख्या व दैनिक बिक्री गतिशीलता पर आधारित
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -2579,6 +3168,213 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Store 360° Inspector & Module Controls Modal */}
+        {isInspectorOpen && inspectorStore && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs overflow-y-auto">
+            <div className="w-full max-w-2xl bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-stone-200 space-y-5 animate-scaleUp my-auto max-h-[92vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-2xl bg-purple-100 text-purple-900">
+                    <SlidersHorizontal className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-stone-900 m-0">
+                      360° स्टोर नियंत्रण व ऑडिट — {inspectorStore.storeName}
+                    </h3>
+                    <p className="text-xs text-stone-500 m-0 font-medium">
+                      संचालक: {inspectorStore.ownerName} • {inspectorStore.phone} • {inspectorStore.address?.village}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsInspectorOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-stone-100 text-stone-500 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Section 1: Live Database Footprint */}
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2.5">
+                <div className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+                  <Database className="w-4 h-4 text-purple-600" />
+                  <span>लाइव डेटाबेस रिकॉर्ड्स व खपत (MongoDB Footprint):</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div className="p-2.5 rounded-xl bg-white border border-stone-200">
+                    <div className="text-[11px] text-stone-500">📦 उत्पाद (सामान)</div>
+                    <div className="font-black text-stone-900 text-sm">{inspectorStore.productCount ?? '—'}</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white border border-stone-200">
+                    <div className="text-[11px] text-stone-500">👥 खाता ग्राहक</div>
+                    <div className="font-black text-stone-900 text-sm">{inspectorStore.customerCount}</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white border border-stone-200">
+                    <div className="text-[11px] text-stone-500">🧾 बिक्री पर्चियाँ</div>
+                    <div className="font-black text-stone-900 text-sm">{inspectorStore.salesCount ?? '—'}</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
+                    <div className="text-[11px] text-blue-700 font-bold">💾 कुल अनुमानित डेटा</div>
+                    <div className="font-black text-blue-950 text-sm">{inspectorStore.storageKb ? `${inspectorStore.storageKb} KB` : '—'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Granular Module Controls (Feature Flags) */}
+              <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-black text-purple-950 flex items-center gap-1.5">
+                    <Sliders className="w-4 h-4 text-purple-700" />
+                    <span>मॉड्यूल नियंत्रण (Granular Feature Flags):</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSaveFeatures}
+                    disabled={savingFeatures}
+                    className="px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                  >
+                    {savingFeatures ? 'सुरक्षित हो रहा है...' : '💾 मॉड्यूल बदलाव लागू करें'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-purple-800 m-0">
+                  एडमिन द्वारा सेट किए गए मॉड्यूल ओवरराइड्स स्टोर के बेस प्लान से ऊपर प्राथमिकता रखते हैं।
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {[
+                    { key: 'haatMode', label: '🎪 साप्ताहिक हाट-बाज़ार मोड', desc: 'हाट के लिए 12 बड़ी टच बटन व तेज़ बिलिंग' },
+                    { key: 'thermalPrinting', label: '🖨️ ब्लूटूथ थर्मल प्रिंटिंग', desc: '58mm/80mm पोर्टेबल प्रिंटर रसीद पर्ची' },
+                    { key: 'voiceBilling', label: '🎙️ बोलकर दर्ज करें (आवाज सहायक)', desc: 'गाँव की तौल (पाव, पसेरी) व बोलकर सर्च' },
+                    { key: 'cameraScanner', label: '📷 कैमरा बारकोड स्कैनर', desc: 'मोबाइल कैमरा से 1-सेकंड बारकोड स्कैन' },
+                    { key: 'spoilageGuard', label: '⚠️ खराबी व एक्सपायरी गार्ड', desc: 'बिजली कटौती नुकसान व डिस्ट्रीब्यूटर क्लेम' },
+                    { key: 'mandiPlanner', label: '🌾 मंडी खरीदारी व भाव शीट', desc: 'थोक खरीद लिस्ट, मार्जिन गार्ड व दैनिक भाव' },
+                  ].map(m => {
+                    const isEnabled = !!editingFeatures[m.key];
+                    return (
+                      <div
+                        key={m.key}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition ${
+                          isEnabled
+                            ? 'bg-emerald-50/80 border-emerald-300'
+                            : 'bg-white border-stone-200'
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-stone-900">{m.label}</div>
+                          <div className="text-[10px] text-stone-500 truncate">{m.desc}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditingFeatures(prev => ({ ...prev, [m.key]: !isEnabled }))}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer transition ${
+                            isEnabled
+                              ? 'bg-emerald-600 text-white shadow-2xs'
+                              : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
+                          }`}
+                        >
+                          {isEnabled ? 'चालू (ON)' : 'बंद (OFF)'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section 3: Quota Limit Overrides */}
+              <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                    <HardDrive className="w-4 h-4 text-amber-700" />
+                    <span>स्टोर कोटा सीमा समायोजन (Custom Quota Limits):</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSaveQuotas}
+                    disabled={savingQuotas}
+                    className="px-3 py-1.5 rounded-xl bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                  >
+                    {savingQuotas ? 'सुरक्षित हो रहा है...' : '💾 कोटा सीमा लागू करें'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-amber-800 m-0">
+                  उच्च बिक्री वाली दुकानों को विशेष व्यवस्था के तहत अतिरिक्त क्षमता प्रदान करें।
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-stone-700 font-bold mb-1">अधिकतम उत्पाद सीमा (Max Products):</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100000}
+                      value={editingQuotas.maxProducts}
+                      onChange={(e) => setEditingQuotas(prev => ({ ...prev, maxProducts: parseInt(e.target.value, 10) || 50 }))}
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-xl font-bold text-stone-900"
+                    />
+                    <span className="text-[10px] text-stone-400">डिफ़ॉल्ट: स्टार्टर 50, प्रो 2,000</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-stone-700 font-bold mb-1">अधिकतम ग्राहक सीमा (Max Customers):</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100000}
+                      value={editingQuotas.maxCustomers}
+                      onChange={(e) => setEditingQuotas(prev => ({ ...prev, maxCustomers: parseInt(e.target.value, 10) || 100 }))}
+                      className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-xl font-bold text-stone-900"
+                    />
+                    <span className="text-[10px] text-stone-400">डिफ़ॉल्ट: स्टार्टर 100, प्रो 5,000</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 4: Munim Staff 4-Digit PIN Reset */}
+              <div className="p-4 rounded-2xl bg-stone-100 border border-stone-200 space-y-3">
+                <div className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                  <KeyRound className="w-4 h-4 text-stone-700" />
+                  <span>मुनीम स्टाफ 4-अंक गुप्त PIN रीसेट (Munim Session Recovery):</span>
+                </div>
+                <p className="text-[11px] text-stone-500 m-0">
+                  यदि दुकान का मुनीम अपना पिन भूल गया हो या मुनीम सत्र लॉक हो गया हो, तो यहाँ से नया 4-अंकों का पिन सेट करें।
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password"
+                    maxLength={4}
+                    value={newMunimPinInput}
+                    onChange={(e) => setNewMunimPinInput(e.target.value.replace(/\D/g, ''))}
+                    placeholder="नया 4-अंक मुनीम PIN (उदा. 1234)"
+                    className="w-48 px-3 py-1.5 bg-white border border-stone-300 rounded-xl text-center font-black tracking-widest text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleResetMunimPinSubmit}
+                    disabled={resettingMunimPin || newMunimPinInput.length !== 4}
+                    className="px-4 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold cursor-pointer active:scale-95 disabled:opacity-40"
+                  >
+                    {resettingMunimPin ? 'रीसेट हो रहा है...' : '🔐 मुनीम PIN रीसेट करें'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setIsInspectorOpen(false)}
+                  className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold cursor-pointer"
+                >
+                  पूर्ण (Close)
+                </button>
+              </div>
             </div>
           </div>
         )}
