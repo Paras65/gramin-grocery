@@ -10,6 +10,8 @@ import { getTenantId } from '../middleware/tenantContext.js';
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'gk_default_secret_key_2026';
 
+import crypto from 'crypto';
+
 // Zod Validation Schemas
 const RegisterStoreSchema = z.object({
   storeName: z.string().min(2),
@@ -20,7 +22,13 @@ const RegisterStoreSchema = z.object({
   block: z.string().min(2),
   district: z.string().min(2),
   mohalla: z.string().optional(),
+  referralCode: z.string().optional(),
 });
+
+const generateReferralCode = (): string => {
+  const hex = crypto.randomBytes(3).toString('hex').toUpperCase();
+  return `REF-${hex}`;
+};
 
 const LoginSchema = z.object({
   mobile: z.string().min(10),
@@ -48,6 +56,35 @@ router.post('/register-store', authLimiter, async (req: Request, res: Response) 
     // Hash 4-digit PIN
     const pinHash = await bcrypt.hash(data.pin, 10);
 
+    // Initial 14-Day Complimentary Pro Trial
+    const now = new Date();
+    const trialDays = 14;
+    let initialProDays = trialDays;
+    let referredByCode: string | undefined = undefined;
+
+    // Check optional referral code
+    let referrerTenant: any = null;
+    if (data.referralCode && data.referralCode.trim()) {
+      const cleanRef = data.referralCode.trim().toUpperCase();
+      referrerTenant = await Tenant.findOne({ 'referral.code': cleanRef });
+      if (referrerTenant) {
+        if (referrerTenant.phone !== data.phone) {
+          referredByCode = referrerTenant.referral.code;
+          initialProDays += 15; // Bonus +15 days for new store (Total 29 days!)
+        }
+      }
+    }
+
+    const planExpiryDate = new Date(now.getTime() + initialProDays * 24 * 60 * 60 * 1000);
+
+    // Generate unique referral code for this store
+    let myReferralCode = generateReferralCode();
+    let collision = await Tenant.findOne({ 'referral.code': myReferralCode });
+    while (collision) {
+      myReferralCode = generateReferralCode();
+      collision = await Tenant.findOne({ 'referral.code': myReferralCode });
+    }
+
     // Create Store Tenant
     const tenant = await Tenant.create({
       storeName: data.storeName,
@@ -60,7 +97,48 @@ router.post('/register-store', authLimiter, async (req: Request, res: Response) 
         district: data.district,
         state: 'Chhattisgarh',
       },
+      subscription: {
+        plan: 'PRO',
+        status: 'ACTIVE',
+        startDate: now,
+        planExpiryDate,
+        isTrial: true,
+      },
+      referral: {
+        code: myReferralCode,
+        referredBy: referredByCode,
+        referralCount: 0,
+        bonusDaysEarned: referredByCode ? 15 : 0,
+      },
     });
+
+    // If referred, credit referrer store with +15 days
+    if (referrerTenant) {
+      const bonusMs = 15 * 24 * 60 * 60 * 1000;
+      const refExpiry = referrerTenant.subscription?.planExpiryDate ? new Date(referrerTenant.subscription.planExpiryDate).getTime() : 0;
+      if (referrerTenant.subscription?.plan === 'PRO' && refExpiry > now.getTime()) {
+        referrerTenant.subscription.planExpiryDate = new Date(refExpiry + bonusMs);
+      } else {
+        referrerTenant.subscription = {
+          ...referrerTenant.subscription,
+          plan: 'PRO',
+          status: 'ACTIVE',
+          startDate: now,
+          planExpiryDate: new Date(now.getTime() + bonusMs),
+        };
+      }
+      if (!referrerTenant.referral) {
+        referrerTenant.referral = {
+          code: generateReferralCode(),
+          referralCount: 1,
+          bonusDaysEarned: 15,
+        };
+      } else {
+        referrerTenant.referral.referralCount = (referrerTenant.referral.referralCount || 0) + 1;
+        referrerTenant.referral.bonusDaysEarned = (referrerTenant.referral.bonusDaysEarned || 0) + 15;
+      }
+      await referrerTenant.save();
+    }
 
     // Create Owner User
     const user = await User.create({
@@ -92,6 +170,12 @@ router.post('/register-store', authLimiter, async (req: Request, res: Response) 
         ownerName: tenant.ownerName,
         village: tenant.address.village,
         district: tenant.address.district,
+        plan: tenant.subscription?.plan || 'PRO',
+        planExpiryDate: tenant.subscription?.planExpiryDate,
+        isTrial: tenant.subscription?.isTrial || true,
+        referralCode: tenant.referral?.code,
+        referralCount: tenant.referral?.referralCount || 0,
+        bonusDaysEarned: tenant.referral?.bonusDaysEarned || 0,
       },
       user: {
         id: user._id,
@@ -128,6 +212,16 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Store not found' });
     }
 
+    // Auto-generate referral code for existing tenants if not present
+    if (!tenant.referral?.code) {
+      tenant.referral = {
+        code: generateReferralCode(),
+        referralCount: tenant.referral?.referralCount || 0,
+        bonusDaysEarned: tenant.referral?.bonusDaysEarned || 0,
+      };
+      await tenant.save();
+    }
+
     user.lastLoginAt = new Date();
     await user.save();
 
@@ -151,6 +245,12 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
         ownerName: tenant.ownerName,
         village: tenant.address.village,
         district: tenant.address.district,
+        plan: tenant.subscription?.plan || 'FREE',
+        planExpiryDate: tenant.subscription?.planExpiryDate,
+        isTrial: tenant.subscription?.isTrial || false,
+        referralCode: tenant.referral?.code,
+        referralCount: tenant.referral?.referralCount || 0,
+        bonusDaysEarned: tenant.referral?.bonusDaysEarned || 0,
       },
       user: {
         id: user._id,

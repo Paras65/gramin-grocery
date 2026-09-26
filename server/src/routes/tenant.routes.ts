@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { requireAuth, requireRole } from '../middleware/security.js';
 import { getTenantId } from '../middleware/tenantContext.js';
@@ -91,6 +92,39 @@ router.put('/settings', requireAuth, requireRole('OWNER'), async (req: Request, 
     res.json({ message: 'Settings updated', settings: tenant?.settings });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// 3B. Get Store Referral Information and Stats
+router.get('/referral-stats', requireAuth, async (_req: Request, res: Response) => {
+  try {
+    const tenantId = getTenantId();
+    const tenant = await Tenant.findById(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ error: 'Store not found' });
+    }
+
+    // Auto-generate referral code if not present
+    if (!tenant.referral?.code) {
+      const hex = crypto.randomBytes(3).toString('hex').toUpperCase();
+      tenant.referral = {
+        code: `REF-${hex}`,
+        referralCount: 0,
+        bonusDaysEarned: 0,
+      };
+      await tenant.save();
+    }
+
+    res.json({
+      referralCode: tenant.referral.code,
+      referralCount: tenant.referral.referralCount || 0,
+      bonusDaysEarned: tenant.referral.bonusDaysEarned || 0,
+      isTrial: tenant.subscription?.isTrial || false,
+      plan: tenant.subscription?.plan || 'FREE',
+      planExpiryDate: tenant.subscription?.planExpiryDate,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Internal server error' });
   }
 });
 

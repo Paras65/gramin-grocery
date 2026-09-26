@@ -336,18 +336,25 @@ class AdminService {
     return await this.parseResponse(res, 'भुगतान क्लेम अस्वीकृत करने में विफल');
   }
 
-  public async generateVouchers(durationMonths: number, note?: string, count: number = 1): Promise<{ message: string; vouchers: VoucherItem[] }> {
+  public async generateVouchers(
+    durationMonths: number, 
+    note?: string, 
+    count: number = 1,
+    campaign?: string
+  ): Promise<{ message: string; vouchers: VoucherItem[] }> {
     const res = await fetch(`${API_BASE}/admin/vouchers/generate`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
-      body: JSON.stringify({ durationMonths, note, count }),
+      body: JSON.stringify({ durationMonths, note, count, campaign }),
     });
 
     return await this.parseResponse(res, 'वाउचर जनरेट करने में विफल');
   }
 
-  public async getVouchers(status: string = 'ALL'): Promise<VoucherItem[]> {
-    const res = await fetch(`${API_BASE}/admin/vouchers?status=${status}`, {
+  public async getVouchers(status: string = 'ALL', campaign?: string): Promise<VoucherItem[]> {
+    const query = new URLSearchParams({ status });
+    if (campaign) query.set('campaign', campaign);
+    const res = await fetch(`${API_BASE}/admin/vouchers?${query.toString()}`, {
       headers: this.getAuthHeaders(),
     });
 

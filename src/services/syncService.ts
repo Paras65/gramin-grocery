@@ -343,6 +343,7 @@ class SyncService {
     block: string;
     district: string;
     mohalla?: string;
+    referralCode?: string;
   }) {
     const res = await fetch(`${API_BASE}/auth/register-store`, {
       method: 'POST',
@@ -369,6 +370,30 @@ class SyncService {
     await this.triggerSync();
     await deduplicateLocalProducts();
     return data;
+  }
+
+  /**
+   * Fetch current store's referral statistics and code
+   */
+  public async getReferralStats(): Promise<{
+    referralCode: string;
+    referralCount: number;
+    bonusDaysEarned: number;
+    isTrial: boolean;
+    plan: string;
+    planExpiryDate?: string;
+  } | null> {
+    const token = this.getToken();
+    if (!token) return null;
+    try {
+      const res = await fetch(`${API_BASE}/tenant/referral-stats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
   }
 
   /**

@@ -9,6 +9,7 @@ export interface IVoucher extends Document {
   redeemedAt?: Date;
   createdBy: string;
   note?: string;
+  campaign?: string;
   expiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -56,6 +57,11 @@ const VoucherSchema = new Schema<IVoucher>(
     note: {
       type: String,
       trim: true,
+    },
+    campaign: {
+      type: String,
+      trim: true,
+      index: true,
     },
     expiresAt: {
       type: Date,

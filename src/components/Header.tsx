@@ -346,7 +346,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <Sparkles className="w-2.5 h-2.5" />
                 <span>
                   {subStatus.isPro
-                    ? `प्रो ${subStatus.daysRemaining !== undefined ? `(${subStatus.daysRemaining} दिन)` : ''}`
+                    ? `${storeInfo?.isTrial ? '🎁 प्रो ट्रायल' : 'प्रो'} ${subStatus.daysRemaining !== undefined ? `(${subStatus.daysRemaining} दिन)` : ''}`
                     : subStatus.isExpired
                     ? 'योजना समाप्त'
                     : 'मुफ़्त प्लान'}
@@ -571,7 +571,7 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <span>
                       {subStatus.isPro
-                        ? `👑 ग्रामिन प्रो ${subStatus.daysRemaining !== undefined ? `(${subStatus.daysRemaining} दिन)` : ''}`
+                        ? `${storeInfo?.isTrial ? '🎁 14-दिन प्रो ट्रायल' : '👑 ग्रामिन प्रो'} ${subStatus.daysRemaining !== undefined ? `(${subStatus.daysRemaining} दिन)` : ''}`
                         : '🌾 गाँव स्टार्टर (मुफ़्त) • प्लान देखें'}
                     </span>
                   </button>

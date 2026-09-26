@@ -96,6 +96,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
   const [newVoucherMonths, setNewVoucherMonths] = useState<1 | 3 | 12>(1);
   const [newVoucherCount, setNewVoucherCount] = useState<number>(1);
   const [newVoucherNote, setNewVoucherNote] = useState<string>('');
+  const [newVoucherCampaign, setNewVoucherCampaign] = useState<string>('');
   const [creatingVoucher, setCreatingVoucher] = useState<boolean>(false);
   const [copiedVoucherCode, setCopiedVoucherCode] = useState<string | null>(null);
 
@@ -120,11 +121,13 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
       const res = await adminService.generateVouchers(
         newVoucherMonths,
         newVoucherNote.trim() || undefined,
-        newVoucherCount
+        newVoucherCount,
+        newVoucherCampaign.trim().toUpperCase() || undefined
       );
       alert(res.message || `${res.vouchers?.length || newVoucherCount} नए सिंगल-यूज़ वाउचर सफलतापूर्वक बनाए गए!`);
       setIsVoucherModalOpen(false);
       setNewVoucherNote('');
+      setNewVoucherCampaign('');
       setNewVoucherCount(1);
       await loadVouchers();
     } catch (err: any) {
@@ -1547,10 +1550,15 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-mono text-base sm:text-lg font-black tracking-wider text-stone-950 bg-stone-100 px-2.5 py-1 rounded-xl border border-stone-300 select-all">
                               {v.code}
                             </span>
+                            {v.campaign && (
+                              <span className="px-2 py-0.5 rounded-lg bg-purple-100 text-purple-900 border border-purple-200 font-bold text-[10px] uppercase">
+                                🏷️ {v.campaign}
+                              </span>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleCopyVoucherCode(v.code)}
@@ -2510,6 +2518,18 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                     onChange={(e) => setNewVoucherNote(e.target.value)}
                     placeholder="उदा. बिलासपुर डीलर, रमेश किराना..."
                     className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs focus:outline-none focus:border-amber-500 font-medium"
+                  />
+                </div>
+
+                {/* Campaign / Festive Tag */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-stone-700">प्रमोशनल / अभियान टैग (वैकल्पिक):</label>
+                  <input
+                    type="text"
+                    value={newVoucherCampaign}
+                    onChange={(e) => setNewVoucherCampaign(e.target.value.toUpperCase())}
+                    placeholder="उदा. DIWALI-2026, FESTIVE-50, LAUNCH-OFFER"
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs uppercase focus:outline-none focus:border-amber-500 font-medium"
                   />
                 </div>
 

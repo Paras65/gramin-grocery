@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Check, Sparkles, Shield, Cloud, Store, 
   MessageCircle, HelpCircle, Ticket, CheckCircle2, AlertCircle, 
-  QrCode, Copy, ExternalLink, RefreshCw, Clock, CheckCheck, Loader2
+  QrCode, Copy, ExternalLink, RefreshCw, Clock, CheckCheck, Loader2, Gift
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '../../context/LanguageContext';
@@ -51,6 +51,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const [couponCode, setCouponCode] = useState('');
   const [couponFeedback, setCouponFeedback] = useState<{ success: boolean; message: string } | null>(null);
 
+  // Referral states
+  const [referralStats, setReferralStats] = useState<{
+    referralCode?: string;
+    referralCount?: number;
+    bonusDaysEarned?: number;
+  } | null>(null);
+  const [copiedReferral, setCopiedReferral] = useState(false);
+
   const isLoggedIn = syncService.isLoggedIn();
   const isMunim = syncService.isMunimSession();
   const subStatus = syncService.getSubscriptionStatus();
@@ -83,6 +91,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
       if (isLoggedIn) {
         loadClaimStatus();
+        syncService.getReferralStats().then(setReferralStats).catch(console.warn);
       }
     }
   }, [isOpen, isLoggedIn]);
@@ -131,6 +140,22 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       ? `https://wa.me/${supportWhatsApp}?text=${message}`
       : `https://wa.me/?text=${message}`;
     window.open(targetUrl, '_blank');
+  };
+
+  const handleCopyReferralCode = () => {
+    const code = referralStats?.referralCode || storeInfo?.referralCode;
+    if (!code) return;
+    navigator.clipboard.writeText(code);
+    setCopiedReferral(true);
+    setTimeout(() => setCopiedReferral(false), 2500);
+  };
+
+  const handleShareReferralWhatsApp = () => {
+    const code = referralStats?.referralCode || storeInfo?.referralCode;
+    if (!code) return;
+    const shopName = storeInfo?.storeName || 'मेरी दुकान';
+    const text = `नमस्ते साथी दुकानदार! 🏪\n\nमैं अपनी दुकान "${shopName}" के लिए 'Gramin Kirana' ऐप चला रहा हूँ — उधारी बही-खाता और बिलिंग बेहद आसान हो गया है।\n\nआप भी अपनी दुकान जोड़ें। रजिस्ट्रेशन के समय मेरा रेफरल कोड दर्ज करें और तुरंत *15 दिन अतिरिक्त प्रो प्लान (कुल 29 दिन)* मुफ़्त पाएं! 🎁\n\n🔑 रेफरल कोड: *${code}*\n📲 ऐप लिंक: ${window.location.origin}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleRegisterClick = () => {
@@ -234,7 +259,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <span>🏪 {storeInfo.storeName} ({storeInfo.village})</span>
               <span className="text-stone-500">•</span>
               <span className="font-bold text-amber-400">
-                {subStatus.isPro ? sub.currentPlanPro : subStatus.isExpired ? 'योजना समाप्त (मुफ़्त मोड)' : sub.currentPlanFree}
+                {storeInfo.isTrial && subStatus.isPro ? '🎁 14-दिन प्रो ट्रायल' : subStatus.isPro ? sub.currentPlanPro : subStatus.isExpired ? 'योजना समाप्त (मुफ़्त मोड)' : sub.currentPlanFree}
               </span>
               {subStatus.daysRemaining !== undefined && subStatus.isPro && (
                 <span className="text-emerald-400 font-semibold">({subStatus.daysRemaining} दिन शेष)</span>
@@ -638,6 +663,87 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   <span>WhatsApp पर कूपन मांगें</span>
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Refer & Earn 15 Days Free Pro Program Card */}
+          {isLoggedIn && (
+            <div className="bg-gradient-to-r from-emerald-950 via-stone-900 to-emerald-950 text-white rounded-3xl p-4 sm:p-5 border border-emerald-500/40 shadow-lg space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-emerald-500 text-stone-950 font-black">
+                    <Gift className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm sm:text-base font-black text-white m-0">
+                        दुकानदार रेफरल: शेयर करें और 15 दिन प्रो मुफ़्त पाएं!
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-black border border-emerald-500/30">
+                        🎁 दोनों को फ़ायदा
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-200/90 m-0 mt-0.5">
+                      किसी अन्य दुकानदार को जोड़ें — नए साथी को +15 दिन (कुल 29 दिन) और आपको भी +15 दिन अतिरिक्त प्रो मिलेगा!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-stone-900/90 p-3.5 rounded-2xl border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="space-y-1 text-center sm:text-left">
+                  <div className="text-[11px] text-stone-400 font-medium">आपका यूनिक रेफरल कोड:</div>
+                  <div className="text-base sm:text-lg font-black tracking-widest text-amber-400 font-mono bg-stone-950 px-3 py-1 rounded-xl border border-stone-800 inline-block">
+                    {referralStats?.referralCode || storeInfo?.referralCode || 'लोड हो रहा...'}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={handleCopyReferralCode}
+                    disabled={!referralStats?.referralCode && !storeInfo?.referralCode}
+                    className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-700"
+                    title="रेफरल कोड कॉपी करें"
+                  >
+                    {copiedReferral ? (
+                      <>
+                        <CheckCheck className="w-4 h-4 text-emerald-400" />
+                        <span className="text-emerald-400">कॉपी हुआ!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4 text-amber-400" />
+                        <span>कोड कॉपी करें</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleShareReferralWhatsApp}
+                    disabled={!referralStats?.referralCode && !storeInfo?.referralCode}
+                    className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center justify-center gap-2 transition cursor-pointer shadow-md active:scale-95"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>WhatsApp पर शेयर करें</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Referral Stats Counter */}
+              {referralStats && (
+                <div className="flex items-center justify-between pt-1 text-[11px] text-emerald-200/80 border-t border-emerald-900/60 flex-wrap gap-2">
+                  <span className="flex items-center gap-1.5">
+                    <span>👥 कुल जुड़े दुकानदार:</span>
+                    <strong className="text-white font-mono text-xs">{referralStats.referralCount || 0}</strong>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span>🎉 कमाए गए कुल प्रो दिन:</span>
+                    <strong className="text-amber-400 font-mono text-xs">+{referralStats.bonusDaysEarned || 0} दिन</strong>
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

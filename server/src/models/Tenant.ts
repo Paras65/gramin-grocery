@@ -25,6 +25,13 @@ export interface ITenant extends Document {
     pausedAt?: Date;
     remainingDaysOnPause?: number;
     pauseReason?: string;
+    isTrial?: boolean;
+  };
+  referral?: {
+    code: string;
+    referredBy?: string;
+    referralCount: number;
+    bonusDaysEarned: number;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -56,6 +63,13 @@ const TenantSchema = new Schema<ITenant>(
       pausedAt: { type: Date },
       remainingDaysOnPause: { type: Number },
       pauseReason: { type: String, trim: true },
+      isTrial: { type: Boolean, default: false },
+    },
+    referral: {
+      code: { type: String, unique: true, sparse: true, trim: true, uppercase: true, index: true },
+      referredBy: { type: String, trim: true },
+      referralCount: { type: Number, default: 0 },
+      bonusDaysEarned: { type: Number, default: 0 },
     },
   },
   { timestamps: true }

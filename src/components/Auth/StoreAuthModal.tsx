@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Phone, Cloud, RefreshCw, LogOut, ShieldAlert, MapPin, Check, Building, ArrowRight } from 'lucide-react';
+import { Lock, Phone, Cloud, RefreshCw, LogOut, ShieldAlert, MapPin, Check, Building, ArrowRight, Gift } from 'lucide-react';
 import { syncService, type SyncStatus } from '../../services/syncService';
 import { lookupPincode } from '../../utils/pincodeService';
 
@@ -25,6 +25,7 @@ export const StoreAuthModal: React.FC<StoreAuthModalProps> = ({ isOpen, onClose,
   const [village, setVillage] = useState('');
   const [district, setDistrict] = useState('');
   const [block, setBlock] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [isLookingUpPin, setIsLookingUpPin] = useState(false);
   const [detectedVillages, setDetectedVillages] = useState<string[]>([]);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
@@ -94,6 +95,7 @@ export const StoreAuthModal: React.FC<StoreAuthModalProps> = ({ isOpen, onClose,
         village: village.trim() || 'गाँव',
         block: block.trim() || village.trim() || 'ब्लॉक',
         district: district.trim() || 'रायपुर',
+        referralCode: referralCode.trim() || undefined,
       });
       setIsLoggedIn(true);
       setStoreInfo(syncService.getStoreInfo());
@@ -425,6 +427,29 @@ export const StoreAuthModal: React.FC<StoreAuthModalProps> = ({ isOpen, onClose,
                   <span className="text-[10px] text-stone-500 mt-0.5 block">
                     रोज़ाना दुकान खोलने के लिए 4 अंकों का पिन
                   </span>
+                </div>
+
+                {/* Field 5: Optional Referral Code for +15 Extra Days */}
+                <div className="bg-amber-50/80 p-2.5 rounded-xl border border-amber-300/80 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black text-amber-950 flex items-center gap-1.5">
+                      <Gift className="w-3.5 h-3.5 text-amber-600" />
+                      <span>रेफरल कोड (Referral Code):</span>
+                    </label>
+                    <span className="text-[10px] text-amber-800 font-bold bg-amber-200/90 px-1.5 py-0.5 rounded-md">
+                      +15 दिन अतिरिक्त प्रो
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    placeholder="उदा: REF-XXXX (वैकल्पिक)"
+                    className="w-full px-3 py-1.5 border border-amber-300 rounded-xl text-xs font-black uppercase text-amber-950 tracking-wider bg-white outline-hidden focus:border-amber-600"
+                  />
+                  <p className="text-[10px] text-amber-900 m-0 font-medium">
+                    💡 किसी साथी दुकानदार का कोड डालने पर 14 दिन की जगह पूरे <strong>29 दिन का प्रो मुफ़्त</strong> मिलेगा!
+                  </p>
                 </div>
 
                 {/* Optional Advanced Details Expander */}

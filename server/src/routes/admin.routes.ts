@@ -763,7 +763,7 @@ router.post('/payment-claims/:id/reject', requireAuth, requireRole('SUPER_ADMIN'
 // 15. Generate Single-Use Vouchers
 router.post('/vouchers/generate', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
   try {
-    const { durationMonths = 1, note = '', count = 1 } = req.body;
+    const { durationMonths = 1, note = '', count = 1, campaign = '' } = req.body;
     const months = [1, 3, 12].includes(Number(durationMonths)) ? Number(durationMonths) : 1;
     const generateCount = Math.min(Math.max(1, Number(count) || 1), 20);
 
@@ -781,6 +781,7 @@ router.post('/vouchers/generate', requireAuth, requireRole('SUPER_ADMIN'), async
         isRedeemed: false,
         createdBy,
         note: note.trim() || undefined,
+        campaign: campaign.trim() || undefined,
         expiresAt: new Date(Date.now() + 90 * 86400000),
       });
 
@@ -799,12 +800,15 @@ router.post('/vouchers/generate', requireAuth, requireRole('SUPER_ADMIN'), async
 // 16. List All Vouchers
 router.get('/vouchers', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
   try {
-    const { status = 'ALL' } = req.query;
+    const { status = 'ALL', campaign } = req.query;
     const filter: any = {};
     if (status === 'ACTIVE') {
       filter.isRedeemed = false;
     } else if (status === 'REDEEMED') {
       filter.isRedeemed = true;
+    }
+    if (campaign && typeof campaign === 'string') {
+      filter.campaign = campaign.trim();
     }
 
     const vouchers = await Voucher.find(filter).sort({ createdAt: -1 }).lean();

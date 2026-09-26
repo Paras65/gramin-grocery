@@ -133,6 +133,10 @@ export interface TenantInfo {
   district?: string;
   plan?: TenantPlan;
   planExpiryDate?: string;
+  isTrial?: boolean;
+  referralCode?: string;
+  referralCount?: number;
+  bonusDaysEarned?: number;
   munimPin?: string; // 4-digit munim/staff PIN (local only, hashed)
 }
 
@@ -250,6 +254,7 @@ export interface VoucherItem {
   redeemedAt?: string;
   createdBy: string;
   note?: string;
+  campaign?: string;
   expiresAt?: string;
   createdAt: string;
   updatedAt?: string;
