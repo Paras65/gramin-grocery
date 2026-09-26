@@ -105,49 +105,101 @@ class SyncService {
   }
 
   /**
-   * Redeem an offline promo code or voucher activation key for Pro plan
+   * Redeem a single-use voucher code for Pro plan.
+   * Communicates directly with the cloud server to prevent code reuse and ensure multi-device sync.
    */
-  public activateProWithKey(rawKey: string): { success: boolean; message: string; days?: number } {
+  public async redeemVoucher(rawKey: string): Promise<{ success: boolean; message: string; days?: number }> {
     const key = (rawKey || '').trim().toUpperCase().replace(/\s+/g, '');
     if (!key) {
       return { success: false, message: 'कृपया कूपन या एक्टिवेशन कोड दर्ज करें।' };
     }
 
-    let days = 30; // default 30 days
-    if (['KIRANA365', 'KIRANA-PRO-365', 'GRAMIN-PRO-365', 'KIRANA-PRO-2026', 'GRAMIN-VIP', 'ANNUAL365'].includes(key)) {
-      days = 365;
-    } else if (['KIRANA90', 'KIRANA-PRO-90', 'GRAMIN-PRO-90', 'QUARTERLY90'].includes(key)) {
-      days = 90;
-    } else if (['KIRANA30', 'KIRANA-PRO-30', 'GRAMIN-PRO-30', 'GRAMIN99', 'CHHATTISGARH30', 'VILLAGE30'].includes(key)) {
-      days = 30;
-    } else if (/^(GK|PRO)-[A-Z0-9]{4,10}$/.test(key)) {
-      days = 30;
-    } else {
+    if (key.length < 6) {
+      return { success: false, message: 'अमान्य कोड: वाउचर कोड कम से कम 6 अक्षरों का होना चाहिए।' };
+    }
+
+    // Local Device Anti-Replay Guard: check if already redeemed on this device
+    const usedCodes: string[] = typeof window !== 'undefined'
+      ? JSON.parse(localStorage.getItem('gk_redeemed_vouchers') || '[]')
+      : [];
+
+    if (usedCodes.includes(key)) {
       return {
         success: false,
-        message: 'अमान्य कोड! कृपया सही 6 या 8 अंकों का कोड दर्ज करें (जैसे: GRAMIN99, KIRANA-PRO-30, KIRANA-PRO-2026) या WhatsApp पर संपर्क करें।'
+        message: 'सुरक्षा प्रतिबंध: यह वाउचर कोड इस डिवाइस पर पहले ही उपयोग किया जा चुका है। एक कूपन केवल एक बार ही मान्य होता है।'
       };
     }
 
-    const store = this.getStoreInfo();
-    const expiryDate = new Date(Date.now() + days * 86400000).toISOString();
+    const token = this.getToken();
+    if (!token) {
+      return {
+        success: false,
+        message: 'वाउचर कोड सक्रिय करने के लिए कृपया पहले अपनी दुकान में लॉगिन करें।'
+      };
+    }
 
-    const updatedStore: TenantInfo = {
-      ...(store || {
-        storeName: 'गाँव किराना स्टोर',
-        village: 'गाँव'
-      }),
-      plan: 'PRO',
-      planExpiryDate: expiryDate,
-    };
+    if (!navigator.onLine) {
+      return {
+        success: false,
+        message: 'वाउचर सत्यापन के लिए इंटरनेट की आवश्यकता है। कृपया मोबाइल डेटा चालू करके पुनः प्रयास करें।'
+      };
+    }
 
-    localStorage.setItem('gk_store_info', JSON.stringify(updatedStore));
-    this.notifyAuth();
+    try {
+      const res = await fetch(`${API_BASE}/tenant/subscription/voucher/redeem`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ code: key }),
+      });
 
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'वाउचर सत्यापन विफल');
+      }
+
+      // Update store info in local storage
+      const currentStore = this.getStoreInfo();
+      if (currentStore && data.subscription) {
+        const updatedStore: TenantInfo = {
+          ...currentStore,
+          plan: data.subscription.plan,
+          planExpiryDate: data.subscription.planExpiryDate,
+        };
+        localStorage.setItem('gk_store_info', JSON.stringify(updatedStore));
+      }
+
+      // Record in local blacklist
+      if (typeof window !== 'undefined') {
+        try {
+          const updatedUsed = Array.from(new Set([...usedCodes, key]));
+          localStorage.setItem('gk_redeemed_vouchers', JSON.stringify(updatedUsed));
+        } catch (_) {}
+      }
+
+      this.notifyAuth();
+
+      return {
+        success: true,
+        message: data.message || 'बधाई! वाउचर कोड सत्यापित हो गया और प्रो प्लान सक्रिय हो गया।',
+        days: data.days || 30,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'वाउचर कोड अमान्य है या सर्वर से संपर्क नहीं हो पाया।',
+      };
+    }
+  }
+
+  // Deprecated synchronous fallback alias
+  public activateProWithKey(_rawKey?: string): { success: boolean; message: string; days?: number } {
     return {
-      success: true,
-      message: `बधाई! आपकी दुकान के लिए "ग्रामिन प्रो" प्लान (${days} दिन) सक्रिय हो गया है।`,
-      days,
+      success: false,
+      message: 'कृपया ऑनलाइन वाउचर सत्यापन के लिए "लागू करें" बटन दबाएं।'
     };
   }
 

@@ -239,3 +239,19 @@ export interface PaymentClaim {
   updatedAt?: string;
 }
 
+export interface VoucherItem {
+  _id?: string;
+  id?: string;
+  code: string;
+  durationMonths: number;
+  isRedeemed: boolean;
+  redeemedByTenantId?: string;
+  redeemedByStoreName?: string;
+  redeemedAt?: string;
+  createdBy: string;
+  note?: string;
+  expiresAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+

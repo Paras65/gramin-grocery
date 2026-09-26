@@ -7,6 +7,7 @@ import { Customer } from '../models/Customer.js';
 import { Sale } from '../models/Sale.js';
 import { Announcement } from '../models/Announcement.js';
 import { PaymentClaim } from '../models/PaymentClaim.js';
+import { Voucher } from '../models/Voucher.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'gk_default_secret_key_2026';
@@ -315,6 +316,102 @@ router.get('/subscription/config', async (_req: Request, res: Response) => {
         3: { months: 3, price: 269, label: '3 महीने', rate: '₹89/माह', discount: '10% बचत' },
         12: { months: 12, price: 999, label: '1 वर्ष (12 माह)', rate: '₹83/माह', discount: '16% भारी छूट' },
       },
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 8. Redeem Single-Use Voucher Code for Pro Activation
+router.post('/subscription/voucher/redeem', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const tenantId = getTenantId();
+    if (!tenantId) {
+      return res.status(401).json({ error: 'अनधिकृत सत्र (Unauthorized store session)' });
+    }
+
+    const { code } = req.body;
+    const cleanCode = (code || '').toString().trim().toUpperCase().replace(/\s+/g, '');
+
+    if (!cleanCode || cleanCode.length < 6) {
+      return res.status(400).json({
+        error: 'अमान्य कूपन कोड: कृपया सही 6 या 8 अंकों का वाउचर कोड दर्ज करें।',
+      });
+    }
+
+    const tenant = await Tenant.findById(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ error: 'दुकान नहीं मिली (Store not found)' });
+    }
+
+    // Atomic find and update to prevent race conditions / duplicate redemption
+    const voucher = await Voucher.findOneAndUpdate(
+      { code: cleanCode, isRedeemed: false },
+      {
+        $set: {
+          isRedeemed: true,
+          redeemedByTenantId: tenant._id,
+          redeemedByStoreName: tenant.storeName,
+          redeemedAt: new Date(),
+        },
+      },
+      { new: true }
+    );
+
+    if (!voucher) {
+      // Check if it was already redeemed
+      const existingRedeemed = await Voucher.findOne({ code: cleanCode });
+      if (existingRedeemed) {
+        const storeLabel = existingRedeemed.redeemedByStoreName ? ` (${existingRedeemed.redeemedByStoreName})` : '';
+        return res.status(400).json({
+          error: `यह कूपन कोड पहले ही इस्तेमाल किया जा चुका है${storeLabel}। एक कूपन केवल एक बार ही मान्य होता है।`,
+        });
+      }
+      return res.status(400).json({
+        error: 'अमान्य कूपन कोड! यह कोड मान्य नहीं है। कृपया सुपर एडमिन या WhatsApp सहायता से प्राप्त आधिकारिक वाउचर कोड ही दर्ज करें।',
+      });
+    }
+
+    // Check expiration if any
+    if (voucher.expiresAt && new Date(voucher.expiresAt).getTime() < Date.now()) {
+      return res.status(400).json({
+        error: 'यह कूपन कोड समाप्त (Expired) हो चुका है।',
+      });
+    }
+
+    const months = voucher.durationMonths || 1;
+    const durationMs = months * 30 * 86400000;
+    const now = Date.now();
+
+    // Safe Plan Stacking: if already active Pro, stack days onto existing expiry
+    const currentExpiryTime = tenant.subscription?.planExpiryDate
+      ? new Date(tenant.subscription.planExpiryDate).getTime()
+      : 0;
+
+    let newExpiryDate: Date;
+    if (
+      tenant.subscription?.plan === 'PRO' &&
+      !isNaN(currentExpiryTime) &&
+      currentExpiryTime > now
+    ) {
+      newExpiryDate = new Date(currentExpiryTime + durationMs);
+    } else {
+      newExpiryDate = new Date(now + durationMs);
+    }
+
+    tenant.subscription = {
+      plan: 'PRO',
+      status: 'ACTIVE',
+      planExpiryDate: newExpiryDate,
+      startDate: tenant.subscription?.startDate || new Date(),
+    };
+    await tenant.save();
+
+    res.json({
+      success: true,
+      message: `बधाई! वाउचर कोड सत्यापित हो गया। '${tenant.storeName}' के लिए ग्रामिन प्रो (${months * 30} दिन) सक्रिय हो गया है।`,
+      subscription: tenant.subscription,
+      days: months * 30,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

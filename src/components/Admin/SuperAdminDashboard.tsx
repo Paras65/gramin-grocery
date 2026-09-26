@@ -6,10 +6,10 @@ import {
   Download, KeyRound, Trash2, Megaphone,
   Eye, Clock, Plus, X, Send, CreditCard,
   CheckCircle2, XCircle, Copy, CheckCheck,
-  Pause, Play, Bell, Zap, Sliders
+  Pause, Play, Bell, Zap, Sliders, Ticket
 } from 'lucide-react';
 import { adminService, type PlatformOverviewResponse } from '../../services/adminService';
-import type { AdminStoreSummary, PlatformAnnouncement, AnnouncementType, AnnouncementTargetMode, PaymentClaim } from '../../types';
+import type { AdminStoreSummary, PlatformAnnouncement, AnnouncementType, AnnouncementTargetMode, PaymentClaim, VoucherItem } from '../../types';
 import { formatINR } from '../../utils/formatters';
 import { buildWhatsAppUrl } from '../../utils/whatsapp';
 
@@ -28,8 +28,8 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
   const [selectedPlan] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
 
-  // Tabs: STORES | PAYMENTS | BROADCASTS
-  const [adminTab, setAdminTab] = useState<'STORES' | 'PAYMENTS' | 'BROADCASTS'>('STORES');
+  // Tabs: STORES | PAYMENTS | VOUCHERS | BROADCASTS
+  const [adminTab, setAdminTab] = useState<'STORES' | 'PAYMENTS' | 'VOUCHERS' | 'BROADCASTS'>('STORES');
 
   // Expiry & Pro Status Filter: 'ALL' | 'PRO' | 'EXPIRING_SOON' | 'PAUSED' | 'FREE' | 'EXPIRED'
   const [expiryFilter, setExpiryFilter] = useState<'ALL' | 'PRO' | 'EXPIRING_SOON' | 'PAUSED' | 'FREE' | 'EXPIRED'>('ALL');
@@ -88,7 +88,73 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
   const [storeFilterInModal, setStoreFilterInModal] = useState<string>('');
   const [creatingBroadcast, setCreatingBroadcast] = useState<boolean>(false);
 
+  // Single-Use Voucher States
+  const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
+  const [loadingVouchers, setLoadingVouchers] = useState<boolean>(false);
+  const [voucherFilter, setVoucherFilter] = useState<'ALL' | 'ACTIVE' | 'REDEEMED'>('ALL');
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState<boolean>(false);
+  const [newVoucherMonths, setNewVoucherMonths] = useState<1 | 3 | 12>(1);
+  const [newVoucherCount, setNewVoucherCount] = useState<number>(1);
+  const [newVoucherNote, setNewVoucherNote] = useState<string>('');
+  const [creatingVoucher, setCreatingVoucher] = useState<boolean>(false);
+  const [copiedVoucherCode, setCopiedVoucherCode] = useState<string | null>(null);
+
   const adminInfo = adminService.getAdminInfo();
+
+  const loadVouchers = async (filter = voucherFilter) => {
+    try {
+      setLoadingVouchers(true);
+      const list = await adminService.getVouchers(filter);
+      setVouchers(list);
+    } catch (err: any) {
+      console.error('Failed to load vouchers:', err);
+    } finally {
+      setLoadingVouchers(false);
+    }
+  };
+
+  const handleGenerateVouchers = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setCreatingVoucher(true);
+      const res = await adminService.generateVouchers(
+        newVoucherMonths,
+        newVoucherNote.trim() || undefined,
+        newVoucherCount
+      );
+      alert(res.message || `${res.vouchers?.length || newVoucherCount} नए सिंगल-यूज़ वाउचर सफलतापूर्वक बनाए गए!`);
+      setIsVoucherModalOpen(false);
+      setNewVoucherNote('');
+      setNewVoucherCount(1);
+      await loadVouchers();
+    } catch (err: any) {
+      alert(`वाउचर बनाने में विफल: ${err.message}`);
+    } finally {
+      setCreatingVoucher(false);
+    }
+  };
+
+  const handleDeleteVoucher = async (voucher: VoucherItem) => {
+    const vId = voucher._id || voucher.id;
+    if (!vId) return;
+    if (voucher.isRedeemed) {
+      alert('उपयोग हो चुका वाउचर हटाया नहीं जा सकता।');
+      return;
+    }
+    if (!window.confirm(`क्या आप वाउचर "${voucher.code}" को हटाना चाहते हैं?`)) return;
+    try {
+      await adminService.deleteVoucher(vId);
+      setVouchers(prev => prev.filter(v => (v._id || v.id) !== vId));
+    } catch (err: any) {
+      alert(`वाउचर हटाने में विफल: ${err.message}`);
+    }
+  };
+
+  const handleCopyVoucherCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedVoucherCode(code);
+    setTimeout(() => setCopiedVoucherCode(null), 2500);
+  };
 
   const loadAnnouncements = async () => {
     try {
@@ -233,17 +299,19 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
       else setLoading(true);
       setError('');
 
-      const [overviewData, storesData, announcementsData, claimsData] = await Promise.all([
+      const [overviewData, storesData, announcementsData, claimsData, vouchersData] = await Promise.all([
         adminService.getOverview(),
         adminService.getStores(searchQuery, selectedPlan, selectedDistrict),
         adminService.getAnnouncements().catch(() => []),
         adminService.getPaymentClaims(claimStatusFilter).catch(() => []),
+        adminService.getVouchers(voucherFilter).catch(() => []),
       ]);
 
       setOverview(overviewData);
       setStores(storesData);
       setAnnouncements(announcementsData);
       setPaymentClaims(claimsData);
+      setVouchers(vouchersData);
     } catch (err: any) {
       setError(err.message || 'डेटा लोड करने में असमर्थ');
     } finally {
@@ -254,7 +322,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
 
   useEffect(() => {
     loadData();
-  }, [selectedPlan, selectedDistrict, claimStatusFilter]);
+  }, [selectedPlan, selectedDistrict, claimStatusFilter, voucherFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -698,6 +766,22 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                 ({paymentClaims.length})
               </span>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('VOUCHERS');
+              loadVouchers();
+            }}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm cursor-pointer transition-all shrink-0 ${
+              adminTab === 'VOUCHERS'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
+            }`}
+          >
+            <Ticket className="w-4 h-4" />
+            <span>🎟️ प्रो वाउचर ({vouchers.filter(v => !v.isRedeemed).length} उपलब्ध)</span>
           </button>
 
           <button
@@ -1352,6 +1436,192 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                             </span>
                           )}
                         </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : adminTab === 'VOUCHERS' ? (
+          /* SINGLE-USE VOUCHERS MANAGER */
+          <div className="village-card p-4 sm:p-6 rounded-3xl bg-white border border-amber-200 shadow-2xs space-y-5">
+            {/* Voucher Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-stone-200">
+              <div>
+                <h2 className="text-base sm:text-lg font-black text-stone-950 m-0 flex items-center gap-2">
+                  <Ticket className="w-5 h-5 text-amber-600" />
+                  <span>सिंगल-यूज़ प्रो वाउचर (Anti-Bypass Single-Use Vouchers)</span>
+                </h2>
+                <p className="text-xs text-stone-500 m-0 font-medium">
+                  सुरक्षित वन-टाइम प्रो कूपन कोड। एक बार रिडीम होने के बाद कोड तुरंत निष्क्रिय हो जाता है।
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsVoucherModalOpen(true)}
+                className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-2xl cursor-pointer shadow-sm flex items-center gap-2 active:scale-95 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ नया वाउचर कोड बनाएं</span>
+              </button>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <button
+                type="button"
+                onClick={() => setVoucherFilter('ALL')}
+                className={`text-xs px-3.5 py-1.5 rounded-xl font-bold cursor-pointer transition-all shrink-0 ${
+                  voucherFilter === 'ALL'
+                    ? 'bg-amber-700 text-white shadow-2xs'
+                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                }`}
+              >
+                सभी वाउचर ({vouchers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setVoucherFilter('ACTIVE')}
+                className={`text-xs px-3.5 py-1.5 rounded-xl font-bold cursor-pointer transition-all shrink-0 ${
+                  voucherFilter === 'ACTIVE'
+                    ? 'bg-emerald-700 text-white shadow-2xs'
+                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                }`}
+              >
+                ✓ सक्रिय / अप्रयुक्त ({vouchers.filter(v => !v.isRedeemed).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setVoucherFilter('REDEEMED')}
+                className={`text-xs px-3.5 py-1.5 rounded-xl font-bold cursor-pointer transition-all shrink-0 ${
+                  voucherFilter === 'REDEEMED'
+                    ? 'bg-stone-800 text-white shadow-2xs'
+                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                }`}
+              >
+                🔒 उपयोग हो चुके ({vouchers.filter(v => v.isRedeemed).length})
+              </button>
+            </div>
+
+            {/* Vouchers Grid / List */}
+            {loadingVouchers ? (
+              <div className="space-y-3 animate-pulse">
+                {[1, 2, 3].map(n => (
+                  <div key={n} className="h-20 bg-stone-100 rounded-2xl" />
+                ))}
+              </div>
+            ) : vouchers.length === 0 ? (
+              <div className="text-center py-14 bg-stone-50 rounded-2xl border border-dashed border-stone-200 p-6">
+                <Ticket className="w-12 h-12 text-stone-400 mx-auto mb-3 opacity-60" />
+                <h3 className="text-sm font-bold text-stone-800">कोई वाउचर कोड नहीं मिला</h3>
+                <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+                  दुकानदारों को ऑफलाइन नकद लेकर सक्रिय करने या प्रोमो देने के लिए नया सिंगल-यूज़ वाउचर बनाएं।
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsVoucherModalOpen(true)}
+                  className="mt-4 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>पहला वाउचर जनरेट करें</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                {vouchers.map(v => {
+                  const vId = v._id || v.id || v.code;
+                  const isCopied = copiedVoucherCode === v.code;
+                  const planText = v.durationMonths === 12 ? '1 वर्ष (वार्षिक)' : `${v.durationMonths} महीना`;
+                  const shareMsg = `नमस्ते! आपकी दुकान के लिए ग्रामीण किराना प्रो (${planText}) एक्टिवेशन कोड है:\n\n🔑 *${v.code}*\n\nदुकानदार ऐप में 'कूपन या वाउचर कोड' बॉक्स में यह कोड दर्ज करके प्रो सक्रिय करें। (सुरक्षा नोट: यह सिंगल-यूज़ कोड है, केवल 1 बार उपयोग किया जा सकता है)`;
+
+                  return (
+                    <div
+                      key={vId}
+                      className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                        v.isRedeemed
+                          ? 'bg-stone-50/80 border-stone-200 opacity-75'
+                          : 'bg-white border-amber-300/80 shadow-xs hover:border-amber-400'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-base sm:text-lg font-black tracking-wider text-stone-950 bg-stone-100 px-2.5 py-1 rounded-xl border border-stone-300 select-all">
+                              {v.code}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyVoucherCode(v.code)}
+                              className="p-1.5 rounded-lg bg-stone-200 hover:bg-stone-300 text-stone-700 cursor-pointer active:scale-90 transition"
+                              title="कोड कॉपी करें"
+                            >
+                              {isCopied ? (
+                                <CheckCheck className="w-4 h-4 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                          {v.note && (
+                            <p className="text-xs text-stone-600 font-medium mt-1 m-0">
+                              📝 {v.note}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Status Badge */}
+                        {v.isRedeemed ? (
+                          <span className="px-2.5 py-1 rounded-full bg-stone-200 text-stone-700 text-[11px] font-black border border-stone-300 shrink-0">
+                            🔒 उपयोग हो चुका
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 text-[11px] font-black border border-emerald-300 shrink-0">
+                            ✓ सक्रिय (उपलब्ध)
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Details Row */}
+                      <div className="flex items-center justify-between text-xs text-stone-500 pt-2 border-t border-stone-100 flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[11px]">
+                            👑 {planText}
+                          </span>
+                          <span className="text-[11px]">
+                            {new Date(v.createdAt).toLocaleDateString('hi-IN')}
+                          </span>
+                        </div>
+
+                        {/* Actions or Redemption Store Name */}
+                        {v.isRedeemed ? (
+                          <div className="text-[11px] text-stone-600 font-medium">
+                            🏪 <strong>{v.redeemedByStoreName || 'दुकान'}</strong> द्वारा रिडीम
+                            {v.redeemedAt && ` (${new Date(v.redeemedAt).toLocaleDateString('hi-IN')})`}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <a
+                              href={buildWhatsAppUrl('', shareMsg)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition shadow-2xs"
+                              title="व्हाट्सएप पर कोड भेजें"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span>व्हाट्सएप</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteVoucher(v)}
+                              className="p-1 rounded-lg text-rose-600 hover:bg-rose-100 cursor-pointer active:scale-90 transition"
+                              title="वाउचर हटाएं"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -2157,6 +2427,121 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onExit
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Voucher Modal */}
+        {isVoucherModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs">
+            <div className="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-stone-200 space-y-4 animate-scaleUp">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-amber-100 text-amber-900">
+                    <Ticket className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-stone-900 m-0">नया सिंगल-यूज़ वाउचर बनाएं</h3>
+                    <p className="text-xs text-stone-500 m-0">सुरक्षित, नॉन-रिपीट एक्टिवेशन कोड</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsVoucherModalOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-stone-100 text-stone-500 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleGenerateVouchers} className="space-y-4">
+                {/* Duration */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-stone-700">प्रो प्लान अवधि (Duration):</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { months: 1, label: '1 महीना (₹99)' },
+                      { months: 3, label: '3 महीना (₹249)' },
+                      { months: 12, label: '1 वर्ष (₹899)' },
+                    ].map(opt => (
+                      <button
+                        key={opt.months}
+                        type="button"
+                        onClick={() => setNewVoucherMonths(opt.months as 1 | 3 | 12)}
+                        className={`p-2.5 rounded-xl border text-xs font-bold cursor-pointer text-center transition ${
+                          newVoucherMonths === opt.months
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                            : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Count */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-stone-700">कितने वाउचर बनाने हैं (Quantity):</label>
+                  <div className="flex items-center gap-2">
+                    {[1, 3, 5, 10].map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setNewVoucherCount(c)}
+                        className={`flex-1 py-2 rounded-xl border text-xs font-bold cursor-pointer text-center transition ${
+                          newVoucherCount === c
+                            ? 'bg-stone-900 text-white border-stone-900'
+                            : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Note */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-stone-700">नोट / दुकानदार का नाम (वैकल्पिक):</label>
+                  <input
+                    type="text"
+                    value={newVoucherNote}
+                    onChange={(e) => setNewVoucherNote(e.target.value)}
+                    placeholder="उदा. बिलासपुर डीलर, रमेश किराना..."
+                    className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs focus:outline-none focus:border-amber-500 font-medium"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsVoucherModalOpen(false)}
+                    disabled={creatingVoucher}
+                    className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-50 cursor-pointer disabled:opacity-50"
+                  >
+                    रद्द करें
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={creatingVoucher}
+                    className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {creatingVoucher ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>बना रहे हैं...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4" />
+                        <span>वाउचर जनरेट करें</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

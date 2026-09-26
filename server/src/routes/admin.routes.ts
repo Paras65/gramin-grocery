@@ -12,6 +12,7 @@ import { Transaction } from '../models/Transaction.js';
 import { SpoilageLog } from '../models/SpoilageLog.js';
 import { Announcement } from '../models/Announcement.js';
 import { PaymentClaim } from '../models/PaymentClaim.js';
+import { Voucher } from '../models/Voucher.js';
 import { adminAuthLimiter, requireAuth, requireRole } from '../middleware/security.js';
 import { runWithTenantContext } from '../middleware/tenantContext.js';
 
@@ -754,6 +755,80 @@ router.post('/payment-claims/:id/reject', requireAuth, requireRole('SUPER_ADMIN'
       message: 'भुगतान क्लेम अस्वीकृत कर दिया गया (Payment claim rejected)',
       claim,
     });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 15. Generate Single-Use Vouchers
+router.post('/vouchers/generate', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { durationMonths = 1, note = '', count = 1 } = req.body;
+    const months = [1, 3, 12].includes(Number(durationMonths)) ? Number(durationMonths) : 1;
+    const generateCount = Math.min(Math.max(1, Number(count) || 1), 20);
+
+    const createdVouchers = [];
+    const createdBy = (req as any).user?.name || 'SUPER_ADMIN';
+
+    for (let i = 0; i < generateCount; i++) {
+      const part1 = crypto.randomBytes(2).toString('hex').toUpperCase();
+      const part2 = crypto.randomBytes(2).toString('hex').toUpperCase();
+      const code = `GK-${part1}-${part2}`;
+
+      const voucher = await Voucher.create({
+        code,
+        durationMonths: months,
+        isRedeemed: false,
+        createdBy,
+        note: note.trim() || undefined,
+        expiresAt: new Date(Date.now() + 90 * 86400000),
+      });
+
+      createdVouchers.push(voucher);
+    }
+
+    res.status(201).json({
+      message: `${createdVouchers.length} नया वाउचर कोड सफलतापूर्वक बनाया गया।`,
+      vouchers: createdVouchers,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 16. List All Vouchers
+router.get('/vouchers', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { status = 'ALL' } = req.query;
+    const filter: any = {};
+    if (status === 'ACTIVE') {
+      filter.isRedeemed = false;
+    } else if (status === 'REDEEMED') {
+      filter.isRedeemed = true;
+    }
+
+    const vouchers = await Voucher.find(filter).sort({ createdAt: -1 }).lean();
+    res.json({ vouchers });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 17. Revoke/Delete Unredeemed Voucher
+router.delete('/vouchers/:id', requireAuth, requireRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const voucher = await Voucher.findById(id);
+    if (!voucher) {
+      return res.status(404).json({ error: 'वाउचर नहीं मिला (Voucher not found)' });
+    }
+
+    if (voucher.isRedeemed) {
+      return res.status(400).json({ error: 'यह वाउचर पहले ही किसी दुकान द्वारा उपयोग किया जा चुका है और हटाया नहीं जा सकता।' });
+    }
+
+    await Voucher.findByIdAndDelete(id);
+    res.json({ message: 'वाउचर कोड सफलतापूर्वक निरस्त/हटा दिया गया।' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

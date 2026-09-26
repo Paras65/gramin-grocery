@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Check, Sparkles, Shield, Cloud, Store, 
   MessageCircle, HelpCircle, Ticket, CheckCircle2, AlertCircle, 
-  QrCode, Copy, ExternalLink, RefreshCw, Clock, CheckCheck
+  QrCode, Copy, ExternalLink, RefreshCw, Clock, CheckCheck, Loader2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '../../context/LanguageContext';
@@ -179,13 +179,29 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     }
   };
 
-  const handleRedeemCoupon = (e: React.FormEvent) => {
+  const [isRedeemingCoupon, setIsRedeemingCoupon] = useState(false);
+
+  const handleRedeemCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!couponCode.trim()) return;
-    const result = syncService.activateProWithKey(couponCode);
-    setCouponFeedback({ success: result.success, message: result.message });
-    if (result.success) {
-      setCouponCode('');
+    const clean = couponCode.trim();
+    if (!clean) return;
+
+    try {
+      setIsRedeemingCoupon(true);
+      setCouponFeedback(null);
+      const result = await syncService.redeemVoucher(clean);
+      setCouponFeedback({ success: result.success, message: result.message });
+      if (result.success) {
+        setCouponCode('');
+        await syncService.triggerSync();
+      }
+    } catch (err: any) {
+      setCouponFeedback({
+        success: false,
+        message: err.message || 'वाउचर सत्यापन विफल रहा।'
+      });
+    } finally {
+      setIsRedeemingCoupon(false);
     }
   };
 
@@ -558,24 +574,33 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           {showVoucherBox && (
             <div className="bg-amber-50/70 rounded-2xl p-4 border border-amber-300/80 space-y-2.5 animate-fadeIn">
               <div className="text-xs font-black text-amber-950">
-                ऑफलाइन कूपन या एक्टिवेशन कोड (Voucher Code)
+                ऑफलाइन कूपन या एक्टिवेशन कोड (Single-Use Voucher)
               </div>
               <p className="text-[11px] text-stone-600 m-0">
-                डिस्ट्रीब्यूटर द्वारा दिया गया प्रोमो कोड (जैसे: GRAMIN99, KIRANA-PRO-30) दर्ज करें:
+                डिस्ट्रीब्यूटर या सुपर एडमिन से प्राप्त आधिकारिक सिंगल-यूज़ कूपन कोड दर्ज करें:
               </p>
               <form onSubmit={handleRedeemCoupon} className="flex gap-2">
                 <input
                   type="text"
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                  placeholder="उदा: GRAMIN99"
-                  className="flex-1 px-3 py-2 text-xs font-bold uppercase rounded-xl border border-stone-300 focus:outline-none focus:border-amber-500 bg-white tracking-wider"
+                  placeholder="उदा: GK-PRO-XXXX"
+                  disabled={isRedeemingCoupon}
+                  className="flex-1 px-3 py-2 text-xs font-bold uppercase rounded-xl border border-stone-300 focus:outline-none focus:border-amber-500 bg-white tracking-wider disabled:bg-stone-100 disabled:text-stone-400"
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-amber-300 font-black text-xs rounded-xl transition cursor-pointer shadow-xs active:scale-95 shrink-0"
+                  disabled={isRedeemingCoupon || !couponCode.trim()}
+                  className="px-4 py-2 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 text-amber-300 font-black text-xs rounded-xl transition cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1.5"
                 >
-                  लागू करें
+                  {isRedeemingCoupon ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>जाँच रहे हैं...</span>
+                    </>
+                  ) : (
+                    'लागू करें'
+                  )}
                 </button>
               </form>
 

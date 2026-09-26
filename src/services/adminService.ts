@@ -1,4 +1,4 @@
-import type { PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan, PlatformAnnouncement, PaymentClaim } from '../types';
+import type { PlatformMetrics, DistrictStat, AdminStoreSummary, TenantPlan, PlatformAnnouncement, PaymentClaim, VoucherItem } from '../types';
 import { API_BASE } from '../utils/apiConfig';
 
 export interface AdminUser {
@@ -334,6 +334,41 @@ class AdminService {
     });
 
     return await this.parseResponse(res, 'भुगतान क्लेम अस्वीकृत करने में विफल');
+  }
+
+  public async generateVouchers(durationMonths: number, note?: string, count: number = 1): Promise<{ message: string; vouchers: VoucherItem[] }> {
+    const res = await fetch(`${API_BASE}/admin/vouchers/generate`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ durationMonths, note, count }),
+    });
+
+    return await this.parseResponse(res, 'वाउचर जनरेट करने में विफल');
+  }
+
+  public async getVouchers(status: string = 'ALL'): Promise<VoucherItem[]> {
+    const res = await fetch(`${API_BASE}/admin/vouchers?status=${status}`, {
+      headers: this.getAuthHeaders(),
+    });
+
+    try {
+      const data = await this.parseResponse(res, 'वाउचर सूची लोड करने में विफल');
+      return data.vouchers || [];
+    } catch (err: any) {
+      if (res.status === 401 || res.status === 403) {
+        this.logout();
+      }
+      throw err;
+    }
+  }
+
+  public async deleteVoucher(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/admin/vouchers/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    await this.parseResponse(res, 'वाउचर हटाने में विफल');
   }
 }
 
